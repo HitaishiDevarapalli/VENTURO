@@ -2286,14 +2286,28 @@ p {
 /* Property Premium Card Enhancement styling */
 .listing-card-premium {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   background-color: var(--card-bg);
+  min-height: 220px;
+}
+
+@media (max-width: 580px) {
+  .listing-card-premium {
+    flex-direction: column;
+  }
+  .card-image-wrap {
+    width: 100% !important;
+    height: 180px !important;
+  }
 }
 
 .card-image-wrap {
   position: relative;
-  height: 200px;
+  width: 40%;
+  height: auto;
+  min-height: 220px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .card-image-wrap img {
@@ -2351,6 +2365,8 @@ p {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  flex-grow: 1;
+  justify-content: space-between;
 }
 
 .card-meta-row {

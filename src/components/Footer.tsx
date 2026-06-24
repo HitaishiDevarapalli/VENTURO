@@ -26,7 +26,7 @@ export const Footer: React.FC = () => {
       <div className="container footer-grid-container">
         {/* Brand & Tagline */}
         <div className="footer-brand-col">
-          <h3 className="footer-logo">VENTURO</h3>
+          <h3 className="footer-logo">TheNexopp</h3>
           <p className="footer-tagline">India's Unified Marketplace for Property, Business & Growth</p>
           <div className="footer-socials">
             <a href="https://linkedin.com" target="_blank" rel="noreferrer" aria-label="LinkedIn"><FaLinkedinIn /></a>
@@ -63,7 +63,7 @@ export const Footer: React.FC = () => {
           
           {subscribed ? (
             <div className="newsletter-success">
-              <p>Successfully subscribed to Venturo Brief.</p>
+              <p>Successfully subscribed to TheNexopp Brief.</p>
             </div>
           ) : (
             <form onSubmit={handleSubscribe} className="footer-subscribe-form">
@@ -83,7 +83,7 @@ export const Footer: React.FC = () => {
       {/* Footer Bottom copyright */}
       <div className="footer-bottom">
         <div className="container footer-bottom-flex">
-          <p>&copy; {new Date().getFullYear()} VENTURO. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} TheNexopp. All rights reserved.</p>
           <div className="footer-bottom-links">
             <a href="#contact" onClick={(e) => e.preventDefault()}>Privacy Policy</a>
             <a href="#contact" onClick={(e) => e.preventDefault()}>Terms & Conditions</a>

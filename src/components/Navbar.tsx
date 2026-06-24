@@ -90,7 +90,7 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex }) => {
     <nav className={`navbar ${navbarClass}`}>
       <div className="navbar-container">
         <a href="#hero" className="navbar-logo" onClick={() => handleScrollTo('hero')}>
-          VENTURO
+          TheNexopp
         </a>
 
         <ul className="navbar-menu">

@@ -123,7 +123,7 @@ export const ContactUs: React.FC = () => {
               <div className="contact-info-item">
                 <span className="info-icon"><FaMapMarkerAlt /></span>
                 <div className="info-text">
-                  <h4>Venturo Towers</h4>
+                  <h4>TheNexopp Towers</h4>
                   <p>Level 14, Financial District, Gachibowli, Hyderabad - 500032</p>
                 </div>
               </div>
@@ -138,7 +138,7 @@ export const ContactUs: React.FC = () => {
                 <span className="info-icon"><FaEnvelope /></span>
                 <div className="info-text">
                   <h4>Email Inquiries</h4>
-                  <p>desk@venturo.in / acquisitions@venturo.in</p>
+                  <p>desk@thenexopp.in / acquisitions@thenexopp.in</p>
                 </div>
               </div>
             </div>
@@ -147,7 +147,7 @@ export const ContactUs: React.FC = () => {
             <div className="mock-map-widget premium-card">
               <div className="map-overlay">
                 <FaMapMarkerAlt className="map-pin" />
-                <span className="map-label">VENTURO HQ (Gachibowli)</span>
+                <span className="map-label">TheNexopp HQ (Gachibowli)</span>
               </div>
               <div className="map-grid-pattern"></div>
             </div>

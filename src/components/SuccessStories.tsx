@@ -15,7 +15,7 @@ export const SuccessStories: React.FC = () => {
 
   const testimonials: Testimonial[] = [
     {
-      quote: "Venturo transformed our commercial real-estate acquisition strategy. Their legal audit and title checks were flawless, enabling a complex ₹12 Crore land registry in Hyderabad to close within weeks.",
+      quote: "TheNexopp transformed our commercial real-estate acquisition strategy. Their legal audit and title checks were flawless, enabling a complex ₹12 Crore land registry in Hyderabad to close within weeks.",
       author: "Ravi Teja",
       role: "Managing Director",
       company: "Apex Tech Holdings",
@@ -23,7 +23,7 @@ export const SuccessStories: React.FC = () => {
       image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150&h=150"
     },
     {
-      quote: "Acquiring a franchise brand through Venturo's resale marketplace was completely turnkey. We got historical cash flows verified by certified accountants and completed the transfer without operational friction.",
+      quote: "Acquiring a franchise brand through TheNexopp's resale marketplace was completely turnkey. We got historical cash flows verified by certified accountants and completed the transfer without operational friction.",
       author: "Aditi Rao",
       role: "Franchise Partner",
       company: "Chai Oasis Guntur",
@@ -53,7 +53,7 @@ export const SuccessStories: React.FC = () => {
         <span className="section-tag text-center">Success Stories</span>
         <h2 className="section-title text-center">Trusted By India’s Leading Investors</h2>
         <p className="section-subtitle text-center">
-          Read how institutional funds, corporate brands, and private owners leverage Venturo’s integrated asset marketplace.
+          Read how institutional funds, corporate brands, and private owners leverage TheNexopp’s integrated asset marketplace.
         </p>
 
         {/* Sliding review container */}

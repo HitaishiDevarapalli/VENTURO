@@ -7,7 +7,7 @@ import FeaturedProperties from './components/FeaturedProperties';
 import FranchiseMarketplace from './components/FranchiseMarketplace';
 import BusinessMarketplace from './components/BusinessMarketplace';
 import FinanceSection from './components/FinanceSection';
-import WhyVenturo from './components/WhyVenturo';
+import WhyTheNexopp from './components/WhyTheNexopp';
 import SuccessStories from './components/SuccessStories';
 import AboutUs from './components/AboutUs';
 import ContactUs from './components/ContactUs';
@@ -53,7 +53,7 @@ export const App: React.FC = () => {
         <FranchiseMarketplace />
         <BusinessMarketplace />
         <FinanceSection />
-        <WhyVenturo />
+        <WhyTheNexopp />
         <SuccessStories />
         <AboutUs />
         <ContactUs />

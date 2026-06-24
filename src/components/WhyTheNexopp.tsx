@@ -11,7 +11,7 @@ interface Feature {
   desc: string;
 }
 
-export const WhyVenturo: React.FC = () => {
+export const WhyTheNexopp: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const features: Feature[] = [
@@ -70,8 +70,8 @@ export const WhyVenturo: React.FC = () => {
   return (
     <section className="section-padding why-venturo-section" ref={containerRef}>
       <div className="container">
-        <span className="section-tag text-center">The Venturo Guarantee</span>
-        <h2 className="section-title text-center">Why Leading Investors Choose Venturo</h2>
+        <span className="section-tag text-center">The TheNexopp Guarantee</span>
+        <h2 className="section-title text-center">Why Leading Investors Choose TheNexopp</h2>
         <p className="section-subtitle text-center">
           Building absolute transparency and modern efficiency into high-value asset acquisitions and protective financial ecosystems.
         </p>
@@ -90,4 +90,4 @@ export const WhyVenturo: React.FC = () => {
   );
 };
 
-export default WhyVenturo;
+export default WhyTheNexopp;

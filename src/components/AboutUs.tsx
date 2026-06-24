@@ -7,13 +7,13 @@ export const AboutUs: React.FC = () => {
         <div className="about-grid">
           {/* Left Column: Mission, Vision, Story */}
           <div className="about-text-content">
-            <span className="section-tag">About Venturo</span>
+            <span className="section-tag">About TheNexopp</span>
             <h2 className="section-title">Redefining High-Value Asset Management</h2>
             <div className="accent-line-left"></div>
 
             <div className="about-paragraphs">
               <p className="about-story">
-                <strong>Our Story:</strong> Founded with a vision to streamline complex Indian acquisition ecosystems, Venturo is the culmination of financial advisory expertise, enterprise brokerage, and luxury real estate networks. We identified a critical gap: high-net-worth investors were forced to navigate isolated silos to acquire properties, buy franchises, audit running businesses, and secure enterprise insurance. Venturo integrates these under a singular, trustworthy luxury portal.
+                <strong>Our Story:</strong> Founded with a vision to streamline complex Indian acquisition ecosystems, TheNexopp is the culmination of financial advisory expertise, enterprise brokerage, and luxury real estate networks. We identified a critical gap: high-net-worth investors were forced to navigate isolated silos to acquire properties, buy franchises, audit running businesses, and secure enterprise insurance. TheNexopp integrates these under a singular, trustworthy luxury portal.
               </p>
               
               <div className="mv-flex">
@@ -32,7 +32,7 @@ export const AboutUs: React.FC = () => {
           {/* Right Column: Premium Image & Trust Statistics Overlay */}
           <div className="about-image-wrapper">
             <div className="about-img-container">
-              <img src="/assets/hero_skyline.png" alt="Venturo Executive Skyline" className="about-main-img" />
+              <img src="/assets/hero_skyline.png" alt="TheNexopp Executive Skyline" className="about-main-img" />
               <div className="about-overlay-stats glass-card">
                 <div className="stat-card">
                   <span className="stat-num">₹2,500 Cr+</span>

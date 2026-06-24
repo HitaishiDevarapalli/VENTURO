@@ -16,32 +16,20 @@ export const PropertyCategories: React.FC = () => {
 
   const categories: Category[] = [
     {
-      title: 'Luxury Apartments',
-      image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=800',
+      title: 'Flats',
+      image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=1200&h=800',
       count: '12,400+ Units',
       tagline: 'High-rise living with premium panoramic city views.'
     },
     {
-      title: 'Independent Houses',
-      image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=800',
+      title: 'Individual Houses',
+      image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=1200&h=800',
       count: '8,200+ Homes',
       tagline: 'Spacious bespoke residences designed for private comfort.'
     },
     {
-      title: 'Luxury Villas',
-      image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=800',
-      count: '4,500+ Estates',
-      tagline: 'Exclusive gated estate communities with luxury amenities.'
-    },
-    {
-      title: 'Commercial Spaces',
-      image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800',
-      count: '3,100+ Spaces',
-      tagline: 'Prime business parks, workspaces, and corporate headquarters.'
-    },
-    {
-      title: 'Lands & Plots',
-      image: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&q=80&w=1200',
+      title: 'Lands',
+      image: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&q=80&w=1200&h=800',
       count: '9,800+ Plots',
       tagline: 'Premium residential zones & strategic developments.'
     }

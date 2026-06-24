@@ -14,6 +14,11 @@ export interface Dealer {
   coverage: { [city: string]: number };
   latitude: number;
   longitude: number;
+  memberSince?: string;
+  propertiesSold?: number;
+  phone?: string;
+  email?: string;
+  sellerLevel?: 'Basic Seller' | 'Verified Seller' | 'Premium Seller' | 'Builder Verified' | 'Nexopp Trusted Partner';
 }
 
 export interface PropertyListing {
@@ -42,6 +47,17 @@ export interface PropertyListing {
   availabilityCount: number;
   trustScore: number; // 0-100
   createdDate: string;
+  propertyStatus?: 'Available' | 'Reserved' | 'Sold';
+  views?: number;
+  saves?: number;
+  inquiries?: number;
+  contactRequests?: number;
+  siteVisitRequests?: number;
+  subType?: string; // e.g. 1 BHK, Duplex House, Commercial Plot, etc.
+  gallery?: string[];
+  nearbySchools?: string[];
+  nearbyHospitals?: string[];
+  nearbyTransit?: string[];
 }
 
 export interface FranchiseListing {
@@ -121,6 +137,7 @@ export interface ServiceProvider {
 }
 
 // Initial Data Set
+// Initial Data Set
 export let dealersDb: Dealer[] = [
   {
     id: 'D1',
@@ -137,7 +154,12 @@ export let dealersDb: Dealer[] = [
     inventoryCount: 10,
     coverage: { 'Hyderabad': 5, 'Guntur': 2, 'Vijayawada': 3 },
     latitude: 17.4483,
-    longitude: 78.3741
+    longitude: 78.3741,
+    memberSince: '2022',
+    propertiesSold: 18,
+    phone: '+91 99999 88888',
+    email: 'contact@abcdevelopers.in',
+    sellerLevel: 'Nexopp Trusted Partner'
   },
   {
     id: 'D2',
@@ -154,7 +176,12 @@ export let dealersDb: Dealer[] = [
     inventoryCount: 6,
     coverage: { 'Hyderabad': 3, 'Bengaluru': 3 },
     latitude: 12.9716,
-    longitude: 77.5946
+    longitude: 77.5946,
+    memberSince: '2023',
+    propertiesSold: 12,
+    phone: '+91 88888 77777',
+    email: 'info@prestigerealty.in',
+    sellerLevel: 'Premium Seller'
   },
   {
     id: 'D3',
@@ -171,7 +198,12 @@ export let dealersDb: Dealer[] = [
     inventoryCount: 5,
     coverage: { 'Vijayawada': 2, 'Visakhapatnam': 3 },
     latitude: 16.5062,
-    longitude: 80.6480
+    longitude: 80.6480,
+    memberSince: '2024',
+    propertiesSold: 8,
+    phone: '+91 77777 66666',
+    email: 'brokerage@apexcapital.in',
+    sellerLevel: 'Verified Seller'
   }
 ];
 
@@ -201,7 +233,21 @@ export let propertiesDb: PropertyListing[] = [
     bestSeller: true,
     availabilityCount: 5,
     trustScore: 98,
-    createdDate: '2026-05-10'
+    createdDate: '2026-05-10',
+    propertyStatus: 'Available',
+    views: 450,
+    saves: 85,
+    inquiries: 24,
+    contactRequests: 12,
+    siteVisitRequests: 6,
+    subType: '3 BHK',
+    gallery: [
+      'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=800',
+      'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800'
+    ],
+    nearbySchools: ['Oakridge International', 'Delhi Public School'],
+    nearbyHospitals: ['AIG Hospitals', 'Continental Hospital'],
+    nearbyTransit: ['Raidurg Metro Station', 'Outer Ring Road']
   },
   {
     id: 'P2',
@@ -228,7 +274,20 @@ export let propertiesDb: PropertyListing[] = [
     bestSeller: false,
     availabilityCount: 2,
     trustScore: 90,
-    createdDate: '2026-06-01'
+    createdDate: '2026-06-01',
+    propertyStatus: 'Available',
+    views: 210,
+    saves: 30,
+    inquiries: 8,
+    contactRequests: 4,
+    siteVisitRequests: 1,
+    subType: 'Residential Plot',
+    gallery: [
+      'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&q=80&w=1200'
+    ],
+    nearbySchools: ['Vignan School'],
+    nearbyHospitals: ['Guntur Government Hospital'],
+    nearbyTransit: ['Guntur Railway Station']
   },
   {
     id: 'P3',
@@ -255,7 +314,20 @@ export let propertiesDb: PropertyListing[] = [
     bestSeller: true,
     availabilityCount: 3,
     trustScore: 97,
-    createdDate: '2026-04-15'
+    createdDate: '2026-04-15',
+    propertyStatus: 'Available',
+    views: 620,
+    saves: 110,
+    inquiries: 36,
+    contactRequests: 18,
+    siteVisitRequests: 9,
+    subType: 'Duplex House',
+    gallery: [
+      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=800'
+    ],
+    nearbySchools: ['Phoenix Greens School'],
+    nearbyHospitals: ['Continental Hospital'],
+    nearbyTransit: ['Kokapet ORR Toll Plaza']
   },
   {
     id: 'P4',
@@ -282,7 +354,20 @@ export let propertiesDb: PropertyListing[] = [
     bestSeller: false,
     availabilityCount: 3,
     trustScore: 89,
-    createdDate: '2026-06-12'
+    createdDate: '2026-06-12',
+    propertyStatus: 'Available',
+    views: 180,
+    saves: 25,
+    inquiries: 12,
+    contactRequests: 5,
+    siteVisitRequests: 2,
+    subType: '2 BHK',
+    gallery: [
+      'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=800'
+    ],
+    nearbySchools: ['Nalanda School'],
+    nearbyHospitals: ['Ramesh Hospitals'],
+    nearbyTransit: ['Benz Circle Bus Stop']
   },
   {
     id: 'P5',
@@ -309,7 +394,20 @@ export let propertiesDb: PropertyListing[] = [
     bestSeller: false,
     availabilityCount: 2,
     trustScore: 96,
-    createdDate: '2026-05-20'
+    createdDate: '2026-05-20',
+    propertyStatus: 'Available',
+    views: 540,
+    saves: 95,
+    inquiries: 30,
+    contactRequests: 14,
+    siteVisitRequests: 7,
+    subType: 'Farm House',
+    gallery: [
+      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=800'
+    ],
+    nearbySchools: ['The International School Bangalore'],
+    nearbyHospitals: ['Manipal Hospital Whitefield'],
+    nearbyTransit: ['Whitefield Metro Station']
   },
   {
     id: 'P6',
@@ -336,7 +434,20 @@ export let propertiesDb: PropertyListing[] = [
     bestSeller: true,
     availabilityCount: 3,
     trustScore: 92,
-    createdDate: '2026-03-10'
+    createdDate: '2026-03-10',
+    propertyStatus: 'Available',
+    views: 310,
+    saves: 45,
+    inquiries: 15,
+    contactRequests: 8,
+    siteVisitRequests: 4,
+    subType: 'Commercial Plot',
+    gallery: [
+      'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800'
+    ],
+    nearbySchools: ['DPS Visakhapatnam'],
+    nearbyHospitals: ['Apollo Clinic'],
+    nearbyTransit: ['Madhurawada Bus Terminus']
   },
   {
     id: 'P7',
@@ -361,9 +472,22 @@ export let propertiesDb: PropertyListing[] = [
     premium: false,
     trending: true,
     bestSeller: false,
-    availabilityCount: 1, // trigger suggestions when searched
+    availabilityCount: 1,
     trustScore: 87,
-    createdDate: '2026-06-18'
+    createdDate: '2026-06-18',
+    propertyStatus: 'Available',
+    views: 120,
+    saves: 15,
+    inquiries: 5,
+    contactRequests: 2,
+    siteVisitRequests: 0,
+    subType: 'Residential Plot',
+    gallery: [
+      'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&q=80&w=1200'
+    ],
+    nearbySchools: ['Oakridge Guntur'],
+    nearbyHospitals: ['NRI General Hospital'],
+    nearbyTransit: ['Amaravati Highway Corridor']
   }
 ];
 

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import Lenis from '@studio-freight/lenis';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import PropertyCategories from './components/PropertyCategories';
 import FeaturedProperties from './components/FeaturedProperties';
 import FranchiseMarketplace from './components/FranchiseMarketplace';
 import BusinessMarketplace from './components/BusinessMarketplace';
@@ -47,7 +46,6 @@ export const App: React.FC = () => {
       <Navbar heroBgIndex={heroBgIndex} />
       <main>
         <Hero currentBg={heroBgIndex} setCurrentBg={setHeroBgIndex} />
-        <PropertyCategories />
         <FeaturedProperties />
         <MarketplaceExplorer />
         <FranchiseMarketplace />

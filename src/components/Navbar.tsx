@@ -38,9 +38,9 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex }) => {
 
   const menuItems = [
     { id: 'properties', label: 'Properties', icon: <FaHome />, dropdown: [
-      { name: 'Flats', link: '#properties' },
-      { name: 'Individual Houses', link: '#properties' },
-      { name: 'Land', link: '#properties' },
+      { name: 'Flats', link: '#explorer' },
+      { name: 'Individual Houses', link: '#explorer' },
+      { name: 'Land', link: '#explorer' },
     ]},
     { id: 'franchise', label: 'Franchise', icon: <FaBuilding />, dropdown: [
       { name: 'New Franchise', link: '#franchise' },

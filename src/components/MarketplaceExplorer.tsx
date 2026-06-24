@@ -511,41 +511,56 @@ export const MarketplaceExplorer: React.FC = () => {
 
                     {/* Properties List */}
                     {activeMarket === 'properties' && (
-                      <div className="explorer-listings-grid">
+                      <div className="explorer-listings-stack">
                         {filteredProperties.length === 0 ? (
                           <div className="no-listings-fallback">No property listings match your selected parameters. Select Guntur or Hyderabad for more listings.</div>
                         ) : (
                           filteredProperties.map((prop) => (
-                            <div key={prop.id} className="listing-card-premium premium-card">
-                              <div className="card-image-wrap">
-                                <img src={prop.image} alt={prop.title} />
-                                <div className="card-badges">
-                                  {prop.verified && <span className="badge verified">✔ Verified</span>}
-                                  {prop.premium && <span className="badge premium">💎 Premium</span>}
-                                  {prop.trending && <span className="badge trending">🔥 Trending</span>}
+                            <div key={prop.id} className="property-landscape-row premium-card">
+                              {/* Left Side: Landscape Image */}
+                              <div className="row-image-container">
+                                <img src={prop.image} alt={prop.title} className="row-img" />
+                                <div className="row-badges-overlay">
+                                  {prop.premium && <span className="row-badge premium">💎 Premium</span>}
+                                  {prop.verified && <span className="row-badge verified">✔ Verified</span>}
                                 </div>
-                                <span className="availability-badge">Qty: {prop.availabilityCount} available</span>
+                                <button className="wishlist-btn-overlay" onClick={() => alert(`Saved ${prop.title} to wishlist`)} aria-label="Save Property">
+                                  ❤
+                                </button>
                               </div>
-                              <div className="card-body-wrap">
-                                <div className="card-meta-row">
-                                  <span className="card-type">{prop.category}</span>
-                                  <span className="card-rating"><FaStar /> {prop.rating} ({prop.reviewCount})</span>
+
+                              {/* Right Side: Details */}
+                              <div className="row-details-container">
+                                <div className="row-meta-top">
+                                  <span className="prop-category">{prop.category}</span>
+                                  <span className="prop-rating"><FaStar /> {prop.rating} ({prop.reviewCount} Reviews)</span>
                                 </div>
-                                <h3 className="card-title-text">{prop.title}</h3>
-                                <p className="card-location-text">{prop.area}, {prop.city}</p>
-                                
-                                <div className="card-bottom-flex">
-                                  <div className="card-price-block">
-                                    <span className="label">Ecosystem Price</span>
-                                    <span className="price-val">{prop.priceDisplay}</span>
+
+                                <h3 className="prop-title">{prop.title}</h3>
+                                <p className="prop-location"><FaMapMarkerAlt /> {prop.area}, {prop.city}, {prop.state}</p>
+
+                                <div className="prop-specs-grid">
+                                  <span className="spec-item">🛏 {prop.category === 'Plot' ? 'N/A' : '3 BHK'}</span>
+                                  <span className="spec-item">🛁 {prop.category === 'Plot' ? 'N/A' : '3 Bath'}</span>
+                                  <span className="spec-item">📐 {prop.areaSqFt}</span>
+                                </div>
+
+                                <p className="prop-desc-short">{prop.description}</p>
+
+                                <div className="prop-meta-bottom-details">
+                                  <span className="post-date">📅 Registry Date: {prop.createdDate}</span>
+                                  <span className="prop-status">Status: For {prop.status}</span>
+                                </div>
+
+                                <div className="row-actions-flex">
+                                  <div className="price-tag-block">
+                                    <span className="lbl">Acquisition Value</span>
+                                    <span className="val">{prop.priceDisplay}</span>
                                   </div>
-                                  <div className="card-action-block">
-                                    <button className="btn btn-secondary card-dir-btn" onClick={() => alert(`Calculating route distance to ${prop.title} from your location...`)}>
-                                      <FaMapSigns /> Coords
-                                    </button>
-                                    <button className="btn btn-gold card-view-btn" onClick={() => alert(`Showing details for ${prop.title}`)}>
-                                      Explore
-                                    </button>
+                                  <div className="action-buttons-group">
+                                    <button className="btn btn-outline-gold" onClick={() => alert(`Saving property: ${prop.title}`)}>Save</button>
+                                    <button className="btn btn-secondary" onClick={() => alert(`Contacting seller registry desk for: ${prop.title}`)}>Contact Seller</button>
+                                    <button className="btn btn-gold" onClick={() => alert(`Loading detailed valuation portfolio for: ${prop.title}`)}>View Details</button>
                                   </div>
                                 </div>
                               </div>

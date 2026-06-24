@@ -14,11 +14,6 @@ export interface Dealer {
   coverage: { [city: string]: number };
   latitude: number;
   longitude: number;
-  memberSince?: string;
-  propertiesSold?: number;
-  phone?: string;
-  email?: string;
-  sellerLevel?: 'Basic Seller' | 'Verified Seller' | 'Premium Seller' | 'Builder Verified' | 'Nexopp Trusted Partner';
 }
 
 export interface PropertyListing {
@@ -47,17 +42,6 @@ export interface PropertyListing {
   availabilityCount: number;
   trustScore: number; // 0-100
   createdDate: string;
-  propertyStatus?: 'Available' | 'Reserved' | 'Sold';
-  views?: number;
-  saves?: number;
-  inquiries?: number;
-  contactRequests?: number;
-  siteVisitRequests?: number;
-  subType?: string; // e.g. 1 BHK, Duplex House, Commercial Plot, etc.
-  gallery?: string[];
-  nearbySchools?: string[];
-  nearbyHospitals?: string[];
-  nearbyTransit?: string[];
 }
 
 export interface FranchiseListing {
@@ -137,7 +121,6 @@ export interface ServiceProvider {
 }
 
 // Initial Data Set
-// Initial Data Set
 export let dealersDb: Dealer[] = [
   {
     id: 'D1',
@@ -154,12 +137,7 @@ export let dealersDb: Dealer[] = [
     inventoryCount: 10,
     coverage: { 'Hyderabad': 5, 'Guntur': 2, 'Vijayawada': 3 },
     latitude: 17.4483,
-    longitude: 78.3741,
-    memberSince: '2022',
-    propertiesSold: 18,
-    phone: '+91 99999 88888',
-    email: 'contact@abcdevelopers.in',
-    sellerLevel: 'Nexopp Trusted Partner'
+    longitude: 78.3741
   },
   {
     id: 'D2',
@@ -176,12 +154,7 @@ export let dealersDb: Dealer[] = [
     inventoryCount: 6,
     coverage: { 'Hyderabad': 3, 'Bengaluru': 3 },
     latitude: 12.9716,
-    longitude: 77.5946,
-    memberSince: '2023',
-    propertiesSold: 12,
-    phone: '+91 88888 77777',
-    email: 'info@prestigerealty.in',
-    sellerLevel: 'Premium Seller'
+    longitude: 77.5946
   },
   {
     id: 'D3',
@@ -198,12 +171,7 @@ export let dealersDb: Dealer[] = [
     inventoryCount: 5,
     coverage: { 'Vijayawada': 2, 'Visakhapatnam': 3 },
     latitude: 16.5062,
-    longitude: 80.6480,
-    memberSince: '2024',
-    propertiesSold: 8,
-    phone: '+91 77777 66666',
-    email: 'brokerage@apexcapital.in',
-    sellerLevel: 'Verified Seller'
+    longitude: 80.6480
   }
 ];
 
@@ -233,21 +201,7 @@ export let propertiesDb: PropertyListing[] = [
     bestSeller: true,
     availabilityCount: 5,
     trustScore: 98,
-    createdDate: '2026-05-10',
-    propertyStatus: 'Available',
-    views: 450,
-    saves: 85,
-    inquiries: 24,
-    contactRequests: 12,
-    siteVisitRequests: 6,
-    subType: '3 BHK',
-    gallery: [
-      'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=800',
-      'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800'
-    ],
-    nearbySchools: ['Oakridge International', 'Delhi Public School'],
-    nearbyHospitals: ['AIG Hospitals', 'Continental Hospital'],
-    nearbyTransit: ['Raidurg Metro Station', 'Outer Ring Road']
+    createdDate: '2026-05-10'
   },
   {
     id: 'P2',
@@ -274,20 +228,7 @@ export let propertiesDb: PropertyListing[] = [
     bestSeller: false,
     availabilityCount: 2,
     trustScore: 90,
-    createdDate: '2026-06-01',
-    propertyStatus: 'Available',
-    views: 210,
-    saves: 30,
-    inquiries: 8,
-    contactRequests: 4,
-    siteVisitRequests: 1,
-    subType: 'Residential Plot',
-    gallery: [
-      'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&q=80&w=1200'
-    ],
-    nearbySchools: ['Vignan School'],
-    nearbyHospitals: ['Guntur Government Hospital'],
-    nearbyTransit: ['Guntur Railway Station']
+    createdDate: '2026-06-01'
   },
   {
     id: 'P3',
@@ -314,20 +255,7 @@ export let propertiesDb: PropertyListing[] = [
     bestSeller: true,
     availabilityCount: 3,
     trustScore: 97,
-    createdDate: '2026-04-15',
-    propertyStatus: 'Available',
-    views: 620,
-    saves: 110,
-    inquiries: 36,
-    contactRequests: 18,
-    siteVisitRequests: 9,
-    subType: 'Duplex House',
-    gallery: [
-      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=800'
-    ],
-    nearbySchools: ['Phoenix Greens School'],
-    nearbyHospitals: ['Continental Hospital'],
-    nearbyTransit: ['Kokapet ORR Toll Plaza']
+    createdDate: '2026-04-15'
   },
   {
     id: 'P4',
@@ -354,20 +282,7 @@ export let propertiesDb: PropertyListing[] = [
     bestSeller: false,
     availabilityCount: 3,
     trustScore: 89,
-    createdDate: '2026-06-12',
-    propertyStatus: 'Available',
-    views: 180,
-    saves: 25,
-    inquiries: 12,
-    contactRequests: 5,
-    siteVisitRequests: 2,
-    subType: '2 BHK',
-    gallery: [
-      'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=800'
-    ],
-    nearbySchools: ['Nalanda School'],
-    nearbyHospitals: ['Ramesh Hospitals'],
-    nearbyTransit: ['Benz Circle Bus Stop']
+    createdDate: '2026-06-12'
   },
   {
     id: 'P5',
@@ -394,20 +309,7 @@ export let propertiesDb: PropertyListing[] = [
     bestSeller: false,
     availabilityCount: 2,
     trustScore: 96,
-    createdDate: '2026-05-20',
-    propertyStatus: 'Available',
-    views: 540,
-    saves: 95,
-    inquiries: 30,
-    contactRequests: 14,
-    siteVisitRequests: 7,
-    subType: 'Farm House',
-    gallery: [
-      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=800'
-    ],
-    nearbySchools: ['The International School Bangalore'],
-    nearbyHospitals: ['Manipal Hospital Whitefield'],
-    nearbyTransit: ['Whitefield Metro Station']
+    createdDate: '2026-05-20'
   },
   {
     id: 'P6',
@@ -434,20 +336,7 @@ export let propertiesDb: PropertyListing[] = [
     bestSeller: true,
     availabilityCount: 3,
     trustScore: 92,
-    createdDate: '2026-03-10',
-    propertyStatus: 'Available',
-    views: 310,
-    saves: 45,
-    inquiries: 15,
-    contactRequests: 8,
-    siteVisitRequests: 4,
-    subType: 'Commercial Plot',
-    gallery: [
-      'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800'
-    ],
-    nearbySchools: ['DPS Visakhapatnam'],
-    nearbyHospitals: ['Apollo Clinic'],
-    nearbyTransit: ['Madhurawada Bus Terminus']
+    createdDate: '2026-03-10'
   },
   {
     id: 'P7',
@@ -472,154 +361,9 @@ export let propertiesDb: PropertyListing[] = [
     premium: false,
     trending: true,
     bestSeller: false,
-    availabilityCount: 1,
+    availabilityCount: 1, // trigger suggestions when searched
     trustScore: 87,
-    createdDate: '2026-06-18',
-    propertyStatus: 'Available',
-    views: 120,
-    saves: 15,
-    inquiries: 5,
-    contactRequests: 2,
-    siteVisitRequests: 0,
-    subType: 'Residential Plot',
-    gallery: [
-      'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&q=80&w=1200'
-    ],
-    nearbySchools: ['Oakridge Guntur'],
-    nearbyHospitals: ['NRI General Hospital'],
-    nearbyTransit: ['Amaravati Highway Corridor']
-  },
-  {
-    id: 'P8',
-    dealerId: 'D1',
-    title: 'Vogue Heights Premium Flats',
-    description: 'Elegant luxury residential suite with smart systems and top class security.',
-    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&q=80&w=800',
-    state: 'Telangana',
-    district: 'Rangareddy',
-    city: 'Hyderabad',
-    area: 'Jubilee Hills',
-    latitude: 17.4325,
-    longitude: 78.4075,
-    price: 120,
-    priceDisplay: '₹1.2 Crore',
-    category: 'Apartment',
-    status: 'Buy',
-    areaSqFt: '2100 Sq Ft',
-    rating: 4.8,
-    reviewCount: 42,
-    verified: true,
-    premium: true,
-    trending: true,
-    bestSeller: false,
-    availabilityCount: 4,
-    trustScore: 95,
-    createdDate: '2026-06-05',
-    propertyStatus: 'Available',
-    views: 310,
-    saves: 50,
-    inquiries: 18,
-    subType: '3 BHK',
-    gallery: ['https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&q=80&w=800']
-  },
-  {
-    id: 'P9',
-    dealerId: 'D2',
-    title: 'Modern Oasis Suites',
-    description: 'Bespoke apartment configurations with rooftop pool access and panoramic valley views.',
-    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=800',
-    state: 'Telangana',
-    district: 'Rangareddy',
-    city: 'Hyderabad',
-    area: 'Madhapur',
-    latitude: 17.4483,
-    longitude: 78.3741,
-    price: 95,
-    priceDisplay: '₹95 Lakhs',
-    category: 'Apartment',
-    status: 'Buy',
-    areaSqFt: '1650 Sq Ft',
-    rating: 4.7,
-    reviewCount: 30,
-    verified: true,
-    premium: false,
-    trending: false,
-    bestSeller: true,
-    availabilityCount: 2,
-    trustScore: 91,
-    createdDate: '2026-06-15',
-    propertyStatus: 'Available',
-    views: 260,
-    saves: 38,
-    inquiries: 10,
-    subType: '2 BHK',
-    gallery: ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=800']
-  },
-  {
-    id: 'P10',
-    dealerId: 'D1',
-    title: 'Amber Court Residences',
-    description: 'High ceiling luxury duplex flats close to business and financial corridors.',
-    image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&q=80&w=800',
-    state: 'Andhra Pradesh',
-    district: 'Krishna',
-    city: 'Vijayawada',
-    area: 'Benz Circle',
-    latitude: 16.5062,
-    longitude: 80.6480,
-    price: 70,
-    priceDisplay: '₹70 Lakhs',
-    category: 'Apartment',
-    status: 'Buy',
-    areaSqFt: '1500 Sq Ft',
-    rating: 4.5,
-    reviewCount: 15,
-    verified: false,
-    premium: false,
-    trending: false,
-    bestSeller: false,
-    availabilityCount: 3,
-    trustScore: 82,
-    createdDate: '2026-06-20',
-    propertyStatus: 'Available',
-    views: 140,
-    saves: 20,
-    inquiries: 4,
-    subType: '2 BHK',
-    gallery: ['https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&q=80&w=800']
-  },
-  {
-    id: 'P11',
-    dealerId: 'D3',
-    title: 'Emerald Crest Highrise',
-    description: 'Splendid luxury 4 BHK apartments with panoramic sea views from private decks.',
-    image: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&q=80&w=800',
-    state: 'Andhra Pradesh',
-    district: 'Visakhapatnam',
-    city: 'Visakhapatnam',
-    area: 'Madhurawada',
-    latitude: 17.8185,
-    longitude: 83.3488,
-    price: 160,
-    priceDisplay: '₹1.6 Crore',
-    category: 'Apartment',
-    status: 'Buy',
-    areaSqFt: '2800 Sq Ft',
-    rating: 4.9,
-    reviewCount: 55,
-    verified: true,
-    premium: true,
-    trending: true,
-    bestSeller: true,
-    availabilityCount: 1,
-    trustScore: 98,
-    createdDate: '2026-05-18',
-    propertyStatus: 'Available',
-    views: 400,
-    saves: 80,
-    inquiries: 22,
-    subType: 'Penthouse',
-    gallery: ['https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&q=80&w=800']
+    createdDate: '2026-06-18'
   }
 ];
 

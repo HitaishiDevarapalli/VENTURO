@@ -7,9 +7,11 @@ interface FranchiseResalesPageProps {
   onBack: () => void;
   onPropertyClick?: (id: string) => void;
   onBuyProperty?: (id: string) => void;
+  searchQuery?: string;
+  onClearSearch?: () => void;
 }
 
-export const FranchiseResalesPage: React.FC<FranchiseResalesPageProps> = ({ onBack, onPropertyClick, onBuyProperty }) => {
+export const FranchiseResalesPage: React.FC<FranchiseResalesPageProps> = ({ onBack, onPropertyClick, onBuyProperty, searchQuery, onClearSearch }) => {
   const { toggleWishlist, isWishlisted } = useWishlist();
   const [selectedDealer, setSelectedDealer] = useState<any | null>(null);
   const [showSellerPortfolio, setShowSellerPortfolio] = useState<any | null>(null);
@@ -40,6 +42,18 @@ export const FranchiseResalesPage: React.FC<FranchiseResalesPageProps> = ({ onBa
     };
   }, [showSellerPortfolio, selectedDealer]);
 
+  const filteredFranchises = franchiseDb.filter(franchise => {
+    if (searchQuery && searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesBrand = franchise.brand.toLowerCase().includes(q);
+      const matchesType = franchise.type.toLowerCase().includes(q);
+      const matchesLoc = franchise.location.toLowerCase().includes(q) || franchise.city.toLowerCase().includes(q) || franchise.state.toLowerCase().includes(q);
+      const matchesCat = franchise.category?.toLowerCase().includes(q);
+      if (!matchesBrand && !matchesType && !matchesLoc && !matchesCat) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="franchise-resales-page">
       {/* Page Header */}
@@ -60,8 +74,20 @@ export const FranchiseResalesPage: React.FC<FranchiseResalesPageProps> = ({ onBa
 
       {/* Directory Content */}
       <div className="container section-padding">
+        {searchQuery && searchQuery.trim() !== '' && (
+          <div style={{ backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', padding: '14px 22px', borderRadius: '12px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+            <span style={{ color: '#1E40AF', fontWeight: 600, fontSize: '0.95rem' }}>
+              🔍 Active Search Results for: <strong>"{searchQuery}"</strong> ({filteredFranchises.length} listings found)
+            </span>
+            {onClearSearch && (
+              <button onClick={onClearSearch} style={{ backgroundColor: '#1E40AF', color: '#FFFFFF', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>
+                Clear Search ✕
+              </button>
+            )}
+          </div>
+        )}
         <div className="property-feed-list">
-          {franchiseDb.map(franchise => (
+          {filteredFranchises.map(franchise => (
             <div key={franchise.id} className="feed-card premium-card landscape-card">
               <div className="feed-card-image-wrap">
                 <img 
@@ -189,7 +215,7 @@ export const FranchiseResalesPage: React.FC<FranchiseResalesPageProps> = ({ onBa
                   <button className="btn btn-gold w-100 mt-4" style={{marginTop: '1.5rem', width: '100%'}} onClick={() => alert(`Contacting ${selectedDealer.companyName}...`)}>Contact Seller</button>
                   <div style={{ marginTop: '1rem', textAlign: 'center' }}>
                     <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)', fontSize: '0.9rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
-                      📸 Instagram: @venturo_realty
+                      📸 Instagram: @thenexoop
                     </a>
                   </div>
                 </div>
@@ -303,7 +329,7 @@ export const FranchiseResalesPage: React.FC<FranchiseResalesPageProps> = ({ onBa
                       <span className="info-label">📸 Instagram Profile</span>
                       <span className="info-value">
                         <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>
-                          @venturo_realty
+                          @thenexoop
                         </a>
                       </span>
                     </div>

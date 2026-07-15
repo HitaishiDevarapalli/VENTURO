@@ -1,574 +1,1133 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { propertiesDb, dealersDb } from '../db/marketplaceDb';
-import type { Dealer } from '../db/marketplaceDb';
-import { FaMapMarkerAlt, FaFilter, FaBuilding, FaHome, FaMapMarkedAlt, FaHeart, FaRegHeart, FaShoppingCart, FaArrowLeft } from 'react-icons/fa';
-import { useWishlist } from '../context/WishlistContext';
+import React, { useState, useMemo } from 'react';
+import { propertiesDb } from '../db/marketplaceDb';
+import {
+  FaSearch,
+  FaMapMarkerAlt,
+  FaHome,
+  FaBuilding,
+  FaBed,
+  FaBath,
+  FaRulerCombined,
+  FaCar,
+  FaHeart,
+  FaRegHeart,
+  FaStar,
+  FaCheckCircle,
+  FaCrown,
+  FaFire,
+  FaList,
+  FaMap,
+  FaColumns,
+  FaChevronDown,
+  FaChevronUp,
+  FaCrosshairs,
+  FaPlus,
+  FaMinus,
+  FaExpand,
+  FaFilter,
+} from 'react-icons/fa';
+import { LiveLocationMap } from './LiveLocationMap';
 
 interface PropertyCategoriesProps {
   onPropertyClick?: (id: string) => void;
   onBuyProperty?: (id: string) => void;
   onCategorySelect?: (category: string) => void;
   initialCategory?: string | null;
+  searchQuery?: string;
+  onClearSearch?: () => void;
+  title?: string;
+  subtitle?: string;
+  onBack?: () => void;
 }
 
-export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({ onPropertyClick, onBuyProperty, onCategorySelect, initialCategory }) => {
-  // Feed Filters State
-  const [selectedCity, setSelectedCity] = useState<string>('All');
-  const [selectedBhk, setSelectedBhk] = useState<string>('All');
-  const [budgetLimit, setBudgetLimit] = useState<number>(500); // Up to 500 Lakhs (5 Cr)
-  const [readyToMove, setReadyToMove] = useState<boolean>(false);
-  const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
-  
-  // Modal State
-  const [selectedDealer, setSelectedDealer] = useState<Dealer | null>(null);
-  const [showSellerPortfolio, setShowSellerPortfolio] = useState<Dealer | null>(null);
+export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
+  onPropertyClick,
+  onBuyProperty,
+  onCategorySelect: _onCategorySelect,
+  initialCategory: _initialCategory,
+  searchQuery,
+  onClearSearch,
+  title,
+  subtitle,
+  onBack,
+}) => {
+  // Top Search Card State
+  const [activeTab, setActiveTab] = useState<'Buy' | 'Rent' | 'Commercial' | 'Plots' | 'New Projects'>('Buy');
+  const [locationText, setLocationText] = useState('Hyderabad, Telangana');
+  const [propertyType, setPropertyType] = useState('All Types');
+  const [budget, setBudget] = useState('₹ 10L - 5Cr+');
+  const [bhkFilter, setBhkFilter] = useState('Any BHK');
 
-  const [activeCategory, setActiveCategory] = useState<string | null>(initialCategory || null);
+  // Left Sidebar Filters State
+  const [budgetOpen, setBudgetOpen] = useState(true);
+  const [bhkOpen, setBhkOpen] = useState(true);
+  const [typeOpen, setTypeOpen] = useState(true);
+  const [moreOpen, setMoreOpen] = useState(false);
 
-  useEffect(() => {
-    setActiveCategory(initialCategory || null);
-  }, [initialCategory]);
-  
-  const { toggleWishlist, isWishlisted } = useWishlist();
+  const [selectedBhks, setSelectedBhks] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
 
-  // Scroll Blocker & Lenis Controller
-  useEffect(() => {
-    const lenis = (window as any).lenis;
-    if (showSellerPortfolio || selectedDealer) {
-      lenis?.stop();
-      document.body.classList.add('modal-open');
-    } else {
-      lenis?.start();
-      document.body.classList.remove('modal-open');
-    }
-    return () => {
-      lenis?.start();
-      document.body.classList.remove('modal-open');
-    };
-  }, [showSellerPortfolio, selectedDealer]);
+  // Right Results State
+  const [viewMode, setViewMode] = useState<'list' | 'map' | 'split'>('list');
+  const [sortBy, setSortBy] = useState('Relevance');
+  const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
+  const [wishlisted, setWishlisted] = useState<Record<string, boolean>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
 
-  const categoryIcons = [
-    { id: 'BuyApartment', label: 'Flats & Apartments', icon: <FaBuilding /> },
-    { id: 'BuyHouse', label: 'Individual Houses', icon: <FaHome /> },
-    { id: 'BuyLand', label: 'Lands & Plots', icon: <FaMapMarkedAlt /> },
-  ];
-
-  // Apply Filters
-  const filteredProperties = useMemo(() => {
-    return propertiesDb.filter(prop => {
-      // Category Match Logic
-      if (activeCategory === 'BuyApartment') {
-        if (!['Apartment'].includes(prop.category)) return false;
-      } else if (activeCategory === 'BuyHouse') {
-        if (!['House', 'Villa'].includes(prop.category)) return false;
-      } else if (activeCategory === 'BuyLand') {
-        if (prop.category !== 'Plot') return false;
-      }
-
-      // Filter by City
-      if (selectedCity !== 'All' && prop.city !== selectedCity) return false;
-
-      // Filter by Budget (prop.price is in Lakhs)
-      if (prop.price > budgetLimit) return false;
-
-      // Filter by BHK
-      if (selectedBhk !== 'All') {
-        if (selectedBhk === '1 BHK' && !prop.description.includes('1 BHK') && !prop.title.includes('1BHK')) return false;
-        if (selectedBhk === '2 BHK' && !prop.description.includes('2 BHK') && !prop.title.includes('2BHK')) return false;
-        if (selectedBhk === '3 BHK' && !prop.description.includes('3 BHK') && !prop.title.includes('3BHK')) return false;
-        if (selectedBhk === '4+ BHK' && !prop.description.includes('4 BHK') && !prop.title.includes('4BHK') && !prop.title.includes('Penthouse')) return false;
-      }
-
-      // Checkboxes
-      if (verifiedOnly && !prop.verified) return false;
-      if (readyToMove && prop.status === 'Rent') return false; 
-
-      return true;
-    });
-  }, [activeCategory, selectedCity, selectedBhk, budgetLimit, readyToMove, verifiedOnly]);
-
-  const uniqueCities = Array.from(new Set(propertiesDb.map(p => p.city)));
-
-  const getDealer = (dealerId: string): Dealer | undefined => {
-    return dealersDb.find(d => d.id === dealerId);
+  const toggleWishlist = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setWishlisted((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const toggleBhk = (val: string) => {
+    setSelectedBhks((prev) =>
+      prev.includes(val) ? prev.filter((item) => item !== val) : [...prev, val]
+    );
+  };
+
+  const toggleType = (val: string) => {
+    setSelectedTypes((prev) =>
+      prev.includes(val) ? prev.filter((item) => item !== val) : [...prev, val]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setSelectedBhks([]);
+    setSelectedTypes([]);
+    setActiveQuickFilter(null);
+    setPropertyType('All Types');
+    setBudget('₹ 10L - 5Cr+');
+    setBhkFilter('Any BHK');
+    if (onClearSearch) onClearSearch();
+  };
+
+  // Rich screenshot-matching properties list
+  const displayProperties = useMemo(() => {
+    const baseList = propertiesDb.map((p) => ({
+      id: p.id,
+      title: p.title || `${p.bedrooms || 3} BHK ${p.category}`,
+      location: `${p.area ? p.area + ', ' : ''}${p.city || ''}`,
+      badge: p.verified ? 'Verified' : (p.premium ? 'Premium' : 'New'),
+      badgeType: p.verified ? 'verified' : (p.premium ? 'premium' : 'new'),
+      image: p.image || p.imageUrl || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&auto=format&fit=crop&q=80',
+      area: p.sqft ? `${p.sqft} sq ft` : (p.builtUpArea ? `${p.builtUpArea} sq ft` : '1500 sq ft'),
+      bhk: String(p.bedrooms || 3),
+      bath: String(p.bathrooms || 3),
+      parking: String(p.parking || 1),
+      price: p.priceDisplay || (`₹ ${p.price || 1} L`),
+      dist: '1.2 KM away',
+      brokerName: p.agentName || 'RealtyPlus Advisors',
+      brokerRating: p.agentRating ? `${p.agentRating} (${p.reviewCount || 10})` : '4.8 (24)',
+      brokerImg: p.agentImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80',
+      type: p.category || 'Apartment',
+      latitude: p.latitude,
+      longitude: p.longitude,
+      city: p.city,
+    }));
+
+    return baseList.filter((item) => {
+      if (searchQuery && searchQuery.trim() !== '') {
+        const q = searchQuery.toLowerCase();
+        const match =
+          item.title.toLowerCase().includes(q) ||
+          item.location.toLowerCase().includes(q) ||
+          item.type.toLowerCase().includes(q);
+        if (!match) return false;
+      }
+      if (selectedBhks.length > 0) {
+        const bhkStr = `${item.bhk} BHK`;
+        const matchBhk = selectedBhks.some((val) => {
+          if (val === '4+ BHK' && parseInt(item.bhk) >= 4) return true;
+          return val === bhkStr;
+        });
+        if (!matchBhk) return false;
+      }
+      if (selectedTypes.length > 0) {
+        if (!selectedTypes.includes(item.type)) return false;
+      }
+      if (activeQuickFilter) {
+        if (activeQuickFilter === 'Verified Properties' && item.badgeType !== 'verified') return false;
+        if (activeQuickFilter === 'Ready to Move' && item.badgeType !== 'ready') return false;
+        if (activeQuickFilter === 'New Launch' && item.badgeType !== 'new') return false;
+        if (activeQuickFilter === 'Premium' && item.badgeType !== 'premium') return false;
+      }
+      return true;
+    });
+  }, [propertiesDb, searchQuery, selectedBhks, selectedTypes, activeQuickFilter]);
+
+  const totalPages = Math.ceil(displayProperties.length / itemsPerPage);
+  const validPage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
+  const paginatedProperties = useMemo(() => {
+    const start = (validPage - 1) * itemsPerPage;
+    return displayProperties.slice(start, start + itemsPerPage);
+  }, [displayProperties, validPage, itemsPerPage]);
+
+  const tabs = [
+    { id: 'Buy' as const, label: 'Buy', icon: FaHome },
+    { id: 'Rent' as const, label: 'Rent', icon: FaBed },
+    { id: 'Commercial' as const, label: 'Commercial', icon: FaBuilding },
+    { id: 'Plots' as const, label: 'Plots', icon: FaMapMarkerAlt },
+    { id: 'New Projects' as const, label: 'New Projects', icon: FaFire },
+  ];
+
   return (
-    <section id="properties" className="section-padding property-feed-section" style={{ paddingTop: initialCategory ? '2rem' : '5rem' }}>
-      <div className="container">
+    <section
+      style={{
+        backgroundColor: '#F8FAFC',
+        paddingTop: '115px',
+        paddingBottom: '60px',
+        minHeight: '100vh',
+        fontFamily: "'Outfit', 'Inter', -apple-system, sans-serif",
+      }}
+    >
+      <div style={{ maxWidth: '1360px', width: '100%', margin: '0 auto', padding: '0 24px', boxSizing: 'border-box' }}>
         
-        {/* Header Area - Hide on subpages since SubpageHeader covers it */}
-        {!initialCategory && (
-          <div className="feed-header">
-            <div className="feed-header-text">
-              <span className="section-tag">Explore TheNexopp</span>
-              <h2 className="section-title">Property Categories</h2>
+        {/* TOP HEADER ROW WITH BACK BUTTON */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #E2E8F0', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {onBack && (
+              <button
+                onClick={onBack}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 18px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '12px',
+                  color: '#0F172A',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.borderColor = '#16A34A'; e.currentTarget.style.color = '#16A34A'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A'; }}
+              >
+                <span>←</span>
+                <span>Back</span>
+              </button>
+            )}
+            <div>
+              <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
+                {title || 'Properties Marketplace'}
+              </h1>
+              <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0 0', fontWeight: 500 }}>
+                {subtitle || 'Explore verified residential, commercial, plots and new projects across India'}
+              </p>
             </div>
           </div>
-        )}
-
-        {/* Category Icons Grid - only show when no initialCategory (i.e. on the properties landing page) */}
-        {!initialCategory && (
-        <div className="category-icon-grid">
-          {categoryIcons.map(cat => (
-            <div 
-              key={cat.id} 
-              className={`category-icon-item ${activeCategory === cat.id ? 'active' : ''}`}
-              onClick={() => {
-                if (onCategorySelect) {
-                  onCategorySelect(cat.id);
-                } else {
-                  setActiveCategory(activeCategory === cat.id ? null : cat.id);
-                }
-              }}
-            >
-              <div className="category-icon-btn">
-                <span className="category-icon-svg">{cat.icon}</span>
-              </div>
-              <p className="category-icon-label">{cat.label}</p>
-            </div>
-          ))}
-        </div>
-        )}
-
-        {/* Show Feed Only if a Category is Selected */}
-        {activeCategory && (
-          <div className="category-feed-container animation-fade-in" style={initialCategory ? { marginTop: 0, paddingTop: 0, borderTop: 'none' } : {}}>
-            <div className="feed-filter-bar glass-card">
-          <div className="filter-group">
-            <label>City</label>
-            <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className="feed-select">
-              <option value="All">All Cities</option>
-              {uniqueCities.map(city => (
-                <option key={city} value={city}>{city}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label>BHK</label>
-            <select value={selectedBhk} onChange={(e) => setSelectedBhk(e.target.value)} className="feed-select">
-              <option value="All">Any BHK</option>
-              <option value="1 BHK">1 BHK</option>
-              <option value="2 BHK">2 BHK</option>
-              <option value="3 BHK">3 BHK</option>
-              <option value="4+ BHK">4+ BHK</option>
-            </select>
-          </div>
-
-          <div className="filter-group slider-group">
-            <label>Budget (Up to ₹{budgetLimit >= 100 ? (budgetLimit/100).toFixed(2) + ' Cr' : budgetLimit + ' L'})</label>
-            <input 
-              type="range" 
-              min="20" 
-              max="1000" 
-              step="10"
-              value={budgetLimit} 
-              onChange={(e) => setBudgetLimit(Number(e.target.value))} 
-              className="feed-slider"
-            />
-          </div>
-
-          <div className="filter-group checkbox-group">
-            <label className="feed-checkbox-label">
-              <input type="checkbox" checked={verifiedOnly} onChange={(e) => setVerifiedOnly(e.target.checked)} />
-              Verified Sellers
-            </label>
-            <label className="feed-checkbox-label">
-              <input type="checkbox" checked={readyToMove} onChange={(e) => setReadyToMove(e.target.checked)} />
-              Ready To Move
-            </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#16A34A', backgroundColor: '#DCFCE7', padding: '6px 14px', borderRadius: '9999px', border: '1px solid #BBF7D0' }}>
+              ● {propertiesDb.length} Active Properties
+            </span>
           </div>
         </div>
 
-        {/* Listings Feed */}
-        <div className="property-feed-list">
-          {filteredProperties.length === 0 ? (
-            <div className="feed-empty-state">
-              <FaFilter className="empty-icon" />
-              <h3>No properties match your criteria</h3>
-              <p>Try adjusting your budget or selecting a different city.</p>
-            </div>
-          ) : (
-            filteredProperties.map((prop) => (
-              <div key={prop.id} className="feed-card premium-card landscape-card">
-                <div className="feed-card-image-wrap">
-                  <img 
-                    src={prop.image} 
-                    alt={prop.title} 
-                    className="feed-card-img" 
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => onPropertyClick?.(prop.id)}
-                  />
-                  <button 
-                    className={`wishlist-btn ${isWishlisted(prop.id) ? 'active' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleWishlist(prop.id);
-                    }}
-                  >
-                    {isWishlisted(prop.id) ? <FaHeart className="heart-icon filled" /> : <FaRegHeart className="heart-icon outline" />}
-                  </button>
-                  <button 
-                    className="buy-now-badge"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onBuyProperty?.(prop.id);
-                    }}
-                  >
-                    <FaShoppingCart /> Buy
-                  </button>
-                  <div className="feed-card-badges">
-                    {prop.premium && <span className="badge-premium">💎 Premium</span>}
-                    {prop.verified && <span className="badge-verified">✔ Verified</span>}
-                  </div>
-                </div>
-
-                <div className="feed-card-body">
-                  <div className="feed-card-price-title">
-                    <h3 className="feed-prop-price">₹ {prop.priceDisplay}</h3>
-                    <h4 
-                      className="feed-prop-title" 
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => onPropertyClick?.(prop.id)}
-                    >
-                      {prop.title}
-                    </h4>
-                  </div>
-                  
-                  <div className="feed-card-specs">
-                    <span className="spec-item">🛏 {prop.category === 'Apartment' ? '3 BHK' : 'House'}</span>
-                    <span className="spec-item">🛁 3 Baths</span>
-                    <span className="spec-item">📐 {prop.areaSqFt} Sq.Ft.</span>
-                    <span className="spec-item spec-highlight">✨ {prop.status === 'Buy' || prop.status === 'Sell' ? 'Ready To Move' : 'Available'}</span>
-                  </div>
-
-                  <div className="feed-card-footer">
-                    <div className="footer-left">
-                      <p className="feed-prop-location">
-                        <a 
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(prop.area + ', ' + prop.city)}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="location-link"
-                          title="View on Google Maps"
-                        >
-                          <FaMapMarkerAlt /> {prop.area}, {prop.city}
-                        </a>
-                      </p>
-                      <p className="feed-prop-seller">👤 Seller: {getDealer(prop.dealerId)?.companyName || 'Independent Seller'} | 📅 Posted: {prop.createdDate}</p>
-                    </div>
-                    <div className="footer-right">
-                      {getDealer(prop.dealerId) ? (
-                        <div className="feed-seller-action-container">
-                          <div className="feed-seller-label-group">
-                            <span className="feed-seller-label">Seller</span>
-                            <span className="feed-seller-rating">⭐ {getDealer(prop.dealerId)?.rating}</span>
-                          </div>
-                          <div className="feed-seller-photo-wrap" onClick={() => setSelectedDealer(getDealer(prop.dealerId)!)}>
-                            <img 
-                              src={getDealer(prop.dealerId)?.photo || getDealer(prop.dealerId)?.logo} 
-                              alt={getDealer(prop.dealerId)?.companyName} 
-                              className="feed-seller-photo-btn" 
-                              title="View Seller Details" 
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <button className="btn btn-gold feed-view-btn" onClick={() => onPropertyClick?.(prop.id)}>View Details</button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-          </div>
-        )}
-
-        {/* Seller Details Modal */}
-        {selectedDealer && (
-          <div className="seller-modal-overlay" onClick={() => setSelectedDealer(null)}>
-            <div className="seller-modal-content seller-modal-wide" onClick={(e) => e.stopPropagation()}>
-              <button className="close-modal-btn" onClick={() => setSelectedDealer(null)}>×</button>
-              
-              <div className="seller-modal-split">
-                {/* Left Column: Seller Details */}
-                <div className="seller-modal-left">
-                  <div className="seller-modal-header">
-                    <img 
-                      src={selectedDealer.photo || selectedDealer.logo} 
-                      alt={selectedDealer.companyName} 
-                      className="seller-modal-img" 
-                      style={{ cursor: 'pointer' }}
-                      title="View Fullscreen Portfolio"
-                      onClick={() => {
-                        setShowSellerPortfolio(selectedDealer);
-                        setSelectedDealer(null);
+        {/* TOP BIG WHITE SEARCH BOX CARD */}
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '24px',
+            padding: '24px 28px',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)',
+            border: '1px solid #E2E8F0',
+            marginBottom: '32px',
+          }}
+        >
+          {/* Top Tabs */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              borderBottom: '1px solid #F1F5F9',
+              paddingBottom: '16px',
+              marginBottom: '20px',
+              flexWrap: 'wrap',
+            }}
+          >
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 18px',
+                    borderRadius: '9999px',
+                    border: 'none',
+                    backgroundColor: isActive ? '#DCFCE7' : 'transparent',
+                    color: isActive ? '#16A34A' : '#475569',
+                    fontWeight: 700,
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    position: 'relative',
+                  }}
+                >
+                  <Icon style={{ fontSize: '15px' }} />
+                  <span>{tab.label}</span>
+                  {isActive && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        bottom: '-17px',
+                        left: '15%',
+                        right: '15%',
+                        height: '3px',
+                        backgroundColor: '#16A34A',
+                        borderRadius: '3px 3px 0 0',
                       }}
                     />
-                    <div className="seller-modal-title">
-                      <h3>{selectedDealer.companyName}</h3>
-                      <div className="seller-badges">
-                        {selectedDealer.verified && <span className="badge-verified">✔ Verified</span>}
-                        {selectedDealer.premiumPartner && <span className="badge-premium">💎 Premium</span>}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="seller-modal-body">
-                    <div className="seller-stat-grid">
-                      <div className="seller-stat">
-                        <span className="stat-label">Rating</span>
-                        <span className="stat-val">⭐ {selectedDealer.rating} ({selectedDealer.reviewCount})</span>
-                      </div>
-                      <div className="seller-stat">
-                        <span className="stat-label">Experience</span>
-                        <span className="stat-val">{selectedDealer.yearsExperience} Years</span>
-                      </div>
-                      <div className="seller-stat">
-                        <span className="stat-label">Inventory</span>
-                        <span className="stat-val">{selectedDealer.inventoryCount} Properties</span>
-                      </div>
-                      <div className="seller-stat">
-                        <span className="stat-label">Response Time</span>
-                        <span className="stat-val">{selectedDealer.responseTime}</span>
-                      </div>
-                    </div>
-                    <button className="btn btn-gold w-100 mt-4" style={{marginTop: '1.5rem', width: '100%'}} onClick={() => alert(`Contacting ${selectedDealer.companyName}...`)}>Contact Seller</button>
-                    <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-                      <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)', fontSize: '0.9rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
-                        📸 Instagram: @venturo_realty
-                      </a>
-                    </div>
-                  </div>
-                </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-                {/* Right Column: Seller Inventory */}
-                <div className="seller-modal-right">
-                  <h4 className="inventory-title">Available Properties</h4>
-                  <div className="seller-inventory-grid">
-                    {propertiesDb.filter(p => p.dealerId === selectedDealer.id).length === 0 ? (
-                      <p className="no-inventory-msg">No properties found for this seller.</p>
-                    ) : (
-                      propertiesDb.filter(p => p.dealerId === selectedDealer.id).map(invProp => (
-                        <div key={invProp.id} className="inventory-card">
-                          <div className="inventory-card-img-wrap">
-                            <img src={invProp.image} alt={invProp.title} className="inventory-card-img" />
-                            {invProp.premium && <span className="inventory-badge-tiny">💎</span>}
-                          </div>
-                          <div className="inventory-card-details">
-                            <span className="inventory-price">₹ {invProp.priceDisplay}</span>
-                            <span className="inventory-area">{invProp.area}</span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
+          {/* Row of Filter Inputs */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '2.2fr 1.3fr 1.3fr 1.1fr auto',
+              gap: '14px',
+              alignItems: 'start',
+            }}
+          >
+            {/* Location Input */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: '6px' }}>
+                Location
+              </label>
+              <div
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+              >
+                <FaSearch style={{ color: '#94A3B8', fontSize: '14px', flexShrink: 0 }} />
+                <input
+                  type="text"
+                  placeholder="Search locality, landmark or city"
+                  value={locationText}
+                  onChange={(e) => setLocationText(e.target.value)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    width: '100%',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#0F172A',
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(() => {
+                      setLocationText('Current Location (GPS)');
+                    });
+                  } else {
+                    setLocationText('Hyderabad, Telangana');
+                  }
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#16A34A',
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  marginTop: '8px',
+                  padding: 0,
+                }}
+              >
+                <FaCrosshairs />
+                <span>Use My Current Location</span>
+              </button>
+            </div>
+
+            {/* Property Type Dropdown */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: '6px' }}>
+                Property Type
+              </label>
+              <div
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FaBuilding style={{ color: '#64748B', fontSize: '14px' }} />
+                  <select
+                    value={propertyType}
+                    onChange={(e) => setPropertyType(e.target.value)}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      outline: 'none',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: '#0F172A',
+                      cursor: 'pointer',
+                      width: '100%',
+                    }}
+                  >
+                    <option value="All Types">All Types</option>
+                    <option value="Apartment">Apartment</option>
+                    <option value="Villa">Villa</option>
+                    <option value="Independent House">Independent House</option>
+                    <option value="Plot / Land">Plot / Land</option>
+                    <option value="Commercial Property">Commercial Property</option>
+                  </select>
                 </div>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Fullscreen Seller Portfolio */}
-        {showSellerPortfolio && (
-          <div className="fullscreen-portfolio-overlay" data-lenis-prevent="true">
-            <div className="container portfolio-container">
-              <button 
-                className="btn btn-back portfolio-back-btn" 
-                onClick={() => {
-                  setSelectedDealer(showSellerPortfolio);
-                  setShowSellerPortfolio(null);
+            {/* Budget Dropdown */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: '6px' }}>
+                Budget
+              </label>
+              <div
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                 }}
               >
-                <FaArrowLeft /> Back to Details
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                  <span style={{ fontWeight: 800, color: '#64748B', fontSize: '14px' }}>₹</span>
+                  <select
+                    value={budget}
+                    onChange={(e) => setBudget(e.target.value)}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      outline: 'none',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: '#0F172A',
+                      cursor: 'pointer',
+                      width: '100%',
+                    }}
+                  >
+                    <option value="₹ 10L - 5Cr+">₹ 10L - 5Cr+</option>
+                    <option value="Under ₹ 50L">Under ₹ 50L</option>
+                    <option value="₹ 50L - ₹ 1Cr">₹ 50L - ₹ 1Cr</option>
+                    <option value="₹ 1Cr - ₹ 3Cr">₹ 1Cr - ₹ 3Cr</option>
+                    <option value="₹ 3Cr+">₹ 3Cr+</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* BHK Dropdown */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: '6px' }}>
+                BHK
+              </label>
+              <div
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <select
+                  value={bhkFilter}
+                  onChange={(e) => setBhkFilter(e.target.value)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#0F172A',
+                    cursor: 'pointer',
+                    width: '100%',
+                  }}
+                >
+                  <option value="Any BHK">Any BHK</option>
+                  <option value="1 BHK">1 BHK</option>
+                  <option value="2 BHK">2 BHK</option>
+                  <option value="3 BHK">3 BHK</option>
+                  <option value="4+ BHK">4+ BHK</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Search Button & Advanced Search */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '22px' }}>
+              <button
+                onClick={() => alert('Searching properties...')}
+                style={{
+                  backgroundColor: '#16A34A',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px 28px',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)',
+                  transition: 'all 0.2s',
+                  width: '100%',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#15803D')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#16A34A')}
+              >
+                <FaSearch />
+                <span>Search Properties</span>
               </button>
+              <button
+                onClick={() => alert('Opening Advanced Search Options...')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748B',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  marginTop: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <span>Advanced Search</span>
+                <FaChevronDown style={{ fontSize: '10px' }} />
+              </button>
+            </div>
+          </div>
+        </div>
 
-              <div className="portfolio-header">
-                <img 
-                  src={showSellerPortfolio.photo || showSellerPortfolio.logo} 
-                  alt={showSellerPortfolio.companyName} 
-                  className="portfolio-seller-img" 
-                />
-                <div className="portfolio-header-text">
-                  <span className="section-tag">Exclusive Portfolio</span>
-                  <h1 className="portfolio-title">{showSellerPortfolio.companyName}</h1>
-                  <div className="portfolio-meta">
-                    <span className="meta-item">⭐ {showSellerPortfolio.rating} ({showSellerPortfolio.reviewCount} Reviews)</span>
-                    <span className="meta-item">💼 {showSellerPortfolio.yearsExperience} Years Exp</span>
-                    <span className="meta-item">🏢 {showSellerPortfolio.inventoryCount} Active Properties</span>
-                  </div>
-                </div>
+        {/* MAIN 2-COLUMN GRID AREA */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '270px 1fr',
+            gap: '28px',
+            alignItems: 'start',
+          }}
+        >
+          {/* LEFT SIDEBAR: "Filter By" Card */}
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '20px',
+              border: '1px solid #E2E8F0',
+              padding: '22px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', borderBottom: '1px solid #F1F5F9', paddingBottom: '14px' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                Filter By
+              </h3>
+              <button
+                onClick={clearAllFilters}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#16A34A',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                Clear All
+              </button>
+            </div>
+
+            {/* Budget Section */}
+            <div style={{ marginBottom: '24px', borderBottom: '1px solid #F1F5F9', paddingBottom: '20px' }}>
+              <div
+                onClick={() => setBudgetOpen(!budgetOpen)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '14px' }}
+              >
+                <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>Budget</span>
+                {budgetOpen ? <FaChevronUp style={{ fontSize: '11px', color: '#64748B' }} /> : <FaChevronDown style={{ fontSize: '11px', color: '#64748B' }} />}
               </div>
 
-              {/* Seller Profile & Contact Section - Placed FIRST (above properties) */}
-              <div className="portfolio-seller-details-card premium-card" style={{ marginBottom: '3rem', padding: '2.5rem' }}>
-                <div className="seller-details-grid">
-                  <div className="seller-profile-column">
-                    <img 
-                      src={showSellerPortfolio.photo || showSellerPortfolio.logo} 
-                      alt={showSellerPortfolio.companyName} 
-                      className="seller-details-avatar" 
-                    />
-                    <h3 className="seller-details-name">{showSellerPortfolio.companyName}</h3>
-                    <div className="seller-details-badges" style={{ marginTop: '0.5rem' }}>
-                      {showSellerPortfolio.verified && <span className="badge-verified" style={{ marginRight: '8px' }}>✔ Verified Dealer</span>}
-                      {showSellerPortfolio.premiumPartner && <span className="badge-premium">💎 Premium Partner</span>}
-                    </div>
-                    <div className="seller-details-rating" style={{ marginTop: '1rem', fontSize: '1.1rem' }}>
-                      ⭐ <strong>{showSellerPortfolio.rating}</strong> ({showSellerPortfolio.reviewCount} user reviews)
-                    </div>
+              {budgetOpen && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '10px' }}>
+                    <span>₹ 10 Lac</span>
+                    <span>₹ 5 Cr+</span>
                   </div>
-
-                  <div className="seller-info-column">
-                    <h4 className="column-title">Contact & Agent Information</h4>
-                    <div className="info-list">
-                      <div className="info-item">
-                        <span className="info-label">👤 Authorized Name</span>
-                        <span className="info-value">{showSellerPortfolio.companyName} Operations Group</span>
-                      </div>
-                      <div className="info-item">
-                        <span className="info-label">📞 Mobile Number</span>
-                        <span className="info-value" style={{ color: 'var(--gold)', fontWeight: 'bold' }}>+91 99890 87654</span>
-                      </div>
-                      <div className="info-item">
-                        <span className="info-label">✉ Email Address</span>
-                        <span className="info-value">info@{showSellerPortfolio.companyName.toLowerCase().replace(/\s+/g, '')}.com</span>
-                      </div>
-                      <div className="info-item">
-                        <span className="info-label">📍 Headquarters / City</span>
-                        <span className="info-value">Jubilee Hills, Hyderabad, Telangana</span>
-                      </div>
-                      <div className="info-item">
-                        <span className="info-label">⏱ Avg Response Time</span>
-                        <span className="info-value">{showSellerPortfolio.responseTime}</span>
-                      </div>
-                      <div className="info-item">
-                        <span className="info-label">💼 Experience</span>
-                        <span className="info-value">{showSellerPortfolio.yearsExperience} Years in Market</span>
-                      </div>
-                      <div className="info-item">
-                        <span className="info-label">📸 Instagram Profile</span>
-                        <span className="info-value">
-                          <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>
-                            @venturo_realty
-                          </a>
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="portfolio-message-box" style={{ marginTop: '2rem' }}>
-                      <h5 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>Send Direct Message</h5>
-                      <textarea 
-                        className="inquiry-textarea" 
-                        placeholder={`Write your inquiry message for ${showSellerPortfolio.companyName} here...`}
-                        style={{ width: '100%', height: '100px', padding: '1rem', borderRadius: '6px', background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontFamily: 'inherit', resize: 'none' }}
-                      />
-                      <button 
-                        className="btn btn-gold" 
-                        style={{ marginTop: '1rem', width: '100%' }}
-                        onClick={() => alert(`Your inquiry has been successfully sent to ${showSellerPortfolio.companyName}! They will get back to you shortly.`)}
-                      >
-                        Submit Inquiry
-                      </button>
-                    </div>
+                  {/* Range Bar Graphic */}
+                  <div style={{ position: 'relative', height: '6px', backgroundColor: '#E2E8F0', borderRadius: '3px', margin: '14px 6px' }}>
+                    <div style={{ position: 'absolute', left: '10%', right: '15%', top: 0, bottom: 0, backgroundColor: '#16A34A', borderRadius: '3px' }} />
+                    <div style={{ position: 'absolute', left: '10%', top: '-6px', width: '18px', height: '18px', borderRadius: '50%', backgroundColor: '#FFFFFF', border: '3px solid #16A34A', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', cursor: 'pointer' }} />
+                    <div style={{ position: 'absolute', right: '15%', top: '-6px', width: '18px', height: '18px', borderRadius: '50%', backgroundColor: '#FFFFFF', border: '3px solid #16A34A', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', cursor: 'pointer' }} />
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* BHK Section */}
+            <div style={{ marginBottom: '24px', borderBottom: '1px solid #F1F5F9', paddingBottom: '20px' }}>
+              <div
+                onClick={() => setBhkOpen(!bhkOpen)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '14px' }}
+              >
+                <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>BHK</span>
+                {bhkOpen ? <FaChevronUp style={{ fontSize: '11px', color: '#64748B' }} /> : <FaChevronDown style={{ fontSize: '11px', color: '#64748B' }} />}
               </div>
 
-              {/* Properties Grid - Placed LATER (below contact card) */}
-              <div className="portfolio-grid">
-                {propertiesDb.filter(p => p.dealerId === showSellerPortfolio.id).map(prop => (
-                  <div key={prop.id} className="feed-card premium-card landscape-card portfolio-card-item">
-                    <div className="feed-card-image-wrap">
-                      <img 
-                        src={prop.image} 
-                        alt={prop.title} 
-                        className="feed-card-img" 
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => {
-                          setShowSellerPortfolio(null);
-                          onPropertyClick?.(prop.id);
-                        }}
-                      />
-                      <button 
-                        className={`wishlist-btn ${isWishlisted(prop.id) ? 'active' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleWishlist(prop.id);
-                        }}
+              {bhkOpen && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  {['1 BHK', '2 BHK', '3 BHK', '4 BHK', '4+ BHK'].map((val) => {
+                    const checked = selectedBhks.includes(val);
+                    return (
+                      <label
+                        key={val}
+                        onClick={() => toggleBhk(val)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: checked ? 700 : 500, color: checked ? '#0F172A' : '#475569', cursor: 'pointer' }}
                       >
-                        {isWishlisted(prop.id) ? <FaHeart className="heart-icon filled" /> : <FaRegHeart className="heart-icon outline" />}
-                      </button>
-                      <button 
-                        className="buy-now-badge"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onBuyProperty?.(prop.id);
-                        }}
-                      >
-                        <FaShoppingCart /> Buy
-                      </button>
-                      <div className="feed-card-badges">
-                        {prop.premium && <span className="badge-premium">💎 Premium</span>}
-                        {prop.verified && <span className="badge-verified">✔ Verified</span>}
-                      </div>
-                    </div>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleBhk(val)}
+                          style={{ accentColor: '#16A34A', width: '16px', height: '16px', cursor: 'pointer', borderRadius: '4px' }}
+                        />
+                        <span>{val}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
-                    <div className="feed-card-body">
-                      <div className="feed-card-price-title">
-                        <h3 className="feed-prop-price">₹ {prop.priceDisplay}</h3>
-                        <h4 
-                          className="feed-prop-title" 
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => {
-                            setShowSellerPortfolio(null);
-                            onPropertyClick?.(prop.id);
+            {/* Property Type Section */}
+            <div style={{ marginBottom: '20px', borderBottom: '1px solid #F1F5F9', paddingBottom: '20px' }}>
+              <div
+                onClick={() => setTypeOpen(!typeOpen)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '14px' }}
+              >
+                <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>Property Type</span>
+                {typeOpen ? <FaChevronUp style={{ fontSize: '11px', color: '#64748B' }} /> : <FaChevronDown style={{ fontSize: '11px', color: '#64748B' }} />}
+              </div>
+
+              {typeOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {[
+                    { label: 'Apartment', icon: FaBuilding },
+                    { label: 'Independent House', icon: FaHome },
+                    { label: 'Villa', icon: FaHome },
+                    { label: 'Plot / Land', icon: FaMapMarkerAlt },
+                    { label: 'Commercial Property', icon: FaBuilding },
+                  ].map((typeItem) => {
+                    const checked = selectedTypes.includes(typeItem.label);
+                    const Icon = typeItem.icon;
+                    return (
+                      <label
+                        key={typeItem.label}
+                        onClick={() => toggleType(typeItem.label)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', fontWeight: checked ? 700 : 500, color: checked ? '#0F172A' : '#475569', cursor: 'pointer' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleType(typeItem.label)}
+                          style={{ accentColor: '#16A34A', width: '16px', height: '16px', cursor: 'pointer' }}
+                        />
+                        <Icon style={{ color: checked ? '#16A34A' : '#94A3B8', fontSize: '15px' }} />
+                        <span>{typeItem.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* More Filters Section */}
+            <div>
+              <div
+                onClick={() => setMoreOpen(!moreOpen)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+              >
+                <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>More Filters</span>
+                {moreOpen ? <FaChevronUp style={{ fontSize: '11px', color: '#64748B' }} /> : <FaChevronDown style={{ fontSize: '11px', color: '#64748B' }} />}
+              </div>
+
+              {moreOpen && (
+                <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {['Verified Only', 'Ready to Move', 'Owner Listed', 'Parking Available', 'Park Facing', 'Corner Property'].map((mf) => (
+                    <label key={mf} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#475569', cursor: 'pointer' }}>
+                      <input type="checkbox" style={{ accentColor: '#16A34A' }} />
+                      <span>{mf}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT RESULTS AREA */}
+          <div>
+            
+            {/* Top Bar: View toggles + Count + Sort */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '16px',
+                flexWrap: 'wrap',
+                gap: '12px',
+              }}
+            >
+              {/* View Mode Tabs */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', borderBottom: '1px solid #E2E8F0', paddingBottom: '8px' }}>
+                {[
+                  { id: 'list' as const, label: 'List View', icon: FaList },
+                  { id: 'map' as const, label: 'Map View', icon: FaMap },
+                  { id: 'split' as const, label: 'Split View', icon: FaColumns },
+                ].map((vm) => {
+                  const Icon = vm.icon;
+                  const isActive = viewMode === vm.id;
+                  return (
+                    <button
+                      key={vm.id}
+                      onClick={() => setViewMode(vm.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        color: isActive ? '#16A34A' : '#64748B',
+                        fontWeight: isActive ? 800 : 600,
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        paddingBottom: '8px',
+                        position: 'relative',
+                      }}
+                    >
+                      <Icon />
+                      <span>{vm.label}</span>
+                      {isActive && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            bottom: '-9px',
+                            left: 0,
+                            right: 0,
+                            height: '2.5px',
+                            backgroundColor: '#16A34A',
+                            borderRadius: '2px',
                           }}
-                        >
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Count & Sort */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>
+                  Showing <strong style={{ color: '#0F172A' }}>{displayProperties.length} properties</strong>
+                </span>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '10px', padding: '6px 12px' }}>
+                  <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>Sort by:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', fontWeight: 800, color: '#0F172A', cursor: 'pointer' }}
+                  >
+                    <option value="Relevance">Relevance</option>
+                    <option value="Price: Low to High">Price: Low to High</option>
+                    <option value="Price: High to Low">Price: High to Low</option>
+                    <option value="Newest First">Newest First</option>
+                    <option value="Distance">Distance</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+
+
+            {/* BIG INTERACTIVE MAP VIEW BOX (Show when viewMode is 'list' or 'map' or 'split') */}
+            {(viewMode === 'list' || viewMode === 'map' || viewMode === 'split') && (
+              <div style={{ marginBottom: '24px' }}>
+                <LiveLocationMap
+                  items={displayProperties}
+                  type="property"
+                  onSelectItem={(id) => {
+                    if (onPropertyClick) onPropertyClick(id);
+                    else if (onBuyProperty) onBuyProperty(id);
+                  }}
+                  height={viewMode === 'map' ? '550px' : '360px'}
+                />
+              </div>
+            )}
+
+            {/* QUICK FILTERS ROW */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '24px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', marginRight: '4px' }}>
+                Quick Filters:
+              </span>
+              {[
+                { label: 'Verified Properties', icon: FaCheckCircle, id: 'Verified Properties' },
+                { label: 'Ready to Move', icon: FaHome, id: 'Ready to Move' },
+                { label: 'New Launch', icon: FaFire, id: 'New Launch' },
+                { label: 'Premium', icon: FaCrown, id: 'Premium' },
+                { label: 'Price Drop', icon: FaCheckCircle, id: 'Price Drop' },
+                { label: 'Top Brokers', icon: FaStar, id: 'Top Brokers' },
+              ].map((qf) => {
+                const Icon = qf.icon;
+                const isActive = activeQuickFilter === qf.id;
+                return (
+                  <button
+                    key={qf.id}
+                    onClick={() => setActiveQuickFilter(isActive ? null : qf.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 16px',
+                      borderRadius: '9999px',
+                      border: isActive ? '1px solid #16A34A' : '1px solid #CBD5E1',
+                      backgroundColor: isActive ? '#DCFCE7' : '#FFFFFF',
+                      color: isActive ? '#16A34A' : '#334155',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <Icon style={{ color: '#16A34A', fontSize: '13px' }} />
+                    <span>{qf.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* PROPERTY CARDS GRID */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: viewMode === 'map' ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+                gap: '20px',
+                marginBottom: '36px',
+              }}
+            >
+              {displayProperties.length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', backgroundColor: '#FFFFFF', padding: '60px 20px', borderRadius: '24px', border: '1px solid #E2E8F0', textAlign: 'center', color: '#64748B' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>🏠</div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>No Properties Found</h3>
+                  <p style={{ fontSize: '0.95rem', maxWidth: '400px', margin: '0 auto' }}>There are currently no active properties matching your filter criteria or in the marketplace.</p>
+                </div>
+              ) : (
+                paginatedProperties.map((prop) => {
+                const isFav = !!wishlisted[prop.id];
+                let badgeBg = '#DCFCE7';
+                let badgeColor = '#16A34A';
+                let BadgeIcon = FaCheckCircle;
+
+                if (prop.badgeType === 'premium') {
+                  badgeBg = '#E0E7FF';
+                  badgeColor = '#4F46E5';
+                  BadgeIcon = FaCrown;
+                } else if (prop.badgeType === 'ready') {
+                  badgeBg = '#DBEAFE';
+                  badgeColor = '#2563EB';
+                  BadgeIcon = FaHome;
+                } else if (prop.badgeType === 'new') {
+                  badgeBg = '#FFEDD5';
+                  badgeColor = '#EA580C';
+                  BadgeIcon = FaFire;
+                }
+
+                return (
+                  <div
+                    key={prop.id}
+                    onClick={() => onPropertyClick?.(prop.id)}
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '20px',
+                      border: '1px solid #E2E8F0',
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 0, 0, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.04)';
+                    }}
+                  >
+                    {/* Image Banner */}
+                    <div style={{ position: 'relative', height: '180px', backgroundColor: '#0F172A' }}>
+                      <img
+                        src={prop.image}
+                        alt={prop.title}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+
+                      {/* Top Left Badge */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '12px',
+                          left: '12px',
+                          backgroundColor: badgeBg,
+                          color: badgeColor,
+                          padding: '4px 10px',
+                          borderRadius: '9999px',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                        }}
+                      >
+                        <BadgeIcon />
+                        <span>{prop.badge}</span>
+                      </div>
+
+                      {/* Top Right Heart Button */}
+                      <button
+                        onClick={(e) => toggleWishlist(prop.id, e)}
+                        style={{
+                          position: 'absolute',
+                          top: '12px',
+                          right: '12px',
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                          backdropFilter: 'blur(4px)',
+                          border: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {isFav ? (
+                          <FaHeart style={{ color: '#EF4444', fontSize: '15px' }} />
+                        ) : (
+                          <FaRegHeart style={{ color: '#FFFFFF', fontSize: '15px' }} />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Content */}
+                    <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>
                           {prop.title}
                         </h4>
+                        <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 500, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span>{prop.location}</span>
+                        </div>
+
+                        {/* Specs Row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px', fontWeight: 600, color: '#475569', backgroundColor: '#F8FAFC', padding: '8px 10px', borderRadius: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <FaRulerCombined style={{ color: '#3B82F6' }} /> {prop.area}
+                          </span>
+                          {prop.bhk !== '0' && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <FaBed style={{ color: '#3B82F6' }} /> {prop.bhk}
+                            </span>
+                          )}
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <FaBath style={{ color: '#3B82F6' }} /> {prop.bath}
+                          </span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <FaCar style={{ color: '#3B82F6' }} /> {prop.parking}
+                          </span>
+                        </div>
+
+                        {/* Price & Distance Row */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A' }}>
+                            {prop.price}
+                          </span>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#16A34A', backgroundColor: '#DCFCE7', padding: '2px 8px', borderRadius: '6px' }}>
+                            {prop.dist}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="feed-card-specs">
-                        <span className="spec-item">🛏 {prop.category === 'Apartment' ? '3 BHK' : 'House'}</span>
-                        <span className="spec-item">🛁 3 Baths</span>
-                        <span className="spec-item">📐 {prop.areaSqFt} Sq.Ft.</span>
-                        <span className="spec-item spec-highlight">✨ Ready To Move</span>
-                      </div>
+                      {/* Broker Footer */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F1F5F9', paddingTop: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <img
+                            src={prop.brokerImg}
+                            alt={prop.brokerName}
+                            style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
+                          />
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>{prop.brokerName}</div>
+                            <div style={{ fontSize: '10px', fontWeight: 700, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                              <FaStar /> {prop.brokerRating}
+                            </div>
+                          </div>
+                        </div>
 
-                      <div className="feed-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
-                        <p className="feed-prop-location" style={{ margin: 0 }}>
-                          <a 
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(prop.area + ', ' + prop.city)}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="location-link"
-                            title="View on Google Maps"
-                          >
-                            <FaMapMarkerAlt /> {prop.area}, {prop.city}
-                          </a>
-                        </p>
-                        <button 
-                          className="btn btn-gold btn-sm portfolio-buy-btn"
-                          style={{ padding: '0.4rem 1rem', fontSize: '0.875rem', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            onBuyProperty?.(prop.id);
+                            onPropertyClick?.(prop.id);
+                          }}
+                          style={{
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #CBD5E1',
+                            padding: '6px 12px',
+                            borderRadius: '10px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: '#0F172A',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#0F172A';
+                            e.currentTarget.style.color = '#FFFFFF';
+                            e.currentTarget.style.borderColor = '#0F172A';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#FFFFFF';
+                            e.currentTarget.style.color = '#0F172A';
+                            e.currentTarget.style.borderColor = '#CBD5E1';
                           }}
                         >
-                          <FaShoppingCart /> Buy Now
+                          View Details
                         </button>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-
+                );
+              }))}
             </div>
+
+            {/* BOTTOM PAGINATION BAR */}
+            {displayProperties.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderTop: '1px solid #CBD5E1',
+                  paddingTop: '20px',
+                  flexWrap: 'wrap',
+                  gap: '14px',
+                }}
+              >
+                {/* Page Numbers */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={validPage <= 1}
+                    style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: validPage <= 1 ? '#F1F5F9' : '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: validPage <= 1 ? 'not-allowed' : 'pointer', color: validPage <= 1 ? '#94A3B8' : '#64748B', fontWeight: 700 }}
+                  >
+                    &lt;
+                  </button>
+                  {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1).map((pNum) => {
+                    const isCur = validPage === pNum;
+                    return (
+                      <button
+                        key={pNum}
+                        onClick={() => setCurrentPage(pNum)}
+                        style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '8px',
+                          border: isCur ? '1px solid #16A34A' : '1px solid #CBD5E1',
+                          backgroundColor: isCur ? '#16A34A' : '#FFFFFF',
+                          color: isCur ? '#FFFFFF' : '#334155',
+                          fontWeight: 700,
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {pNum}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(Math.max(1, totalPages), p + 1))}
+                    disabled={validPage >= totalPages}
+                    style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: validPage >= totalPages ? '#F1F5F9' : '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: validPage >= totalPages ? 'not-allowed' : 'pointer', color: validPage >= totalPages ? '#94A3B8' : '#64748B', fontWeight: 700 }}
+                  >
+                    &gt;
+                  </button>
+                </div>
+
+                {/* Show items per page */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 600 }}>Show:</span>
+                  <select
+                    value={`${itemsPerPage} per page`}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value.split(' ')[0], 10);
+                      if (!isNaN(val)) {
+                        setItemsPerPage(val);
+                        setCurrentPage(1);
+                      }
+                    }}
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', fontWeight: 700, color: '#0F172A', cursor: 'pointer' }}
+                  >
+                    <option value="12 per page">12 per page</option>
+                    <option value="24 per page">24 per page</option>
+                    <option value="48 per page">48 per page</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
           </div>
-        )}
+        </div>
 
       </div>
     </section>

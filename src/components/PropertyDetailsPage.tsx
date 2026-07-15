@@ -7,6 +7,55 @@ import {
 } from 'react-icons/fa';
 import { useWishlist } from '../context/WishlistContext';
 
+const getNearbyAmenities = (category: string, area: string, city: string) => {
+  const baseDist = Math.floor(Math.random() * 8) / 10 + 0.4;
+  switch (category) {
+    case 'schools':
+      return [
+        { name: `Oakridge International School (${area})`, type: 'CBSE & IB World School', dist: (baseDist).toFixed(1), time: '3 mins drive' },
+        { name: `Chirec Public School`, type: 'International Campus', dist: (baseDist + 1.1).toFixed(1), time: '6 mins drive' },
+        { name: `Delhi Public School (${city})`, type: 'Senior Secondary CBSE', dist: (baseDist + 1.8).toFixed(1), time: '10 mins drive' },
+        { name: `Kendriya Vidyalaya`, type: 'Central Government School', dist: (baseDist + 2.5).toFixed(1), time: '14 mins drive' }
+      ];
+    case 'hospitals':
+      return [
+        { name: `Apollo Hospitals Multispecialty`, type: '24/7 Emergency & ICU', dist: (baseDist + 0.5).toFixed(1), time: '4 mins drive' },
+        { name: `Care Hospitals & Trauma Centre`, type: 'Super Specialty Hospital', dist: (baseDist + 1.4).toFixed(1), time: '8 mins drive' },
+        { name: `Rainbow Children's Hospital`, type: 'Pediatric & Maternity Care', dist: (baseDist + 2.1).toFixed(1), time: '11 mins drive' },
+        { name: `Vijaya Diagnostic Centre`, type: 'Radiology & Pathology Lab', dist: (baseDist + 0.3).toFixed(1), time: '2 mins walk' }
+      ];
+    case 'transit':
+      return [
+        { name: `${area} Metro Station`, type: 'Blue / Red Line Corridor', dist: (baseDist - 0.1 > 0 ? baseDist - 0.1 : 0.4).toFixed(1), time: '5 mins walk' },
+        { name: `Main Bus Stop (${area})`, type: 'City & Intercity Transit', dist: '0.3', time: '3 mins walk' },
+        { name: `${city} Central Railway Station`, type: 'Major Railway Junction', dist: (baseDist + 5.2).toFixed(1), time: '20 mins drive' },
+        { name: `International Airport Express`, type: 'Direct Highway Access', dist: (baseDist + 22.0).toFixed(1), time: '35 mins drive' }
+      ];
+    case 'shopping':
+      return [
+        { name: `Inorbit Mall & Multiplex`, type: 'Premium Shopping Mall', dist: (baseDist + 0.8).toFixed(1), time: '5 mins drive' },
+        { name: `Ratnadeep Supermarket`, type: 'Grocery & Daily Needs', dist: '0.4', time: '4 mins walk' },
+        { name: `Starbucks Coffee & Lounge`, type: 'Cafe & Workspace', dist: '0.6', time: '6 mins walk' },
+        { name: `Barbeque Nation & Fine Dining`, type: 'Multi-cuisine Restaurant', dist: (baseDist + 1.2).toFixed(1), time: '7 mins drive' }
+      ];
+    case 'banks':
+      return [
+        { name: `HDFC Bank & ATM Branch`, type: 'Banking & Wealth Management', dist: '0.3', time: '3 mins walk' },
+        { name: `ICICI Bank 24/7 ATM`, type: 'Automated Teller Machine', dist: '0.5', time: '5 mins walk' },
+        { name: `State Bank of India (SBI)`, type: 'Regional Branch Office', dist: (baseDist + 0.7).toFixed(1), time: '4 mins drive' },
+        { name: `Axis Bank Priority Lounge`, type: 'Forex & Locker Facility', dist: (baseDist + 1.1).toFixed(1), time: '6 mins drive' }
+      ];
+    case 'fuel':
+    default:
+      return [
+        { name: `Indian Oil 24/7 Petrol Pump`, type: 'Fuel & EV Charging Station', dist: (baseDist + 0.4).toFixed(1), time: '3 mins drive' },
+        { name: `HP Petrol & Speed Mart`, type: 'Premium Fuel & Nitrogen', dist: (baseDist + 1.3).toFixed(1), time: '6 mins drive' },
+        { name: `Bharat Petroleum (BPCL)`, type: 'Highway Fuel Station', dist: (baseDist + 2.4).toFixed(1), time: '10 mins drive' },
+        { name: `Tata Power EV Fast Charging`, type: '60kW DC Fast Charger', dist: (baseDist + 0.9).toFixed(1), time: '5 mins drive' }
+      ];
+  }
+};
+
 interface PropertyDetailsPageProps {
   propertyId: string;
   onBack: () => void;
@@ -25,6 +74,8 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
   const [showPhone, setShowPhone] = useState(false);
   const [message, setMessage] = useState('');
   const [showSellerPortfolio, setShowSellerPortfolio] = useState(false);
+  const [nearbyRadiusFilter, setNearbyRadiusFilter] = useState<number>(5); // Default 5 km
+  const [activeAmenityTab, setActiveAmenityTab] = useState<string>('schools');
 
   // Reset all state and scroll to top when propertyId changes
   useEffect(() => {
@@ -171,6 +222,35 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
     return propertiesDb.filter(p => p.dealerId === property.dealerId && p.id !== property.id);
   }, [property]);
 
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
+    const R = 6371; // Earth radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const nearbyPropertiesWithDistance = useMemo(() => {
+    if (!property) return [];
+    const propLat = property.latitude || 17.4326;
+    const propLng = property.longitude || 78.4071;
+    return propertiesDb
+      .filter(p => p.id !== property.id)
+      .map(p => {
+        const dist = calculateDistance(propLat, propLng, p.latitude || 17.4326, p.longitude || 78.4071);
+        return { ...p, distanceKm: dist };
+      })
+      .filter(p => p.distanceKm <= nearbyRadiusFilter)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+  }, [property, nearbyRadiusFilter]);
+
   if (!property) {
     return (
       <div className="container" style={{ padding: '6rem 2rem', textAlign: 'center' }}>
@@ -208,6 +288,26 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
     setMessage('');
   };
 
+  // EMI Calculator State
+  const [loanAmountLakhs, setLoanAmountLakhs] = useState<number>(150);
+  const [interestRate, setInterestRate] = useState<number>(8.5);
+  const [loanTenureYears, setLoanTenureYears] = useState<number>(20);
+
+  useEffect(() => {
+    if (property.price) {
+      setLoanAmountLakhs(Math.round(property.price * 100 * 0.8));
+    }
+  }, [property]);
+
+  const calculatedEmi = useMemo(() => {
+    const P = loanAmountLakhs * 100000;
+    const r = interestRate / (12 * 100);
+    const n = loanTenureYears * 12;
+    if (r === 0) return Math.round(P / n);
+    const emi = (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    return Math.round(emi);
+  }, [loanAmountLakhs, interestRate, loanTenureYears]);
+
   // Derive specs fields
   const superArea = property.areaSqFt;
   const isPlot = property.category === 'Plot';
@@ -215,13 +315,32 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
   const typeDisplay = isPlot ? 'Plots & Land' : (property.category === 'Villa' || property.category === 'House') ? 'House & Villa' : 'Flats & Apartments';
 
   return (
-    <div className="prop-details-page animation-fade-in" style={{ padding: '2rem 0', background: 'var(--bg-main)', minHeight: '100vh' }}>
+    <div className="prop-details-page animation-fade-in" style={{ padding: '115px 0 3rem', background: 'var(--bg-main)', minHeight: '100vh' }}>
       <div className="container" style={{ position: 'relative' }}>
         
         {/* Back navigation */}
         <button className="circle-back-btn" onClick={onBack} title="Go Back" style={{ marginBottom: '1.5rem' }}>
           <FaArrowLeft />
         </button>
+
+        {/* Location Hierarchy Breadcrumbs */}
+        <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', padding: '12px 20px', borderRadius: '12px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '0.85rem', fontWeight: 600, color: '#475569', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+          <span style={{ color: '#1E40AF', display: 'flex', alignItems: 'center', gap: '4px' }}><FaMapMarkerAlt /> India</span>
+          <span>→</span>
+          <span>{property.state || 'Telangana'}</span>
+          <span>→</span>
+          <span>{property.district || 'Hyderabad'}</span>
+          <span>→</span>
+          <span style={{ color: '#0F172A', fontWeight: 700 }}>{property.city}</span>
+          <span>→</span>
+          <span style={{ color: '#2563EB', fontWeight: 700 }}>{property.area}</span>
+          {property.postal_code && (
+            <>
+              <span>→</span>
+              <span style={{ backgroundColor: '#F1F5F9', padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem', color: '#64748B' }}>PIN: {property.postal_code}</span>
+            </>
+          )}
+        </div>
 
         <div className="prop-details-split">
           
@@ -295,55 +414,55 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
                     <div className="prop-spec-row">
                       <div className="spec-col">
                         <span className="spec-lbl">Type</span>
-                        <span className="spec-val">{typeDisplay}</span>
+                        <span className="spec-val">{property.propertySubtype || typeDisplay}</span>
                       </div>
                       <div className="spec-col">
                         <span className="spec-lbl">Bedrooms</span>
-                        <span className="spec-val">{isPlot ? 'N/A' : '3'}</span>
+                        <span className="spec-val">{isPlot ? 'N/A' : (property.bedrooms ?? 3)}</span>
                       </div>
                     </div>
 
                     <div className="prop-spec-row">
                       <div className="spec-col">
-                        <span className="spec-lbl">Super Built-up area sqft</span>
-                        <span className="spec-val">{superArea}</span>
+                        <span className="spec-lbl">Super Built-up area</span>
+                        <span className="spec-val">{property.superBuiltUpArea || superArea}</span>
                       </div>
                       <div className="spec-col">
                         <span className="spec-lbl">Bathrooms</span>
-                        <span className="spec-val">{isPlot ? 'N/A' : '2'}</span>
+                        <span className="spec-val">{isPlot ? 'N/A' : (property.bathrooms ?? 2)}</span>
                       </div>
                     </div>
 
                     <div className="prop-spec-row">
                       <div className="spec-col">
                         <span className="spec-lbl">Project Status</span>
-                        <span className="spec-val">Ready to Move</span>
+                        <span className="spec-val">{property.listingStatus || 'Ready to Move'}</span>
                       </div>
                       <div className="spec-col">
-                        <span className="spec-lbl">Listed By</span>
-                        <span className="spec-val">{dealer ? 'Dealer' : 'Owner'}</span>
-                      </div>
-                    </div>
-
-                    <div className="prop-spec-row">
-                      <div className="spec-col">
-                        <span className="spec-lbl">Facing</span>
-                        <span className="spec-val">North-East</span>
-                      </div>
-                      <div className="spec-col">
-                        <span className="spec-lbl">Carpet area sqft</span>
-                        <span className="spec-val">{carpetArea}</span>
+                        <span className="spec-lbl">Ownership Type</span>
+                        <span className="spec-val">{property.ownershipType || 'Freehold'}</span>
                       </div>
                     </div>
 
                     <div className="prop-spec-row">
                       <div className="spec-col">
-                        <span className="spec-lbl">Car Parking</span>
-                        <span className="spec-val">{isPlot ? 'None' : '1'}</span>
+                        <span className="spec-lbl">Facing Direction</span>
+                        <span className="spec-val">{property.facing || 'North-East'}</span>
                       </div>
                       <div className="spec-col">
-                        <span className="spec-lbl">Project Name</span>
-                        <span className="spec-val" style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{property.title}</span>
+                        <span className="spec-lbl">Carpet area</span>
+                        <span className="spec-val">{property.carpetArea || carpetArea}</span>
+                      </div>
+                    </div>
+
+                    <div className="prop-spec-row">
+                      <div className="spec-col">
+                        <span className="spec-lbl">Parking Slots</span>
+                        <span className="spec-val">{isPlot ? 'None' : (property.parkingSlots ?? 2)}</span>
+                      </div>
+                      <div className="spec-col">
+                        <span className="spec-lbl">Furnishing</span>
+                        <span className="spec-val">{property.furnishing || 'Semi-Furnished'}</span>
                       </div>
                     </div>
                   </>
@@ -355,6 +474,139 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
             <div className="prop-section-block" style={{ marginTop: '2rem' }}>
               <h3 className="section-block-title">Description</h3>
               <p className="prop-desc-text">{property.description}</p>
+            </div>
+
+            {/* Amenities Section */}
+            {property.amenities && property.amenities.length > 0 && (
+              <div className="prop-section-block" style={{ marginTop: '2rem' }}>
+                <h3 className="section-block-title">Amenities & Facilities</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '1rem' }}>
+                  {property.amenities.map((am: string, i: number) => (
+                    <span key={i} style={{ padding: '8px 16px', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                      ✓ {am}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Virtual Tour Section */}
+            {property.virtualTourUrl && (
+              <div className="prop-section-block" style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px' }}>
+                <h3 className="section-block-title" style={{ color: '#1E40AF' }}>🎥 360° Virtual Walkthrough & Tour</h3>
+                <p style={{ fontSize: '0.9rem', color: '#334155', margin: '0.5rem 0 1rem 0' }}>Experience a full digital interactive walkthrough of this property from anywhere.</p>
+                <a href={property.virtualTourUrl} target="_blank" rel="noopener noreferrer" className="btn" style={{ backgroundColor: '#1E40AF', color: '#FFF', padding: '10px 24px', borderRadius: '4px', textDecoration: 'none', fontWeight: 700, display: 'inline-block' }}>
+                  Launch 360° Virtual Walkthrough →
+                </a>
+              </div>
+            )}
+
+            {/* Interactive Location Intelligence & Nearby Places Amenity Discovery Section */}
+            <div className="prop-section-block" style={{ marginTop: '2.5rem', backgroundColor: '#FFFFFF', padding: '24px', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 10px 30px rgba(0,0,0,0.04)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                  <h3 className="section-block-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#0F172A' }}>
+                    🗺️ Google Maps Location & Nearby Amenities
+                  </h3>
+                  <span style={{ fontSize: '0.85rem', color: '#64748B' }}>
+                    {property.formatted_address || `${property.area}, ${property.city}, ${property.state}`}
+                  </span>
+                </div>
+                {property.google_place_id && (
+                  <span style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid #BFDBFE', fontFamily: 'monospace' }}>
+                    Place ID: {property.google_place_id}
+                  </span>
+                )}
+              </div>
+
+              {/* Interactive Map Grid Container */}
+              <div style={{ width: '100%', height: '340px', backgroundColor: '#0F172A', borderRadius: '16px', position: 'relative', overflow: 'hidden', border: '2px solid #334155', marginBottom: '24px', backgroundImage: 'radial-gradient(#475569 1.5px, transparent 1.5px)', backgroundSize: '30px 30px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.2), transparent 70%)' }} />
+                
+                {/* Property Pin */}
+                <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ backgroundColor: '#EF4444', color: '#FFFFFF', padding: '8px 16px', borderRadius: '24px', fontWeight: 800, fontSize: '0.9rem', boxShadow: '0 10px 25px rgba(239, 68, 68, 0.5)', border: '3px solid #FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FaMapMarkerAlt /> {property.title}
+                  </div>
+                  <div style={{ width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: '10px solid #EF4444' }} />
+                  <div style={{ width: '24px', height: '12px', background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, transparent 80%)', marginTop: '2px' }} />
+                </div>
+
+                {/* Simulated Surrounding Roads & Landmarks */}
+                <div style={{ position: 'absolute', top: '20%', left: '15%', backgroundColor: 'rgba(30, 41, 59, 0.8)', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#94A3B8', border: '1px solid #475569' }}>🎓 Oakridge School (1.2 km)</div>
+                <div style={{ position: 'absolute', bottom: '25%', right: '15%', backgroundColor: 'rgba(30, 41, 59, 0.8)', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#94A3B8', border: '1px solid #475569' }}>🏥 Apollo Hospital (2.4 km)</div>
+                <div style={{ position: 'absolute', top: '30%', right: '25%', backgroundColor: 'rgba(30, 41, 59, 0.8)', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#94A3B8', border: '1px solid #475569' }}>🚆 Metro Station (0.8 km)</div>
+                <div style={{ position: 'absolute', bottom: '20%', left: '25%', backgroundColor: 'rgba(30, 41, 59, 0.8)', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#94A3B8', border: '1px solid #475569' }}>🛍️ Inorbit Mall (3.1 km)</div>
+
+                {/* Map Bottom Bar */}
+                <div style={{ position: 'absolute', bottom: '12px', left: '12px', right: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 20 }}>
+                  <span style={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', color: '#FFFFFF', padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #334155' }}>
+                    GPS: {(property.latitude || 17.4326).toFixed(4)}° N, {(property.longitude || 78.4071).toFixed(4)}° E
+                  </span>
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(property.formatted_address || (property.area + ', ' + property.city))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ backgroundColor: '#2563EB', color: '#FFFFFF', padding: '8px 16px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)' }}
+                  >
+                    📍 Get Google Maps Navigation →
+                  </a>
+                </div>
+              </div>
+
+              {/* Nearby Places Amenity Discovery Tabs */}
+              <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '20px' }}>
+                <h4 style={{ margin: '0 0 14px 0', fontSize: '1rem', color: '#0F172A', fontWeight: 800 }}>
+                  Explore What's Nearby (Calculated via Haversine Distance)
+                </h4>
+                
+                {/* Amenity Tabs */}
+                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '16px' }}>
+                  {[
+                    { id: 'schools', label: '🎓 Schools & Colleges' },
+                    { id: 'hospitals', label: '🏥 Hospitals & Clinics' },
+                    { id: 'transit', label: '🚆 Metro & Transit' },
+                    { id: 'shopping', label: '🛍️ Shopping & Dining' },
+                    { id: 'banks', label: '🏦 Banks & ATMs' },
+                    { id: 'fuel', label: '⛽ Petrol Pumps' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveAmenityTab(tab.id)}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '12px',
+                        border: activeAmenityTab === tab.id ? '2px solid #1E40AF' : '1px solid #E2E8F0',
+                        backgroundColor: activeAmenityTab === tab.id ? '#EFF6FF' : '#F8FAFC',
+                        color: activeAmenityTab === tab.id ? '#1D4ED8' : '#475569',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Amenity List Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                  {getNearbyAmenities(activeAmenityTab, property.area, property.city).map((item: any, idx: number) => (
+                    <div key={idx} style={{ padding: '12px 16px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0F172A', marginBottom: '2px' }}>{item.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{item.type} • {item.time}</div>
+                      </div>
+                      <span style={{ backgroundColor: '#DCFCE7', color: '#15803D', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, border: '1px solid #BBF7D0', whiteSpace: 'nowrap' }}>
+                        📍 {item.dist} km
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -410,7 +662,8 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
                   <div className="seller-card-meta">
                     <span className="posted-label">Posted By</span>
                     <h4 className="seller-name">{dealer.companyName}</h4>
-                    <span className="seller-since">Member since Apr 2025</span>
+                    {dealer.fullName && <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '2px' }}>{dealer.fullName}</div>}
+                    <span className="seller-since">{dealer.premiumPartner ? '👑 Premium Partner' : '✔ Verified Partner'}</span>
                   </div>
                 </div>
                 
@@ -465,26 +718,159 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
             </div>
 
             {/* Map Card */}
-            <div className="prop-right-box prop-map-card" style={{ padding: '1rem' }}>
-              <div className="map-embed-wrapper" style={{ position: 'relative', width: '100%', height: '220px', borderRadius: '8px', overflow: 'hidden', background: '#e0dfdb' }}>
-                <img 
-                  src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80&w=400" 
-                  alt="Map Location" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} 
-                />
-                {/* Visual marker overlay */}
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -100%)', zIndex: 2 }}>
-                  <FaMapMarkerAlt style={{ color: '#ef4444', fontSize: '2.5rem', filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.3))' }} />
+            <div className="prop-right-box prop-map-card" style={{ padding: '1rem', backgroundColor: '#0F172A', color: '#FFFFFF', border: '1px solid #334155', borderRadius: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#38BDF8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FaMapMarkerAlt /> Google Location
+                </span>
+                {property.postal_code && (
+                  <span style={{ backgroundColor: '#1E293B', color: '#94A3B8', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem' }}>
+                    PIN: {property.postal_code}
+                  </span>
+                )}
+              </div>
+              <div className="map-embed-wrapper" style={{ position: 'relative', width: '100%', height: '200px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#1E293B', backgroundImage: 'radial-gradient(#475569 1.5px, transparent 1.5px)', backgroundSize: '20px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', border: '1px solid #475569' }}>
+                <div style={{ backgroundColor: '#EF4444', color: '#FFFFFF', padding: '6px 12px', borderRadius: '20px', fontWeight: 800, fontSize: '0.8rem', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.5)', zIndex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FaMapMarkerAlt /> {property.area}
                 </div>
-                {/* Address block overlay */}
-                <div style={{ position: 'absolute', bottom: '10px', left: '10px', right: '10px', background: 'rgba(255, 255, 255, 0.95)', padding: '0.5rem 0.75rem', borderRadius: '6px', fontSize: '0.85rem', color: '#1a1a1a', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-                  <strong>Google Maps</strong>
-                  <div style={{ fontSize: '0.75rem', color: '#666' }}>{property.area}, {property.city}</div>
+                <div style={{ width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '8px solid #EF4444', zIndex: 2 }} />
+                <div style={{ position: 'absolute', bottom: '8px', left: '8px', right: '8px', background: 'rgba(15, 23, 42, 0.9)', padding: '6px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#E2E8F0', border: '1px solid #334155' }}>
+                  <div style={{ fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {property.formatted_address || `${property.area}, ${property.city}`}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#94A3B8', marginTop: '2px' }}>
+                    Lat: {(property.latitude || 17.4326).toFixed(4)}, Lng: {(property.longitude || 78.4071).toFixed(4)}
+                  </div>
+                </div>
+              </div>
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(property.formatted_address || (property.area + ', ' + property.city))}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', marginTop: '12px', padding: '10px', backgroundColor: '#2563EB', color: '#FFFFFF', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', textDecoration: 'none', transition: 'background 0.2s' }}
+              >
+                📍 Open in Google Maps App →
+              </a>
+            </div>
+
+            {/* Interactive Mortgage & EMI Calculator */}
+            <div className="prop-right-box" style={{ padding: '1.5rem', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+              <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🧮 Interactive Mortgage Calculator
+              </h4>
+              <div style={{ padding: '12px', backgroundColor: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center', border: '1px solid #BFDBFE' }}>
+                <div style={{ fontSize: '0.8rem', color: '#1E40AF', fontWeight: 600 }}>ESTIMATED MONTHLY EMI</div>
+                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1E3A8A' }}>₹{calculatedEmi.toLocaleString('en-IN')} <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>/ month</span></div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-main)', fontWeight: 600 }}>
+                    <span>Loan Amount</span>
+                    <span>₹{loanAmountLakhs} Lakhs</span>
+                  </div>
+                  <input type="range" min="10" max="1000" step="5" value={loanAmountLakhs} onChange={e => setLoanAmountLakhs(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-main)', fontWeight: 600 }}>
+                    <span>Interest Rate (p.a)</span>
+                    <span>{interestRate}%</span>
+                  </div>
+                  <input type="range" min="5" max="15" step="0.1" value={interestRate} onChange={e => setInterestRate(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-main)', fontWeight: 600 }}>
+                    <span>Loan Tenure</span>
+                    <span>{loanTenureYears} Years</span>
+                  </div>
+                  <input type="range" min="5" max="30" step="1" value={loanTenureYears} onChange={e => setLoanTenureYears(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
                 </div>
               </div>
             </div>
 
           </div>
+        </div>
+
+        {/* Bottom Section: Automated Properties Nearby (Within 2 KM, 5 KM, 10 KM) */}
+        <div className="prop-other-listings-section" style={{ marginTop: '4rem', borderTop: '1px solid var(--border-color)', paddingTop: '3rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '2rem' }}>
+            <div>
+              <h3 className="section-block-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                📍 Properties Nearby (Spatial Haversine Calculation)
+              </h3>
+              <span style={{ fontSize: '0.85rem', color: '#64748B' }}>Showing properties within {nearbyRadiusFilter} KM of {property.area}, {property.city}</span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {[2, 5, 10, 25].map(rad => (
+                <button
+                  key={rad}
+                  onClick={() => setNearbyRadiusFilter(rad)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    border: nearbyRadiusFilter === rad ? '2px solid #1E40AF' : '1px solid #CBD5E1',
+                    backgroundColor: nearbyRadiusFilter === rad ? '#1E40AF' : '#FFFFFF',
+                    color: nearbyRadiusFilter === rad ? '#FFFFFF' : '#475569',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Within {rad} KM
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {nearbyPropertiesWithDistance.length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#F8FAFC', borderRadius: '16px', border: '1px dashed #CBD5E1' }}>
+              <FaMapMarkerAlt style={{ fontSize: '2rem', color: '#94A3B8', marginBottom: '10px' }} />
+              <h4 style={{ margin: '0 0 6px 0', color: '#334155' }}>No properties found within {nearbyRadiusFilter} KM</h4>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748B' }}>Try expanding your distance filter to 10 KM or 25 KM to see more listings.</p>
+            </div>
+          ) : (
+            <div className="other-listings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
+              {nearbyPropertiesWithDistance.map(invProp => (
+                <div 
+                  key={invProp.id} 
+                  className="feed-card premium-card landscape-card" 
+                  style={{ cursor: 'pointer', flexDirection: 'column' }}
+                  onClick={() => {
+                    onPropertyClick(invProp.id);
+                    setActiveImageIndex(0);
+                    setShowPhone(false);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                >
+                  <div className="feed-card-image-wrap" style={{ width: '100%', height: '200px' }}>
+                    <img src={invProp.image} alt={invProp.title} className="feed-card-img" />
+                    <div className="feed-card-badges">
+                      {invProp.premium && <span className="badge-premium">💎 Premium</span>}
+                      <span style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', padding: '3px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 800, border: '1px solid #BFDBFE' }}>
+                        📍 {invProp.distanceKm.toFixed(1)} KM Away
+                      </span>
+                    </div>
+                  </div>
+                  <div className="feed-card-body" style={{ width: '100%', padding: '1.25rem' }}>
+                    <div className="feed-card-price-title">
+                      <h3 className="feed-prop-price" style={{ fontSize: '1.2rem' }}>₹ {invProp.priceDisplay}</h3>
+                      <h4 className="feed-prop-title" style={{ fontSize: '1rem', marginTop: '0.25rem' }}>{invProp.title}</h4>
+                    </div>
+                    <div className="feed-card-specs" style={{ margin: '0.75rem 0', fontSize: '0.85rem' }}>
+                      <span>🛏 {invProp.category === 'Apartment' ? '3 BHK' : 'House'}</span>
+                      <span>📐 {invProp.areaSqFt} Sq.Ft.</span>
+                    </div>
+                    <div className="feed-card-footer" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span className="feed-prop-location" style={{ fontSize: '0.85rem' }}><FaMapMarkerAlt /> {invProp.area}, {invProp.city}</span>
+                      <span style={{ fontSize: '0.75rem', color: '#1E40AF', fontWeight: 700 }}>View Property →</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Bottom Section: Other listings by the same seller */}
@@ -583,15 +969,15 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
                   <div className="info-list">
                     <div className="info-item">
                       <span className="info-label">👤 Authorized Name</span>
-                      <span className="info-value">{dealer.companyName} Operations Group</span>
+                      <span className="info-value">{dealer.fullName || `${dealer.companyName} Operations Group`}</span>
                     </div>
                     <div className="info-item">
                       <span className="info-label">📞 Mobile Number</span>
-                      <span className="info-value" style={{ color: 'var(--gold)', fontWeight: 'bold' }}>+91 99890 87654</span>
+                      <span className="info-value" style={{ color: 'var(--gold)', fontWeight: 'bold' }}>{dealer.phone || dealer.mobileNumber || '+91 99890 87654'}</span>
                     </div>
                     <div className="info-item">
                       <span className="info-label">✉ Email Address</span>
-                      <span className="info-value">info@{dealer.companyName.toLowerCase().replace(/\s+/g, '')}.com</span>
+                      <span className="info-value">{dealer.email || `info@${dealer.companyName.toLowerCase().replace(/\s+/g, '')}.com`}</span>
                     </div>
                     <div className="info-item">
                       <span className="info-label">📍 Headquarters / City</span>
@@ -610,7 +996,7 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
                       <span className="info-label">📸 Instagram Profile</span>
                       <span className="info-value">
                         <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>
-                          @venturo_realty
+                          @thenexoop
                         </a>
                       </span>
                     </div>

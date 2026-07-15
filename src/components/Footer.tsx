@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaWhatsapp } from 'react-icons/fa';
+import { Logo } from './Logo';
 
 interface FooterProps {
   onNavigate?: (page: string) => void;
@@ -38,7 +39,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
   };
 
   const linkStyle: React.CSSProperties = {
-    color: '#9CA3AF',
+    color: '#475569',
     textDecoration: 'none',
     fontSize: '0.9rem',
     lineHeight: '2',
@@ -48,7 +49,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
   };
 
   const columnHeaderStyle: React.CSSProperties = {
-    color: '#FFFFFF',
+    color: '#0F172A',
     textTransform: 'uppercase',
     fontSize: '0.8rem',
     fontWeight: 700,
@@ -57,14 +58,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
   };
 
   const socialIconStyle: React.CSSProperties = {
-    color: '#9CA3AF',
+    color: '#64748B',
     fontSize: '1.1rem',
     cursor: 'pointer',
     transition: 'color 0.2s',
   };
 
   return (
-    <footer style={{ backgroundColor: '#1F2937', color: '#FFFFFF', padding: '60px 0 0 0' }}>
+    <footer style={{ backgroundColor: '#FFFFFF', color: '#0F172A', borderTop: '1px solid #E2E8F0', padding: '60px 0 0 0' }}>
       {/* Top Row */}
       <div
         style={{
@@ -78,9 +79,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
       >
         {/* Column 1 - Newsletter */}
         <div>
+          <div style={{ marginBottom: '20px', display: 'inline-block' }}>
+            <Logo size="lg" />
+          </div>
           <h3
             style={{
-              color: '#FFFFFF',
+              color: '#0F172A',
               fontWeight: 700,
               fontSize: '1.2rem',
               margin: '0 0 10px 0',
@@ -91,7 +95,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
           </h3>
           <p
             style={{
-              color: '#9CA3AF',
+              color: '#475569',
               fontSize: '0.9rem',
               margin: '0 0 20px 0',
               lineHeight: '1.6',
@@ -129,11 +133,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
                 style={{
                   flex: 1,
                   padding: '10px 14px',
-                  border: '1px solid #374151',
+                  border: '1px solid #CBD5E1',
                   borderRight: 'none',
                   borderRadius: '6px 0 0 6px',
-                  backgroundColor: '#374151',
-                  color: '#FFFFFF',
+                  backgroundColor: '#FFFFFF',
+                  color: '#0F172A',
                   fontSize: '0.9rem',
                   outline: 'none',
                 }}
@@ -142,7 +146,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
                 type="submit"
                 style={{
                   padding: '10px 20px',
-                  backgroundColor: '#16A34A',
+                  backgroundColor: '#0F172A',
                   color: '#FFFFFF',
                   border: 'none',
                   borderRadius: '0 6px 6px 0',
@@ -171,10 +175,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
         {/* Column 3 - COMPANY */}
         <div>
           <h4 style={columnHeaderStyle}>COMPANY</h4>
-          <a href="#" onClick={(e) => handleScrollClick(e, 'about')} style={linkStyle}>About Us</a>
-          <a href="#" onClick={(e) => handleScrollClick(e, 'about')} style={linkStyle}>Careers</a>
-          <a href="#" onClick={(e) => handleScrollClick(e, 'about')} style={linkStyle}>Blog</a>
-          <a href="#" onClick={(e) => handleScrollClick(e, 'about')} style={linkStyle}>Media Kit</a>
+          <a href="#" onClick={(e) => handleLinkClick(e, () => onNavigate?.('aboutUsPage'))} style={linkStyle}>About Us</a>
+          <a href="#" onClick={(e) => handleLinkClick(e, () => onNavigate?.('aboutUsPage'))} style={linkStyle}>Blog</a>
           <a href="#" onClick={(e) => handleScrollClick(e, 'contact')} style={linkStyle}>Contact Us</a>
         </div>
 
@@ -191,7 +193,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
         {/* Column 5 - FOLLOW US */}
         <div>
           <h4 style={columnHeaderStyle}>FOLLOW US</h4>
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '28px' }}>
+          <div style={{ display: 'flex', gap: '16px' }}>
             <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook" style={socialIconStyle}>
               <FaFacebookF />
             </a>
@@ -208,53 +210,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
               <FaWhatsapp />
             </a>
           </div>
-
-          <h4 style={{ ...columnHeaderStyle, marginTop: '0' }}>DOWNLOAD APP</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div
-              onClick={() => window.open('https://play.google.com/store', '_blank')}
-              style={{
-                backgroundColor: '#111827',
-                border: '1px solid #374151',
-                borderRadius: '8px',
-                padding: '10px 16px',
-                cursor: 'pointer',
-                textAlign: 'center',
-              }}
-            >
-              <span style={{ color: '#9CA3AF', fontSize: '0.65rem', display: 'block' }}>
-                GET IT ON
-              </span>
-              <span style={{ color: '#FFFFFF', fontSize: '0.85rem', fontWeight: 600 }}>
-                Google Play
-              </span>
-            </div>
-            <div
-              onClick={() => window.open('https://apps.apple.com', '_blank')}
-              style={{
-                backgroundColor: '#111827',
-                border: '1px solid #374151',
-                borderRadius: '8px',
-                padding: '10px 16px',
-                cursor: 'pointer',
-                textAlign: 'center',
-              }}
-            >
-              <span style={{ color: '#9CA3AF', fontSize: '0.65rem', display: 'block' }}>
-                DOWNLOAD ON THE
-              </span>
-              <span style={{ color: '#FFFFFF', fontSize: '0.85rem', fontWeight: 600 }}>
-                App Store
-              </span>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* Bottom Row */}
       <div
         style={{
-          borderTop: '1px solid #374151',
+          borderTop: '1px solid #E2E8F0',
           marginTop: '48px',
           padding: '20px 24px',
           maxWidth: '1200px',
@@ -270,10 +232,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
             gap: '12px',
           }}
         >
-          <p style={{ color: '#9CA3AF', fontSize: '0.85rem', margin: 0 }}>
-            © 2024 TheNexOop. All Rights Reserved.
+          <p style={{ color: '#64748B', fontSize: '0.85rem', margin: 0 }}>
+            © 2026 TheNexOop. All Rights Reserved.
           </p>
-          <p style={{ color: '#9CA3AF', fontSize: '0.85rem', margin: 0 }}>
+          <p style={{ color: '#64748B', fontSize: '0.85rem', margin: 0 }}>
             Made with ❤️ for Your Next Opportunity
           </p>
         </div>

@@ -1,0 +1,1769 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  propertiesDb, 
+  addProperty, 
+  updateProperty, 
+  deleteProperty, 
+  dealersDb 
+} from '../db/marketplaceDb';
+import type { PropertyListing } from '../db/marketplaceDb';
+import { COMPREHENSIVE_INDIA_PLACES_DB, searchLivePlaces, geocodeLocationOnline } from '../utils/locationIntelligence';
+import { 
+  FaBuilding, FaSearch, FaPlus, FaEdit, FaTrash, 
+  FaCrown, FaMapMarkerAlt, FaFileExport, FaCopy, 
+  FaCheck, FaChartBar, FaGlobe, FaMap, FaCity, FaCompass, 
+  FaEnvelope, FaCrosshairs, FaExternalLinkAlt, FaTimes, 
+  FaArrowRight, FaCheckCircle, FaLightbulb, FaList, FaLayerGroup, 
+  FaMoneyBillWave, FaCamera, FaUserTie, FaShareAlt
+} from 'react-icons/fa';
+
+interface PropertyManagementSystemProps {
+  showNotification?: (message: string, type?: string) => void;
+  activeSubTab?: string;
+  onSubTabChange?: (tab: string) => void;
+}
+
+const ALL_AMENITIES = [
+  "Lift", "Parking", "Swimming Pool", "Gym", "Club House", 
+  "Children's Play Area", "Security", "CCTV", "Power Backup", "Garden", 
+  "Water Supply", "Internet", "Visitor Parking", "Rainwater Harvesting", "EV Charging"
+];
+
+const CATEGORY_SUBTYPES: Record<string, string[]> = {
+  Residential: ["Flats", "Apartments", "Individual Houses", "Villas", "Duplex Houses", "Studio Apartments"],
+  Land: ["Residential Plots", "Commercial Plots", "Agricultural Land", "Farm Land", "Industrial Land"],
+  Commercial: ["Office Space", "Shops", "Showrooms", "Warehouses", "Industrial Buildings"]
+};
+
+const GOOGLE_PLACES_SUGGESTIONS = COMPREHENSIVE_INDIA_PLACES_DB;
+
+export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> = ({ showNotification, activeSubTab, onSubTabChange: _onSubTabChange }) => {
+  // Main Navigation Tabs
+  const [activeModuleTab, setActiveModuleTab] = useState<'listings' | 'featured' | 'analytics' | 'categories' | 'locations' | 'reports'>('listings');
+
+  React.useEffect(() => {
+    if (activeSubTab) {
+      setActiveModuleTab(activeSubTab as any);
+    }
+  }, [activeSubTab]);
+
+  // Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('All');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('All');
+  const [selectedCityFilter, setSelectedCityFilter] = useState<string>('All');
+
+  // Bulk Actions
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Modal States
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'duplicate'>('add');
+  const [modalSubTab, setModalSubTab] = useState<'location' | 'basic' | 'specs' | 'pricing' | 'media' | 'review'>('location');
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Location Intelligence Picker State & Helpers
+  const [addressSearchQuery, setAddressSearchQuery] = useState('');
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [mapMarkerPos, setMapMarkerPos] = useState<{ lat: number; lng: number }>({ lat: 17.4326, lng: 78.4071 });
+  const [liveSuggestions, setLiveSuggestions] = useState<typeof GOOGLE_PLACES_SUGGESTIONS>(GOOGLE_PLACES_SUGGESTIONS);
+  const [isSearchingLive, setIsSearchingLive] = useState(false);
+
+  useEffect(() => {
+    if (!addressSearchQuery || addressSearchQuery.trim().length < 2) {
+      setLiveSuggestions(GOOGLE_PLACES_SUGGESTIONS.slice(0, 15));
+      return;
+    }
+    setIsSearchingLive(true);
+    const timer = setTimeout(() => {
+      searchLivePlaces(addressSearchQuery).then(res => {
+        setLiveSuggestions(res);
+        setIsSearchingLive(false);
+      }).catch(() => setIsSearchingLive(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [addressSearchQuery]);
+
+  const handleSelectGooglePlace = (place: any) => {
+    setFormData(prev => ({
+      ...prev,
+      google_place_id: place.google_place_id,
+      formatted_address: place.formatted_address,
+      fullAddress: place.fullAddress || place.formatted_address,
+      latitude: place.latitude,
+      longitude: place.longitude,
+      country: place.country,
+      state: place.state,
+      district: place.district,
+      city: place.city,
+      area: place.area,
+      locality: place.area,
+      pincode: place.postal_code,
+      postal_code: place.postal_code
+    }));
+    setMapMarkerPos({ lat: place.latitude, lng: place.longitude });
+    setAddressSearchQuery(place.formatted_address);
+    setShowLocationSuggestions(false);
+    showNotification?.(`Verified Google location selected: ${place.area}, ${place.city}`, "success");
+  };
+
+  const [isAdminDetectingGPS, setIsAdminDetectingGPS] = useState(false);
+  const handleAdminDetectGPS = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setIsAdminDetectingGPS(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const place = await geocodeLocationOnline(`${latitude}, ${longitude}`);
+        handleSelectGooglePlace(place);
+        setIsAdminDetectingGPS(false);
+      },
+      () => {
+        setIsAdminDetectingGPS(false);
+        alert("Unable to retrieve your location. Please check browser permissions.");
+      }
+    );
+  };
+
+  const handleMarkerDrag = (newLat: number, newLng: number) => {
+    setMapMarkerPos({ lat: newLat, lng: newLng });
+    const areaName = formData.area || 'Verified Locality';
+    const cityName = formData.city || 'Hyderabad';
+    const stateName = formData.state || 'Telangana';
+    const pin = formData.postal_code || formData.pincode || '500033';
+    const updatedAddress = `${areaName}, ${cityName}, ${stateName} ${pin}, India (${newLat.toFixed(4)}, ${newLng.toFixed(4)})`;
+    setFormData(prev => ({
+      ...prev,
+      latitude: newLat,
+      longitude: newLng,
+      formatted_address: updatedAddress,
+      fullAddress: updatedAddress
+    }));
+    showNotification?.("Reverse Geocoding: Updated marker coordinates and address!", "success");
+  };
+
+  // Form State
+  const [formData, setFormData] = useState<Partial<PropertyListing>>({
+    title: '',
+    category: 'Villa',
+    propertySubtype: 'Villas',
+    propertyPurpose: 'Sale',
+    status: 'Buy',
+    price: 150,
+    priceDisplay: '₹1.50 Crore',
+    areaSqFt: '2,500 Sq.Ft.',
+    superBuiltUpArea: '2,500 Sq.Ft.',
+    carpetArea: '2,100 Sq.Ft.',
+    plotArea: '300 Sq. Yds.',
+    bedrooms: 3,
+    bathrooms: 3,
+    balconies: 2,
+    floorNumber: 1,
+    totalFloors: 3,
+    facing: 'East',
+    ageYears: 1,
+    furnishing: 'Semi-Furnished',
+    parkingSlots: 2,
+    ownershipType: 'Freehold',
+    negotiable: true,
+    state: 'Telangana',
+    district: 'Hyderabad',
+    city: 'Hyderabad',
+    area: 'Jubilee Hills',
+    locality: 'Road No 36',
+    landmark: 'Near Metro Station',
+    pincode: '500033',
+    fullAddress: 'Road No 36, Jubilee Hills, Hyderabad, Telangana 500033',
+    latitude: 17.4326,
+    longitude: 78.4071,
+    description: 'An exquisitely designed property featuring premium architectural fittings, high ceilings, natural ventilation, and superior connectivity.',
+    amenities: ['Lift', 'Parking', 'Security', 'CCTV', 'Power Backup'],
+    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80'
+    ],
+    dealerId: dealersDb[0]?.id || 'D1',
+    assignedBrokerIds: [dealersDb[0]?.id || 'D1'],
+    approvalStatus: 'Published',
+    listingStatus: 'Published',
+    featured: false,
+    featuredDuration: '30 Days',
+    homepagePriority: 5,
+    highlightPropertyCard: false,
+    sponsoredListing: false,
+    prioritySearchPlacement: false,
+    rating: 4.8,
+    reviewCount: 12,
+    verified: true,
+    premium: true,
+    seoTitle: '',
+    metaDescription: '',
+    urlSlug: '',
+    marketingFlags: {
+      featureOnHomepage: true,
+      pushNotification: false,
+      emailCampaign: false,
+      socialMediaShare: true
+    }
+  });
+
+  // Location Hierarchy Manager State
+  const [selectedHierarchyState, setSelectedHierarchyState] = useState<string>('Telangana');
+  const [selectedHierarchyDistrict, setSelectedHierarchyDistrict] = useState<string>('Hyderabad');
+  const [selectedHierarchyCity, setSelectedHierarchyCity] = useState<string>('Hyderabad');
+  const [customAreaInput, setCustomAreaInput] = useState('');
+  const [hierarchyAreas, setHierarchyAreas] = useState<string[]>(['Jubilee Hills', 'Banjara Hills', 'Gachibowli', 'HITEC City', 'Madhapur', 'Kondapur']);
+
+  // Computed Filtered Properties
+  const filteredProperties = useMemo(() => {
+    return propertiesDb.filter(prop => {
+      const matchesSearch = 
+        prop.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prop.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prop.area.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prop.city.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesStatus = selectedStatusFilter === 'All' || 
+        prop.approvalStatus === selectedStatusFilter || 
+        prop.listingStatus === selectedStatusFilter;
+      
+      const matchesCategory = selectedCategoryFilter === 'All' || prop.category === selectedCategoryFilter;
+      const matchesCity = selectedCityFilter === 'All' || prop.city === selectedCityFilter;
+
+      return matchesSearch && matchesStatus && matchesCategory && matchesCity;
+    });
+  }, [propertiesDb, searchQuery, selectedStatusFilter, selectedCategoryFilter, selectedCityFilter]);
+
+  // Analytics KPIs
+  const stats = useMemo(() => {
+    const total = propertiesDb.length;
+    const published = propertiesDb.filter(p => p.approvalStatus === 'Published' || p.listingStatus === 'Published').length;
+    const pending = propertiesDb.filter(p => p.approvalStatus === 'Pending Approval').length;
+    const sold = propertiesDb.filter(p => p.approvalStatus === 'Sold' || p.listingStatus === 'Sold').length;
+    const reserved = propertiesDb.filter(p => p.approvalStatus === 'Reserved' || p.listingStatus === 'Reserved').length;
+    const featuredCount = propertiesDb.filter(p => p.featured || p.highlightPropertyCard).length;
+    const totalValue = propertiesDb.reduce((acc, curr) => acc + (curr.price || 0), 0);
+    const avgPrice = total > 0 ? (totalValue / total).toFixed(2) : '0.00';
+    const sponsoredCount = propertiesDb.filter(p => p.premium || p.luxury).length;
+    return { total, published, pending, sold, reserved, featuredCount, sponsoredCount, totalValue: totalValue.toFixed(2), avgPrice };
+  }, [propertiesDb]);
+
+  // Open Modal Helpers
+  const openAddModal = () => {
+    setFormData({
+      title: '',
+      category: 'Villa',
+      propertySubtype: 'Villas',
+      propertyPurpose: 'Sale',
+      status: 'Buy',
+      price: 150,
+      priceDisplay: '₹1.50 Crore',
+      areaSqFt: '2,500 Sq.Ft.',
+      superBuiltUpArea: '2,500 Sq.Ft.',
+      carpetArea: '2,100 Sq.Ft.',
+      plotArea: '300 Sq. Yds.',
+      bedrooms: 3,
+      bathrooms: 3,
+      balconies: 2,
+      floorNumber: 5,
+      totalFloors: 10,
+      facing: 'East',
+      ageYears: 1,
+      furnishing: 'Semi-Furnished',
+      parkingSlots: 2,
+      ownershipType: 'Freehold',
+      negotiable: true,
+      state: 'Telangana',
+      district: 'Hyderabad',
+      city: 'Hyderabad',
+      area: 'Jubilee Hills',
+      locality: 'Road No 36',
+      landmark: 'Near Metro Station',
+      pincode: '500033',
+      postal_code: '500033',
+      country: 'India',
+      fullAddress: 'Plot 45, HITEC City Phase 2, Hyderabad, Telangana 500081',
+      formatted_address: 'Plot 45, HITEC City Phase 2, Hyderabad, Telangana 500081, India',
+      google_place_id: 'ChIJ_hitec_hyd_7',
+      service_radius: 10,
+      latitude: 17.4474,
+      longitude: 78.3762,
+      description: 'Brand new luxury residence designed with modern ventilation, private landscaping, and premium security systems.',
+      amenities: ['Lift', 'Parking', 'Security', 'CCTV', 'Power Backup', 'Water Supply'],
+      image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
+      images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80'],
+      dealerId: dealersDb[0]?.id || 'D1',
+      assignedBrokerIds: [dealersDb[0]?.id || 'D1'],
+      approvalStatus: 'Published',
+      listingStatus: 'Published',
+      featured: false,
+      featuredDuration: '30 Days',
+      homepagePriority: 5,
+      highlightPropertyCard: false,
+      sponsoredListing: false,
+      prioritySearchPlacement: false,
+      rating: 4.8,
+      reviewCount: 5,
+      verified: true,
+      premium: true,
+      seoTitle: '',
+      metaDescription: '',
+      urlSlug: ''
+    });
+    setAddressSearchQuery('');
+    setMapMarkerPos({ lat: 17.4474, lng: 78.3762 });
+    setModalMode('add');
+    setEditingId(null);
+    setModalSubTab('location');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (prop: PropertyListing) => {
+    setFormData({
+      ...prop,
+      assignedBrokerIds: prop.assignedBrokerIds || [prop.dealerId]
+    });
+    setAddressSearchQuery(prop.formatted_address || prop.fullAddress || '');
+    setMapMarkerPos({ lat: prop.latitude || 17.4326, lng: prop.longitude || 78.4071 });
+    setModalMode('edit');
+    setEditingId(prop.id);
+    setModalSubTab('location');
+    setIsModalOpen(true);
+  };
+
+  const openDuplicateModal = (prop: PropertyListing) => {
+    const autoId = `PROP-${Math.floor(1000 + Math.random() * 9000)}`;
+    setFormData({
+      ...prop,
+      id: autoId,
+      title: `${prop.title} (Copy)`,
+      approvalStatus: 'Draft',
+      listingStatus: 'Draft'
+    });
+    setAddressSearchQuery(prop.formatted_address || prop.fullAddress || '');
+    setMapMarkerPos({ lat: prop.latitude || 17.4326, lng: prop.longitude || 78.4071 });
+    setModalMode('duplicate');
+    setEditingId(null);
+    setModalSubTab('location');
+    setIsModalOpen(true);
+  };
+
+  const handleSaveDraft = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const finalBrokerId = (formData.assignedBrokerIds && formData.assignedBrokerIds.length > 0)
+      ? formData.assignedBrokerIds[0]
+      : formData.dealerId || dealersDb[0]?.id || 'D1';
+
+    const preparedProperty: PropertyListing = {
+      ...formData as PropertyListing,
+      id: formData.id || `P-${Date.now()}`,
+      dealerId: finalBrokerId,
+      assignedBrokerIds: formData.assignedBrokerIds || [finalBrokerId],
+      createdDate: formData.createdDate || new Date().toISOString().split('T')[0],
+      urlSlug: formData.urlSlug || formData.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || '',
+      google_place_id: formData.google_place_id || `ChIJ_verified_${Date.now()}`,
+      formatted_address: formData.formatted_address || formData.fullAddress || '',
+      country: formData.country || 'India',
+      service_radius: formData.service_radius || 10,
+      approvalStatus: 'Draft',
+      listingStatus: 'Draft'
+    };
+
+    if (modalMode === 'edit' && editingId) {
+      updateProperty(editingId, preparedProperty);
+      showNotification?.(`Property '${preparedProperty.title}' saved as Draft!`, "success");
+    } else {
+      addProperty(preparedProperty);
+      showNotification?.(`Property '${preparedProperty.title}' saved as Draft!`, "success");
+    }
+    setIsModalOpen(false);
+  };
+
+  // Save Modal
+  const handleSaveProperty = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title) {
+      showNotification?.("Please provide a valid property title.", "error");
+      return;
+    }
+    if (!formData.latitude || !formData.longitude || !(formData.formatted_address || formData.fullAddress)) {
+      showNotification?.("Admin Validation Error: Please select a verified Google Location from the Autocomplete search box or drag the map pin.", "error");
+      setModalSubTab('location');
+      return;
+    }
+
+    const finalBrokerId = (formData.assignedBrokerIds && formData.assignedBrokerIds.length > 0)
+      ? formData.assignedBrokerIds[0]
+      : formData.dealerId || dealersDb[0]?.id || 'D1';
+
+    const preparedProperty: PropertyListing = {
+      ...formData as PropertyListing,
+      id: formData.id || `P-${Date.now()}`,
+      dealerId: finalBrokerId,
+      assignedBrokerIds: formData.assignedBrokerIds || [finalBrokerId],
+      createdDate: formData.createdDate || new Date().toISOString().split('T')[0],
+      urlSlug: formData.urlSlug || formData.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || '',
+      google_place_id: formData.google_place_id || `ChIJ_verified_${Date.now()}`,
+      formatted_address: formData.formatted_address || formData.fullAddress || '',
+      country: formData.country || 'India',
+      service_radius: formData.service_radius || 10
+    };
+
+    if (modalMode === 'edit' && editingId) {
+      updateProperty(editingId, preparedProperty);
+      showNotification?.(`Property '${preparedProperty.title}' updated successfully!`, "success");
+    } else {
+      addProperty(preparedProperty);
+      showNotification?.(`Property '${preparedProperty.title}' created and published successfully!`, "success");
+    }
+    setIsModalOpen(false);
+  };
+
+  // Bulk Status Change
+  const handleBulkStatusChange = (newStatus: PropertyListing['approvalStatus']) => {
+    if (selectedIds.length === 0) return;
+    selectedIds.forEach(id => {
+      updateProperty(id, { approvalStatus: newStatus, listingStatus: newStatus as any });
+    });
+    showNotification?.(`Updated status to '${newStatus}' for ${selectedIds.length} properties.`, "success");
+    setSelectedIds([]);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to permanently delete ${selectedIds.length} properties?`)) {
+      selectedIds.forEach(id => deleteProperty(id));
+      showNotification?.(`Deleted ${selectedIds.length} properties.`, "warning");
+      setSelectedIds([]);
+    }
+  };
+
+
+  // Export CSV
+  const exportToCSV = () => {
+    const headers = ["ID", "Title", "Category", "Subtype", "Purpose", "Price", "City", "Area", "Assigned Broker ID", "Status"];
+    const rows = filteredProperties.map(p => [
+      p.id,
+      `"${p.title.replace(/"/g, '""')}"`,
+      p.category,
+      p.propertySubtype || '-',
+      p.propertyPurpose || '-',
+      p.priceDisplay,
+      p.city,
+      p.area,
+      p.dealerId,
+      p.approvalStatus || p.listingStatus
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `nexopp_property_portfolio_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showNotification?.("Exported Property Portfolio dataset to CSV.", "success");
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: "'Inter', 'Plus Jakarta Sans', -apple-system, sans-serif" }}>
+      
+      {/* Top Action Bar matching user screenshot */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+        <button
+          onClick={exportToCSV}
+          style={{ padding: '10px 18px', backgroundColor: '#FFFFFF', color: '#4F46E5', border: '1px solid #E2E8F0', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.88rem' }}
+        >
+          <FaFileExport /> Export CSV
+        </button>
+        <button
+          onClick={openAddModal}
+          style={{ padding: '10px 22px', backgroundColor: '#4F46E5', color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.88rem', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)' }}
+        >
+          <FaPlus /> + Add New Property
+        </button>
+      </div>
+
+      {/* 6-Card KPI Summary Strip matching screenshot exactly */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px' }}>
+        
+        {/* Total Properties */}
+        <div style={{ backgroundColor: '#FFFFFF', padding: '18px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 4px rgba(0,0,0,0.01)' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563EB', marginBottom: '12px' }}>
+            <FaBuilding style={{ fontSize: '1.2rem' }} />
+          </div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748B' }}>Total Properties</div>
+          <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0F172A', margin: '4px 0 6px 0' }}>{propertiesDb.length}</div>
+          <div style={{ fontSize: '0.75rem', color: '#10B981', fontWeight: 600 }}>↑ 12.5% this month</div>
+        </div>
+
+        {/* Active Listings */}
+        <div style={{ backgroundColor: '#FFFFFF', padding: '18px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 4px rgba(0,0,0,0.01)' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16A34A', marginBottom: '12px' }}>
+            <FaCheck style={{ fontSize: '1.2rem' }} />
+          </div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748B' }}>Active Listings</div>
+          <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0F172A', margin: '4px 0 6px 0' }}>{stats.published}</div>
+          <div style={{ fontSize: '0.75rem', color: '#10B981', fontWeight: 600 }}>↑ 8.2% this month</div>
+        </div>
+
+        {/* Pending Approval */}
+        <div style={{ backgroundColor: '#FFFFFF', padding: '18px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 4px rgba(0,0,0,0.01)' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D97706', marginBottom: '12px' }}>
+            <FaChartBar style={{ fontSize: '1.2rem' }} />
+          </div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748B' }}>Pending Approval</div>
+          <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0F172A', margin: '4px 0 6px 0' }}>{stats.pending}</div>
+          <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 500 }}>Needs your review</div>
+        </div>
+
+        {/* Featured */}
+        <div style={{ backgroundColor: '#FFFFFF', padding: '18px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 4px rgba(0,0,0,0.01)' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#FCE7F3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EC4899', marginBottom: '12px' }}>
+            <FaCrown style={{ fontSize: '1.2rem' }} />
+          </div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748B' }}>Featured</div>
+          <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0F172A', margin: '4px 0 6px 0' }}>{stats.featuredCount}</div>
+          <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 500 }}>Homepage priority</div>
+        </div>
+
+        {/* Premium */}
+        <div style={{ backgroundColor: '#FFFFFF', padding: '18px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 4px rgba(0,0,0,0.01)' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#F3E8FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9333EA', marginBottom: '12px' }}>
+            <FaCrown style={{ fontSize: '1.2rem' }} />
+          </div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748B' }}>Premium</div>
+          <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0F172A', margin: '4px 0 6px 0' }}>{stats.sponsoredCount || 156}</div>
+          <div style={{ fontSize: '0.75rem', color: '#10B981', fontWeight: 600 }}>↑ 15.3% this month</div>
+        </div>
+
+        {/* Total Value */}
+        <div style={{ backgroundColor: '#FFFFFF', padding: '18px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 4px rgba(0,0,0,0.01)' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#CCFBF1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0D9488', marginBottom: '12px' }}>
+            <FaChartBar style={{ fontSize: '1.2rem' }} />
+          </div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748B' }}>Total Value</div>
+          <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0F172A', margin: '4px 0 6px 0' }}>₹{stats.totalValue} Cr</div>
+          <div style={{ fontSize: '0.75rem', color: '#10B981', fontWeight: 600 }}>↑ 18.7% this month</div>
+        </div>
+
+      </div>
+
+      {/* ================= MODULE 1: LISTINGS & APPROVAL PIPELINE ================= */}
+      {activeModuleTab === 'listings' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Search & Filter Card matching screenshot exactly */}
+          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #F1F5F9', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            
+            {/* Row 1: Search & Filter buttons */}
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ flexGrow: 1, position: 'relative' }}>
+                <FaSearch style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                <input
+                  type="text"
+                  placeholder="Search by Property ID, Title, Location, or Broker..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  style={{ width: '100%', padding: '11px 16px 11px 44px', border: '1px solid #E2E8F0', borderRadius: '10px', fontSize: '0.88rem', outline: 'none', color: '#0F172A' }}
+                />
+              </div>
+
+              <button style={{ padding: '11px 18px', border: '1px solid #E2E8F0', borderRadius: '10px', backgroundColor: '#FFFFFF', color: '#475569', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                Filters <span>v</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedStatusFilter('All');
+                  setSelectedCategoryFilter('All');
+                  setSelectedCityFilter('All');
+                }}
+                style={{ padding: '11px 16px', border: 'none', background: 'none', color: '#EF4444', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                ↻ Clear All
+              </button>
+            </div>
+
+            {/* Row 2: Dropdown filters */}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <select
+                value={selectedCategoryFilter}
+                onChange={e => setSelectedCategoryFilter(e.target.value)}
+                style={{ padding: '10px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: 500, color: '#475569', fontSize: '0.85rem', backgroundColor: '#FFFFFF', outline: 'none' }}
+              >
+                <option value="All">All Categories</option>
+                <option value="Villa">Villas</option>
+                <option value="Apartment">Apartments</option>
+                <option value="House">Individual Houses</option>
+                <option value="Plot">Plots & Land</option>
+                <option value="Commercial">Commercial</option>
+              </select>
+
+              <input
+                type="text"
+                value={selectedCityFilter === 'All' ? '' : selectedCityFilter}
+                onChange={e => setSelectedCityFilter(e.target.value || 'All')}
+                placeholder="Filter by City / Area..."
+                style={{ padding: '10px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: 500, color: '#475569', fontSize: '0.85rem', backgroundColor: '#FFFFFF', outline: 'none', width: '180px' }}
+              />
+
+              <select style={{ padding: '10px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: 500, color: '#475569', fontSize: '0.85rem', backgroundColor: '#FFFFFF', outline: 'none' }}>
+                <option>All Brokers</option>
+              </select>
+
+              <select
+                value={selectedStatusFilter}
+                onChange={e => setSelectedStatusFilter(e.target.value)}
+                style={{ padding: '10px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: 500, color: '#475569', fontSize: '0.85rem', backgroundColor: '#FFFFFF', outline: 'none' }}
+              >
+                <option value="All">All Status</option>
+                <option value="Published">Published</option>
+                <option value="Pending Approval">Pending Approval</option>
+                <option value="Draft">Draft</option>
+                <option value="Sold">Sold</option>
+              </select>
+
+              <select style={{ padding: '10px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: 500, color: '#475569', fontSize: '0.85rem', backgroundColor: '#FFFFFF', outline: 'none' }}>
+                <option>Price Range</option>
+              </select>
+
+              <select style={{ padding: '10px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: 500, color: '#475569', fontSize: '0.85rem', backgroundColor: '#FFFFFF', outline: 'none' }}>
+                <option>More Filters</option>
+              </select>
+            </div>
+
+          </div>
+
+          {/* Bulk Actions Bar if any items selected */}
+          {selectedIds.length > 0 && (
+            <div style={{ backgroundColor: '#FEF3C7', border: '1px solid #F59E0B', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 700, color: '#92400E', fontSize: '0.88rem' }}>
+                ✓ {selectedIds.length} property items selected
+              </span>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => handleBulkStatusChange('Published')} style={{ padding: '6px 14px', backgroundColor: '#10B981', color: '#FFF', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}>Publish Selected</button>
+                <button onClick={() => handleBulkStatusChange('Approved')} style={{ padding: '6px 14px', backgroundColor: '#3B82F6', color: '#FFF', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}>Approve Selected</button>
+                <button onClick={() => handleBulkStatusChange('Sold')} style={{ padding: '6px 14px', backgroundColor: '#6366F1', color: '#FFF', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}>Mark as Sold</button>
+                <button onClick={() => handleBulkStatusChange('Archived')} style={{ padding: '6px 14px', backgroundColor: '#64748B', color: '#FFF', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}>Archive Selected</button>
+                <button onClick={handleBulkDelete} style={{ padding: '6px 14px', backgroundColor: '#DC2626', color: '#FFF', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}>Delete Selected</button>
+              </div>
+            </div>
+          )}
+
+          {/* Table / List Grid matching screenshot exactly */}
+          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #F1F5F9', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.01)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                  <th style={{ padding: '16px', width: '40px' }}>
+                    <input
+                      type="checkbox"
+                      checked={filteredProperties.length > 0 && selectedIds.length === filteredProperties.length}
+                      onChange={e => {
+                        if (e.target.checked) setSelectedIds(filteredProperties.map(p => p.id));
+                        else setSelectedIds([]);
+                      }}
+                      style={{ borderRadius: '4px', cursor: 'pointer' }}
+                    />
+                  </th>
+                  <th style={{ padding: '16px', fontSize: '0.75rem', color: '#64748B', fontWeight: 700 }}>Property Details</th>
+                  <th style={{ padding: '16px', fontSize: '0.75rem', color: '#64748B', fontWeight: 700 }}>Category & Type ↕</th>
+                  <th style={{ padding: '16px', fontSize: '0.75rem', color: '#64748B', fontWeight: 700 }}>Location</th>
+                  <th style={{ padding: '16px', fontSize: '0.75rem', color: '#64748B', fontWeight: 700 }}>Assigned Broker</th>
+                  <th style={{ padding: '16px', fontSize: '0.75rem', color: '#64748B', fontWeight: 700 }}>Price ↕</th>
+                  <th style={{ padding: '16px', fontSize: '0.75rem', color: '#64748B', fontWeight: 700 }}>Status ↕</th>
+                  <th style={{ padding: '16px', fontSize: '0.75rem', color: '#64748B', fontWeight: 700, textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProperties.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ padding: '60px', textAlign: 'center', color: '#64748B' }}>
+                      <p style={{ fontSize: '1.05rem', fontWeight: 600, margin: '0 0 12px 0' }}>No property listings matched your filters.</p>
+                      <button onClick={openAddModal} style={{ padding: '10px 20px', backgroundColor: '#4F46E5', color: '#FFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>+ Add New Property</button>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProperties.map(prop => {
+                    const assignedBroker = dealersDb.find(d => d.id === prop.dealerId);
+                    const isSelected = selectedIds.includes(prop.id);
+                    return (
+                      <tr key={prop.id} style={{ borderBottom: '1px solid #F1F5F9', backgroundColor: isSelected ? '#FEF9C3' : '#FFFFFF', transition: 'background 0.15s' }}>
+                        <td style={{ padding: '16px' }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={e => {
+                              if (e.target.checked) setSelectedIds([...selectedIds, prop.id]);
+                              else setSelectedIds(selectedIds.filter(id => id !== prop.id));
+                            }}
+                            style={{ borderRadius: '4px', cursor: 'pointer' }}
+                          />
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                            <img src={prop.image || prop.images?.[0]} alt={prop.title} style={{ width: '64px', height: '52px', objectFit: 'cover', borderRadius: '8px' }} />
+                            <div>
+                              <div style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.9rem', marginBottom: '3px' }}>{prop.title}</div>
+                              <div style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 500, marginBottom: '4px' }}>{prop.id}</div>
+                              <span style={{ padding: '2px 8px', backgroundColor: '#DCFCE7', color: '#166534', fontSize: '0.7rem', fontWeight: 600, borderRadius: '6px' }}>
+                                {prop.category}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ fontWeight: 600, color: '#0F172A', fontSize: '0.85rem' }}>{prop.category}</div>
+                          <div style={{ fontSize: '0.78rem', color: '#64748B', marginTop: '2px' }}>{prop.bedrooms ? `${prop.bedrooms} BHK ${prop.category}` : prop.propertySubtype || prop.category}</div>
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: '#0F172A', fontSize: '0.85rem' }}>
+                            <FaMapMarkerAlt style={{ color: '#64748B', fontSize: '0.78rem' }} /> {prop.area}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px', paddingLeft: '18px' }}>{prop.city}, {prop.state}</div>
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          {assignedBroker ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4F46E5', fontWeight: 700, fontSize: '0.78rem' }}>
+                                {assignedBroker.companyName?.substring(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 600, color: '#0F172A', fontSize: '0.85rem' }}>{assignedBroker.companyName}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                                  <span style={{ fontSize: '0.72rem', color: '#F59E0B', fontWeight: 600 }}>⭐ {assignedBroker.rating} (124)</span>
+                                  {assignedBroker.premiumPartner && (
+                                    <span style={{ padding: '1px 6px', backgroundColor: '#EEF2FF', color: '#4F46E5', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700 }}>Premium</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ color: '#94A3B8', fontSize: '0.82rem' }}>Independent / Unassigned</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.9rem' }}>{prop.priceDisplay}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>{prop.negotiable ? 'Negotiable' : 'Non-Negotiable'}</div>
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          <span style={{
+                            padding: '4px 10px',
+                            borderRadius: '8px',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            display: 'inline-block',
+                            backgroundColor: 
+                              (prop.approvalStatus === 'Published' || prop.listingStatus === 'Published') ? '#DCFCE7' :
+                              (prop.approvalStatus === 'Pending Approval') ? '#DBEAFE' :
+                              (prop.approvalStatus === 'Sold') ? '#F1F5F9' : '#FEF3C7',
+                            color:
+                              (prop.approvalStatus === 'Published' || prop.listingStatus === 'Published') ? '#166534' :
+                              (prop.approvalStatus === 'Pending Approval') ? '#1E40AF' :
+                              (prop.approvalStatus === 'Sold') ? '#475569' : '#92400E'
+                          }}>
+                            {prop.approvalStatus || prop.listingStatus || 'Published'}
+                          </span>
+                          <div style={{ fontSize: '0.7rem', color: '#94A3B8', marginTop: '4px' }}>2 days ago</div>
+                        </td>
+                        <td style={{ padding: '16px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={() => openEditModal(prop)}
+                              title="Edit Property"
+                              style={{ padding: '6px 10px', backgroundColor: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '0.8rem' }}
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              onClick={() => openDuplicateModal(prop)}
+                              title="Duplicate Listing"
+                              style={{ padding: '6px 10px', backgroundColor: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '0.8rem' }}
+                            >
+                              <FaCopy />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Permanently delete '${prop.title}'?`)) {
+                                  deleteProperty(prop.id);
+                                  showNotification?.("Property deleted.", "warning");
+                                }
+                              }}
+                              title="Delete Property"
+                              style={{ padding: '6px 10px', backgroundColor: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '0.8rem' }}
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+
+            {/* Dynamic Pagination Footer */}
+            {filteredProperties.length > 0 && (
+              <div style={{ padding: '16px 20px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+                <div style={{ fontSize: '0.82rem', color: '#64748B', fontWeight: 500 }}>
+                  Showing {Math.min(1, filteredProperties.length)} to {filteredProperties.length} of {propertiesDb.length} properties
+                </div>
+                {Math.ceil(filteredProperties.length / 10) > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {Array.from({ length: Math.ceil(filteredProperties.length / 10) }, (_, i) => (
+                      <button key={i} style={{ width: '32px', height: '32px', borderRadius: '8px', border: i === 0 ? 'none' : '1px solid #E2E8F0', backgroundColor: i === 0 ? '#ECFDF5' : 'transparent', color: i === 0 ? '#059669' : '#64748B', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>{i + 1}</button>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: '#64748B' }}>
+                  Rows per page:
+                  <select style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', fontSize: '0.82rem', fontWeight: 600, color: '#0F172A', outline: 'none' }}>
+                    <option>10</option>
+                    <option>25</option>
+                    <option>50</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODULE 2: FEATURED & PREMIUM CONTROL HUB ================= */}
+      {activeModuleTab === 'featured' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ backgroundColor: '#FFFBEB', border: '1px solid #F59E0B', padding: '20px', borderRadius: '4px' }}>
+            <h3 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", margin: '0 0 8px 0', color: '#92400E', fontSize: '1.25rem' }}>
+              Featured & Premium Spotlighting Hub
+            </h3>
+            <p style={{ margin: 0, color: '#78350F', fontSize: '0.9rem' }}>
+              Mark listings as **Featured** or **Sponsored** to place them in top homepage carousels and highlight cards with gold badges.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+            {propertiesDb.map(prop => (
+              <div key={prop.id} style={{ backgroundColor: '#FFFFFF', border: (prop.featured || prop.highlightPropertyCard) ? '2px solid #F59E0B' : '1px solid #E2E8F0', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative' }}>
+                {(prop.featured || prop.highlightPropertyCard) && (
+                  <span style={{ position: 'absolute', top: '-12px', right: '16px', backgroundColor: '#F59E0B', color: '#0F172A', fontSize: '0.7rem', fontWeight: 800, padding: '3px 10px', borderRadius: '12px' }}>
+                    ACTIVE SPOTLIGHT
+                  </span>
+                )}
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <img src={prop.image || prop.images?.[0]} alt={prop.title} style={{ width: '100px', height: '80px', objectFit: 'cover', borderRadius: '4px' }} />
+                  <div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E40AF' }}>{prop.id} • {prop.area}</div>
+                    <h4 style={{ margin: '2px 0', fontSize: '1rem', color: '#0F172A' }}>{prop.title}</h4>
+                    <div style={{ fontWeight: 800, color: '#10B981', fontSize: '0.9rem' }}>{prop.priceDisplay}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', backgroundColor: '#F8FAFC', padding: '12px', borderRadius: '4px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B', display: 'block', marginBottom: '4px' }}>FEATURED DURATION</label>
+                    <select
+                      value={prop.featuredDuration || '30 Days'}
+                      onChange={e => updateProperty(prop.id, { featuredDuration: e.target.value })}
+                      style={{ width: '100%', padding: '6px', fontSize: '0.8rem', border: '1px solid #CBD5E1' }}
+                    >
+                      <option value="7 Days">7 Days</option>
+                      <option value="15 Days">15 Days</option>
+                      <option value="30 Days">30 Days</option>
+                      <option value="Permanent">Permanent</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B', display: 'block', marginBottom: '4px' }}>HOMEPAGE PRIORITY</label>
+                    <input
+                      type="number"
+                      value={prop.homepagePriority || 5}
+                      onChange={e => updateProperty(prop.id, { homepagePriority: parseInt(e.target.value) || 5 })}
+                      style={{ width: '100%', padding: '6px', fontSize: '0.8rem', border: '1px solid #CBD5E1' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                  <button
+                    onClick={() => {
+                      const nextVal = !prop.featured;
+                      updateProperty(prop.id, { featured: nextVal, highlightPropertyCard: nextVal, sponsoredListing: nextVal, prioritySearchPlacement: nextVal });
+                      showNotification?.(`Property spotlight ${nextVal ? 'activated' : 'removed'} for ${prop.title}.`, "success");
+                    }}
+                    style={{ flexGrow: 1, padding: '10px', backgroundColor: prop.featured ? '#FEF2F2' : '#F59E0B', color: prop.featured ? '#DC2626' : '#0F172A', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem' }}
+                  >
+                    {prop.featured ? 'REMOVE SPOTLIGHT' : 'ENABLE FEATURED STATUS'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODULE 3: PROPERTY ANALYTICS DASHBOARD ================= */}
+      {activeModuleTab === 'analytics' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div style={{ backgroundColor: '#FFFFFF', padding: '24px', border: '1px solid #E2E8F0' }}>
+              <h4 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", margin: '0 0 16px 0', fontSize: '1.1rem' }}>Category Distribution</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {['Villa', 'Apartment', 'House', 'Plot', 'Commercial'].map(cat => {
+                  const count = propertiesDb.filter(p => p.category === cat).length;
+                  const pct = propertiesDb.length > 0 ? Math.round((count / propertiesDb.length) * 100) : 0;
+                  return (
+                    <div key={cat}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 700, marginBottom: '4px' }}>
+                        <span>{cat}</span>
+                        <span>{count} Listings ({pct}%)</span>
+                      </div>
+                      <div style={{ width: '100%', height: '8px', backgroundColor: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', backgroundColor: '#1E40AF' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: '#FFFFFF', padding: '24px', border: '1px solid #E2E8F0' }}>
+              <h4 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", margin: '0 0 16px 0', fontSize: '1.1rem' }}>Top Selling Cities</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {['Hyderabad', 'Bengaluru', 'Mumbai', 'Delhi NCR', 'Pune'].map(city => {
+                  const count = propertiesDb.filter(p => p.city === city).length;
+                  const pct = propertiesDb.length > 0 ? Math.round((count / propertiesDb.length) * 100) : 0;
+                  return (
+                    <div key={city}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 700, marginBottom: '4px' }}>
+                        <span>{city}</span>
+                        <span>{count} Listings</span>
+                      </div>
+                      <div style={{ width: '100%', height: '8px', backgroundColor: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', backgroundColor: '#10B981' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODULE 4: CATEGORY MASTER ================= */}
+      {activeModuleTab === 'categories' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ backgroundColor: '#FFFFFF', padding: '24px', border: '1px solid #E2E8F0' }}>
+            <h3 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", margin: '0 0 16px 0', fontSize: '1.3rem' }}>
+              Property Category Master & Subtypes
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+              {Object.entries(CATEGORY_SUBTYPES).map(([catName, sublist]) => (
+                <div key={catName} style={{ backgroundColor: '#F8FAFC', padding: '20px', border: '1px solid #CBD5E1' }}>
+                  <h4 style={{ margin: '0 0 12px 0', color: '#1E40AF', fontSize: '1.1rem' }}>{catName}</h4>
+                  <ul style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {sublist.map(sub => (
+                      <li key={sub} style={{ fontSize: '0.9rem', color: '#334155', fontWeight: 600 }}>{sub}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODULE 5: LOCATION MASTER HIERARCHY ================= */}
+      {activeModuleTab === 'locations' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ backgroundColor: '#FFFFFF', padding: '24px', border: '1px solid #E2E8F0' }}>
+            <h3 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", margin: '0 0 16px 0', fontSize: '1.3rem' }}>
+              Location Hierarchy Master (State → District → City → Area)
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '6px' }}>1. STATE / REGION</label>
+                <input
+                  type="text"
+                  value={selectedHierarchyState}
+                  onChange={e => setSelectedHierarchyState(e.target.value)}
+                  placeholder="e.g. Andhra Pradesh, Telangana..."
+                  style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', fontWeight: 700, borderRadius: '8px' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '6px' }}>2. DISTRICT / REGION</label>
+                <input
+                  type="text"
+                  value={selectedHierarchyDistrict}
+                  onChange={e => setSelectedHierarchyDistrict(e.target.value)}
+                  placeholder="e.g. Guntur, Hyderabad District..."
+                  style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', fontWeight: 700, borderRadius: '8px' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '6px' }}>3. CITY</label>
+                <input
+                  type="text"
+                  value={selectedHierarchyCity}
+                  onChange={e => setSelectedHierarchyCity(e.target.value)}
+                  placeholder="e.g. Guntur, Vijayawada, Hyderabad..."
+                  style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', fontWeight: 700, borderRadius: '8px' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: '#F8FAFC', padding: '20px', border: '1px solid #CBD5E1' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <span style={{ fontWeight: 800, color: '#0F172A' }}>Registered Areas in {selectedHierarchyCity}:</span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Add new locality / area..."
+                    value={customAreaInput}
+                    onChange={e => setCustomAreaInput(e.target.value)}
+                    style={{ padding: '8px 12px', border: '1px solid #CBD5E1', fontSize: '0.85rem' }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (customAreaInput.trim()) {
+                        setHierarchyAreas([...hierarchyAreas, customAreaInput.trim()]);
+                        setCustomAreaInput('');
+                        showNotification?.("Added new locality to master.", "success");
+                      }
+                    }}
+                    style={{ padding: '8px 16px', backgroundColor: '#1E40AF', color: '#FFF', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    + Add Area
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                {hierarchyAreas.map(area => (
+                  <span key={area} style={{ padding: '8px 16px', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E40AF', fontWeight: 700, fontSize: '0.88rem', borderRadius: '20px' }}>
+                    {area}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODULE 6: REPORTS & EXPORTS ================= */}
+      {activeModuleTab === 'reports' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ backgroundColor: '#FFFFFF', padding: '30px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
+            <FaFileExport style={{ fontSize: '3rem', color: '#1E40AF', marginBottom: '12px' }} />
+            <h3 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", margin: '0 0 8px 0' }}>Export Complete Property Reports</h3>
+            <p style={{ color: '#64748B', maxWidth: '600px', margin: '0 auto 20px auto' }}>Download real-time datasets including broker allocations, sales conversions, and specifications in formatted Excel or CSV files.</p>
+            <button onClick={exportToCSV} style={{ padding: '14px 32px', backgroundColor: '#1E40AF', color: '#FFF', border: 'none', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" }}>
+              DOWNLOAD MASTER EXCEL / CSV
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ================= ULTRA-MODERN STEP-BY-STEP PROPERTY MODAL (MATCHING SCREENSHOT) ================= */}
+      {isModalOpen && (
+        <div data-lenis-prevent="true" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(15, 23, 42, 0.82)', backdropFilter: 'blur(6px)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px' }}>
+          <div style={{ backgroundColor: '#F8FAFC', width: '100%', maxWidth: '1280px', maxHeight: '92vh', display: 'flex', flexDirection: 'column', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)', border: '1px solid #E2E8F0' }}>
+            
+            {/* Modal Header */}
+            <div style={{ backgroundColor: '#1E3A8A', color: '#FFFFFF', padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '46px', height: '46px', borderRadius: '14px', backgroundColor: 'rgba(255, 255, 255, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', color: '#FFFFFF', flexShrink: 0 }}>
+                  <FaBuilding />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <h3 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", margin: 0, fontSize: '1.45rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+                      {modalMode === 'add' ? 'Add New Property' : modalMode === 'edit' ? 'Edit Property' : 'Duplicate Property'}
+                    </h3>
+                    <span style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', padding: '4px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.5px' }}>
+                      {formData.id || 'P-NEW'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', color: '#FFFFFF', fontSize: '1.6rem', cursor: 'pointer', transition: 'opacity 0.2s', padding: '4px' }} title="Close">×</button>
+            </div>
+
+            {/* Horizontal Stepper Bar */}
+            <div style={{ backgroundColor: '#FFFFFF', padding: '20px 36px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, overflowX: 'auto' }}>
+              {[
+                { id: 'location', num: 1, label: 'Location', sub: 'Set property location' },
+                { id: 'basic', num: 2, label: 'Basic Details', sub: 'Add property info' },
+                { id: 'specs', num: 3, label: 'Specifications', sub: 'Property features' },
+                { id: 'pricing', num: 4, label: 'Pricing', sub: 'Price & availability' },
+                { id: 'media', num: 5, label: 'Media', sub: 'Photos & videos' },
+                { id: 'review', num: 6, label: 'Review', sub: 'Review & publish' }
+              ].map((step, idx, arr) => {
+                const isActive = modalSubTab === step.id;
+                const isCompleted = arr.findIndex(x => x.id === modalSubTab) > idx;
+                return (
+                  <React.Fragment key={step.id}>
+                    <button
+                      type="button"
+                      onClick={() => setModalSubTab(step.id as any)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}
+                    >
+                      <div style={{
+                        width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.95rem',
+                        backgroundColor: isActive ? '#2563EB' : isCompleted ? '#10B981' : '#F1F5F9',
+                        color: isActive || isCompleted ? '#FFFFFF' : '#64748B',
+                        boxShadow: isActive ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none',
+                        transition: 'all 0.2s'
+                      }}>
+                        {isCompleted ? <FaCheck style={{ fontSize: '0.85rem' }} /> : step.num}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                        <span style={{ fontWeight: 800, fontSize: '0.92rem', color: isActive ? '#1E3A8A' : isCompleted ? '#0F172A' : '#475569' }}>{step.label}</span>
+                        <span style={{ fontWeight: 500, fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>{step.sub}</span>
+                      </div>
+                    </button>
+                    {idx < arr.length - 1 && (
+                      <div style={{ flexGrow: 1, height: '1.5px', backgroundColor: isCompleted ? '#10B981' : '#E2E8F0', minWidth: '24px', margin: '0 16px', transition: 'background 0.2s' }} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            {/* Modal Body Container */}
+            <form onSubmit={handleSaveProperty} style={{ padding: '28px 36px', overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+              
+              {/* STEP 1: LOCATION (EXACT SCREENSHOT MATCH) */}
+              {modalSubTab === 'location' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(0, 1fr)', gap: '24px', alignItems: 'stretch' }}>
+                    
+                    {/* Left Column: Property Location */}
+                    <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>1. Property Location</h4>
+                        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 20px 0' }}>Search and select the exact location of your property</p>
+
+                        {/* Search Bar Row */}
+                        <div style={{ position: 'relative' }}>
+                          <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '8px' }}>Search Property Address</label>
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            <div style={{ flexGrow: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
+                              <FaMapMarkerAlt style={{ position: 'absolute', left: '16px', color: '#2563EB', fontSize: '1.1rem' }} />
+                              <input
+                                type="text"
+                                value={addressSearchQuery || formData.formatted_address || formData.fullAddress || ''}
+                                onChange={e => {
+                                  setAddressSearchQuery(e.target.value);
+                                  setShowLocationSuggestions(true);
+                                }}
+                                onFocus={() => setShowLocationSuggestions(true)}
+                                placeholder="Plot 45, HITEC City Phase 2, Hyderabad, Telangana 500081, India"
+                                style={{ width: '100%', padding: '12px 40px 12px 44px', border: '1.5px solid #2563EB', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, color: '#0F172A', outline: 'none', boxShadow: '0 2px 8px rgba(37, 99, 235, 0.08)', boxSizing: 'border-box' }}
+                              />
+                              {(addressSearchQuery || formData.formatted_address) && (
+                                <button type="button" onClick={() => { setAddressSearchQuery(''); setFormData({ ...formData, formatted_address: '', fullAddress: '' }); }} style={{ position: 'absolute', right: '14px', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '1.1rem', padding: '2px' }}>×</button>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleAdminDetectGPS}
+                              disabled={isAdminDetectingGPS}
+                              style={{ padding: '12px 22px', backgroundColor: '#2563EB', color: '#FFFFFF', border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)', transition: 'background 0.2s' }}
+                            >
+                              <FaCrosshairs /> {isAdminDetectingGPS ? 'Detecting...' : 'Detect My Location'}
+                            </button>
+                          </div>
+
+                          {/* Autocomplete Suggestions Dropdown */}
+                          {showLocationSuggestions && (
+                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', marginTop: '8px', maxHeight: '280px', overflowY: 'auto' }}>
+                              {isSearchingLive && (
+                                <div style={{ padding: '12px 16px', color: '#3B82F6', fontWeight: 600, fontSize: '0.85rem', backgroundColor: '#EFF6FF' }}>
+                                  Searching live location data...
+                                </div>
+                              )}
+                              {liveSuggestions.map((place, idx) => (
+                                <div
+                                  key={idx}
+                                  onClick={() => handleSelectGooglePlace(place)}
+                                  style={{ padding: '12px 16px', borderBottom: '1px solid #F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '12px', transition: 'background 0.2s' }}
+                                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FFFFFF'}
+                                >
+                                  <FaMapMarkerAlt style={{ color: '#EF4444', marginTop: '3px', flexShrink: 0 }} />
+                                  <div>
+                                    <div style={{ fontWeight: 700, color: '#1E293B', fontSize: '0.9rem' }}>{place.area}, {place.city}</div>
+                                    <div style={{ fontSize: '0.8rem', color: '#64748B' }}>{place.formatted_address}</div>
+                                  </div>
+                                </div>
+                              ))}
+                              {addressSearchQuery && (
+                                <div
+                                  onClick={async () => {
+                                    setIsSearchingLive(true);
+                                    const customPlace = await geocodeLocationOnline(addressSearchQuery);
+                                    setIsSearchingLive(false);
+                                    handleSelectGooglePlace(customPlace);
+                                  }}
+                                  style={{ padding: '12px 16px', backgroundColor: '#EFF6FF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 600, color: '#1E40AF', fontSize: '0.85rem' }}
+                                >
+                                  <FaMapMarkerAlt /> Use "{addressSearchQuery}" (Auto-Geocode via Live GPS Engine)
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Success Banner */}
+                        <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px', padding: '14px 18px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '10px', color: '#16A34A', fontWeight: 700, fontSize: '0.88rem' }}>
+                          <FaCheckCircle style={{ fontSize: '1.1rem', flexShrink: 0 }} />
+                          <span>Location verified successfully from Google Maps</span>
+                        </div>
+
+                        {/* Verified Location Details Section */}
+                        <h5 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1E3A8A', margin: '24px 0 14px 0' }}>Verified Location Details</h5>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                          <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                            <FaGlobe style={{ fontSize: '1.1rem', color: '#64748B', marginTop: '2px', flexShrink: 0 }} />
+                            <div>
+                              <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700 }}>Country</div>
+                              <div style={{ fontSize: '0.92rem', color: '#0F172A', fontWeight: 800, marginTop: '2px' }}>{formData.country || 'India'}</div>
+                            </div>
+                          </div>
+                          <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                            <FaMap style={{ fontSize: '1.1rem', color: '#64748B', marginTop: '2px', flexShrink: 0 }} />
+                            <div>
+                              <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700 }}>State</div>
+                              <div style={{ fontSize: '0.92rem', color: '#0F172A', fontWeight: 800, marginTop: '2px' }}>{formData.state || 'Telangana'}</div>
+                            </div>
+                          </div>
+                          <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                            <FaMapMarkerAlt style={{ fontSize: '1.1rem', color: '#64748B', marginTop: '2px', flexShrink: 0 }} />
+                            <div>
+                              <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700 }}>District</div>
+                              <div style={{ fontSize: '0.92rem', color: '#0F172A', fontWeight: 800, marginTop: '2px' }}>{formData.district || 'Hyderabad'}</div>
+                            </div>
+                          </div>
+                          <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                            <FaCity style={{ fontSize: '1.1rem', color: '#64748B', marginTop: '2px', flexShrink: 0 }} />
+                            <div>
+                              <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700 }}>City</div>
+                              <div style={{ fontSize: '0.92rem', color: '#0F172A', fontWeight: 800, marginTop: '2px' }}>{formData.city || 'Hyderabad'}</div>
+                            </div>
+                          </div>
+                          <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                            <FaCompass style={{ fontSize: '1.1rem', color: '#64748B', marginTop: '2px', flexShrink: 0 }} />
+                            <div>
+                              <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700 }}>Area / Locality</div>
+                              <div style={{ fontSize: '0.92rem', color: '#0F172A', fontWeight: 800, marginTop: '2px' }}>{formData.area || 'Jubilee Hills'}</div>
+                            </div>
+                          </div>
+                          <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                            <FaEnvelope style={{ fontSize: '1.1rem', color: '#64748B', marginTop: '2px', flexShrink: 0 }} />
+                            <div>
+                              <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700 }}>Postal Code</div>
+                              <div style={{ fontSize: '0.92rem', color: '#0F172A', fontWeight: 800, marginTop: '2px' }}>{formData.postal_code || formData.pincode || '500033'}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Coordinates & Place ID Row */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '12px' }}>
+                          <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <FaCrosshairs style={{ color: '#059669', fontSize: '1rem', flexShrink: 0 }} />
+                            <div>
+                              <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 700 }}>Latitude</div>
+                              <div style={{ fontSize: '0.88rem', color: '#059669', fontWeight: 800 }}>{formData.latitude?.toFixed(6) || '17.447400'}</div>
+                            </div>
+                          </div>
+                          <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <FaCompass style={{ color: '#059669', fontSize: '1rem', flexShrink: 0 }} />
+                            <div>
+                              <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 700 }}>Longitude</div>
+                              <div style={{ fontSize: '0.88rem', color: '#059669', fontWeight: 800 }}>{formData.longitude?.toFixed(6) || '78.376200'}</div>
+                            </div>
+                          </div>
+                          <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <FaList style={{ color: '#2563EB', fontSize: '1rem', flexShrink: 0 }} />
+                            <div style={{ overflow: 'hidden' }}>
+                              <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 700 }}>Google Place ID</div>
+                              <div style={{ fontSize: '0.82rem', color: '#2563EB', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formData.google_place_id || 'ChIJ_hitec_hyd_7'}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Full Formatted Address Box */}
+                      <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px 18px', marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Full Formatted Address</span>
+                          <span style={{ fontSize: '0.88rem', color: '#0F172A', fontWeight: 700 }}>{formData.formatted_address || formData.fullAddress || 'Plot 45, HITEC City Phase 2, Hyderabad, Telangana 500081, India'}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(formData.formatted_address || formData.fullAddress || 'Plot 45, HITEC City Phase 2, Hyderabad');
+                            showNotification?.('Address copied to clipboard!', 'success');
+                          }}
+                          style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '1.2rem', padding: '4px', display: 'flex', alignItems: 'center' }}
+                          title="Copy Address"
+                        >
+                          <FaCopy />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Location Preview */}
+                    <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>Location Preview</h4>
+                            <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 0 0' }}>Drag the marker to fine-tune the exact location</p>
+                          </div>
+                          <a
+                            href={`https://maps.google.com/?q=${mapMarkerPos.lat},${mapMarkerPos.lng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ padding: '8px 16px', backgroundColor: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE', borderRadius: '8px', fontWeight: 700, fontSize: '0.82rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}
+                          >
+                            Open in Google Maps <FaExternalLinkAlt style={{ fontSize: '0.75rem' }} />
+                          </a>
+                        </div>
+
+                        {/* Interactive Map Preview Box */}
+                        <div style={{ marginTop: '20px', borderRadius: '16px', overflow: 'hidden', border: '1px solid #E2E8F0', height: '380px', position: 'relative', backgroundColor: '#F1F5F9', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundImage: 'radial-gradient(#CBD5E1 1.5px, transparent 1.5px)', backgroundSize: '24px 24px' }}>
+                          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.15, background: 'linear-gradient(45deg, #3B82F6 25%, transparent 25%), linear-gradient(-45deg, #3B82F6 25%, transparent 25%)', backgroundSize: '60px 60px' }} />
+                          
+                          {/* Radius Circle Overlay */}
+                          <div style={{ position: 'absolute', width: `${Math.min((formData.service_radius || 10) * 14, 320)}px`, height: `${Math.min((formData.service_radius || 10) * 14, 320)}px`, borderRadius: '50%', backgroundColor: 'rgba(59, 130, 246, 0.15)', border: '2px dashed #3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#1D4ED8', fontWeight: 700, backgroundColor: 'rgba(255,255,255,0.9)', padding: '4px 10px', borderRadius: '12px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
+                              {formData.city || 'Hyderabad'} ({formData.service_radius || 10} KM Radius)
+                            </span>
+                          </div>
+
+                          {/* Draggable Marker Pin */}
+                          <div style={{ zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'grab', transform: 'translateY(-15px)' }}>
+                            <div style={{ backgroundColor: '#2563EB', color: '#FFF', padding: '6px 14px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 700, boxShadow: '0 6px 16px rgba(37, 99, 235, 0.4)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <FaMapMarkerAlt /> {formData.area || 'Jubilee Hills'} ({mapMarkerPos.lat.toFixed(3)}, {mapMarkerPos.lng.toFixed(3)})
+                            </div>
+                            <div style={{ width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: '10px solid #2563EB' }} />
+                          </div>
+
+                          {/* Map Controls & Nudge Buttons */}
+                          <div style={{ position: 'absolute', bottom: '14px', left: '14px', right: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.95)', padding: '8px 14px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #E2E8F0' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Fine-tune Marker GPS:</span>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button type="button" onClick={() => handleMarkerDrag(mapMarkerPos.lat + 0.002, mapMarkerPos.lng)} style={{ padding: '6px 12px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#1E293B' }}>↑ N</button>
+                              <button type="button" onClick={() => handleMarkerDrag(mapMarkerPos.lat - 0.002, mapMarkerPos.lng)} style={{ padding: '6px 12px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#1E293B' }}>↓ S</button>
+                              <button type="button" onClick={() => handleMarkerDrag(mapMarkerPos.lat, mapMarkerPos.lng - 0.002)} style={{ padding: '6px 12px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#1E293B' }}>← W</button>
+                              <button type="button" onClick={() => handleMarkerDrag(mapMarkerPos.lat, mapMarkerPos.lng + 0.002)} style={{ padding: '6px 12px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#1E293B' }}>→ E</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tip Box */}
+                      <div style={{ backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '12px', padding: '14px 18px', marginTop: '20px', display: 'flex', alignItems: 'center', gap: '12px', color: '#1E40AF', fontSize: '0.88rem', fontWeight: 600 }}>
+                        <FaLightbulb style={{ color: '#2563EB', fontSize: '1.2rem', flexShrink: 0 }} />
+                        <span>Tip: Drag the marker to adjust the exact location if needed.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Full-Width Card: Search Radius (Optional) */}
+                  <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>Search Radius (Optional)</h4>
+                        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 0 0' }}>Set the service or visibility radius for this property</p>
+                      </div>
+                      <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <FaLayerGroup style={{ color: '#2563EB', fontSize: '1.5rem', flexShrink: 0 }} />
+                        <div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Selected Radius</div>
+                          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>{formData.service_radius || 10} KM</div>
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#64748B', maxWidth: '260px', lineHeight: 1.4, borderLeft: '1px solid #E2E8F0', paddingLeft: '16px' }}>
+                          Properties within this radius will be considered for search and listing.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Slider Control */}
+                    <input
+                      type="range"
+                      min="1"
+                      max="100"
+                      value={formData.service_radius || 10}
+                      onChange={e => setFormData({ ...formData, service_radius: Number(e.target.value) })}
+                      style={{ width: '100%', marginTop: '24px', accentColor: '#2563EB', height: '6px', cursor: 'pointer' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: 700, color: '#64748B', marginTop: '10px' }}>
+                      <span>1 KM</span>
+                      <span>5 KM</span>
+                      <span style={{ color: '#2563EB', fontWeight: 800 }}>10 KM</span>
+                      <span>20 KM</span>
+                      <span>50 KM</span>
+                      <span>100 KM</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: BASIC DETAILS */}
+              {modalSubTab === 'basic' && (
+                <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                  <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0, borderBottom: '1px solid #F1F5F9', paddingBottom: '16px' }}>2. Basic Property Information</h4>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PROPERTY ID (AUTO)</label>
+                      <input type="text" value={formData.id} readOnly style={{ width: '100%', padding: '14px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '12px', fontWeight: 700, color: '#64748B' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PROPERTY TITLE *</label>
+                      <input type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Ultra Luxury Sky Villa with Private Pool in Jubilee Hills" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }} required />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PURPOSE</label>
+                      <select value={formData.propertyPurpose || 'Sale'} onChange={e => setFormData({ ...formData, propertyPurpose: e.target.value as any, status: e.target.value === 'Sale' ? 'Buy' : 'Rent' })} style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600, backgroundColor: '#FFFFFF' }}>
+                        <option value="Sale">Sale (Buy)</option>
+                        <option value="Rent">Rent</option>
+                        <option value="Lease">Long-term Lease</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>MAJOR CATEGORY</label>
+                      <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value as any })} style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600, backgroundColor: '#FFFFFF' }}>
+                        <option value="Villa">Villa</option>
+                        <option value="Apartment">Apartment</option>
+                        <option value="House">Individual House</option>
+                        <option value="Plot">Land / Plot</option>
+                        <option value="Commercial">Commercial</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>APPROVAL PIPELINE</label>
+                      <select value={formData.approvalStatus || 'Published'} onChange={e => setFormData({ ...formData, approvalStatus: e.target.value as any, listingStatus: e.target.value as any })} style={{ width: '100%', padding: '14px', border: '1.5px solid #2563EB', borderRadius: '12px', fontWeight: 700, color: '#1E40AF', backgroundColor: '#FFFFFF' }}>
+                        <option value="Published">Published Immediately</option>
+                        <option value="Pending Approval">Pending Approval</option>
+                        <option value="Draft">Save as Draft</option>
+                        <option value="Sold">Mark as Sold</option>
+                        <option value="Reserved">Mark as Reserved</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>DETAILED PROPERTY DESCRIPTION</label>
+                    <textarea rows={5} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Provide a rich, compelling overview of the property architecture, views, surroundings, and exclusive features..." style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', lineHeight: 1.6, outline: 'none' }} />
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: SPECIFICATIONS & AMENITIES */}
+              {modalSubTab === 'specs' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                    <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: '0 0 20px 0', borderBottom: '1px solid #F1F5F9', paddingBottom: '16px' }}>3. Technical Specifications & Dimensions</h4>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>SUPER BUILT-UP AREA</label>
+                        <input type="text" value={formData.superBuiltUpArea || formData.areaSqFt} onChange={e => setFormData({ ...formData, superBuiltUpArea: e.target.value, areaSqFt: e.target.value })} placeholder="e.g. 4,500 Sq.Ft" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600 }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>CARPET AREA</label>
+                        <input type="text" value={formData.carpetArea} onChange={e => setFormData({ ...formData, carpetArea: e.target.value })} placeholder="e.g. 3,800 Sq.Ft" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600 }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>BEDROOMS (BHK)</label>
+                        <input type="number" value={formData.bedrooms || 3} onChange={e => setFormData({ ...formData, bedrooms: parseInt(e.target.value) || 3 })} style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600 }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>BATHROOMS</label>
+                        <input type="number" value={formData.bathrooms || 3} onChange={e => setFormData({ ...formData, bathrooms: parseInt(e.target.value) || 3 })} style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600 }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PARKING SLOTS</label>
+                        <input type="number" value={formData.parkingSlots || 2} onChange={e => setFormData({ ...formData, parkingSlots: parseInt(e.target.value) || 2 })} style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600 }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>OWNERSHIP TYPE</label>
+                        <select value={formData.ownershipType || 'Freehold'} onChange={e => setFormData({ ...formData, ownershipType: e.target.value })} style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600, backgroundColor: '#FFFFFF' }}>
+                          <option value="Freehold">Freehold</option>
+                          <option value="Leasehold">Leasehold</option>
+                          <option value="Co-operative Society">Co-operative Society</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>FACING DIRECTION</label>
+                        <select value={formData.facing || 'East'} onChange={e => setFormData({ ...formData, facing: e.target.value })} style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600, backgroundColor: '#FFFFFF' }}>
+                          <option value="East">East Facing</option>
+                          <option value="North-East">North-East Facing</option>
+                          <option value="North">North Facing</option>
+                          <option value="West">West Facing</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Amenities Section */}
+                  <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                    <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: '0 0 16px 0' }}>Available Amenities & Features</h4>
+                    <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '0 0 20px 0' }}>Select all amenities available in this property project</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+                      {ALL_AMENITIES.map(am => {
+                        const isChecked = formData.amenities?.includes(am);
+                        return (
+                          <label key={am} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', backgroundColor: isChecked ? '#EFF6FF' : '#F8FAFC', border: isChecked ? '1.5px solid #2563EB' : '1px solid #E2E8F0', cursor: 'pointer', borderRadius: '12px', fontWeight: 700, color: isChecked ? '#1E40AF' : '#334155', transition: 'all 0.2s' }}>
+                            <input
+                              type="checkbox"
+                              checked={!!isChecked}
+                              onChange={e => {
+                                const curr = formData.amenities || [];
+                                if (e.target.checked) setFormData({ ...formData, amenities: [...curr, am] });
+                                else setFormData({ ...formData, amenities: curr.filter(x => x !== am) });
+                              }}
+                              style={{ width: '18px', height: '18px', accentColor: '#2563EB' }}
+                            />
+                            {am}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4: PRICING */}
+              {modalSubTab === 'pricing' && (
+                <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0, borderBottom: '1px solid #F1F5F9', paddingBottom: '16px' }}>4. Price & Financial Terms</h4>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PRICE NUMERIC (IN CRORES ₹) *</label>
+                      <input type="number" step="0.01" value={formData.price} onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} placeholder="3.50" style={{ width: '100%', padding: '14px', border: '1.5px solid #2563EB', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 800, color: '#1E40AF' }} required />
+                      <span style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px', display: 'block' }}>Enter the numerical crore value (e.g., 3.50 for ₹3.5 Crore)</span>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PRICE DISPLAY LABEL</label>
+                      <input type="text" value={formData.priceDisplay} onChange={e => setFormData({ ...formData, priceDisplay: e.target.value })} placeholder="e.g. ₹3.50 Crore (Negotiable)" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }} />
+                      <span style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px', display: 'block' }}>Formatted price string shown to users on listing cards</span>
+                    </div>
+                  </div>
+
+                  <div style={{ backgroundColor: '#F8FAFC', padding: '20px', borderRadius: '14px', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <FaMoneyBillWave style={{ fontSize: '2rem', color: '#10B981', flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '1rem' }}>Transparent Valuation Guarantee</div>
+                      <div style={{ color: '#64748B', fontSize: '0.85rem', marginTop: '4px' }}>All property prices on TheNexOop are verified directly with sellers/builders with zero hidden markups.</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 5: MEDIA & PHOTOS (EXACTLY 3 PICTURES + VIRTUAL TOUR) */}
+              {modalSubTab === 'media' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', paddingBottom: '16px', marginBottom: '24px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>5. Media Gallery (Exactly 3 Showcase Pictures)</h4>
+                        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 0 0' }}>Standardized 3-picture layout for clean, professional presentation</p>
+                      </div>
+                      <span style={{ padding: '6px 14px', backgroundColor: '#EFF6FF', color: '#2563EB', borderRadius: '20px', fontWeight: 700, fontSize: '0.8rem' }}>3 / 3 Photos Active</span>
+                    </div>
+
+                    {/* 3 Picture Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                      {[0, 1, 2].map(idx => {
+                        const imgUrl = idx === 0 ? formData.image : idx === 1 ? formData.image2 : formData.image3;
+                        const defaultImg = idx === 0 
+                          ? 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80'
+                          : idx === 1 
+                          ? 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'
+                          : 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80';
+                        const currentVal = imgUrl || defaultImg;
+
+                        return (
+                          <div key={idx} style={{ backgroundColor: '#F8FAFC', border: '1.5px solid #CBD5E1', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: idx === 0 ? '#2563EB' : '#334155' }}>
+                                {idx === 0 ? '★ COVER HERO IMAGE' : `SHOWCASE SLIDE #${idx + 1}`}
+                              </span>
+                              <FaCamera style={{ color: '#64748B' }} />
+                            </div>
+
+                            <div style={{ width: '100%', height: '180px', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#E2E8F0', position: 'relative' }}>
+                              <img src={currentVal} alt={`Slide ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+
+                            <div>
+                              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B', display: 'block', marginBottom: '4px' }}>IMAGE URL / FILE</label>
+                              <input
+                                type="text"
+                                value={currentVal}
+                                onChange={e => {
+                                  if (idx === 0) setFormData({ ...formData, image: e.target.value });
+                                  else if (idx === 1) setFormData({ ...formData, image2: e.target.value });
+                                  else setFormData({ ...formData, image3: e.target.value });
+                                }}
+                                placeholder="https://..."
+                                style={{ width: '100%', padding: '10px', border: '1px solid #CBD5E1', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 600 }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 360 Virtual Tour Box */}
+                  <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                    <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: '0 0 8px 0' }}>360° Virtual Tour & Video Walkthrough</h4>
+                    <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '0 0 20px 0' }}>Embed Matterport 3D tours or YouTube walkthrough links for immersive client exploration</p>
+                    <input
+                      type="text"
+                      value={formData.virtualTourUrl || ''}
+                      onChange={e => setFormData({ ...formData, virtualTourUrl: e.target.value })}
+                      placeholder="https://my.matterport.com/show/?m=... or https://youtube.com/watch?v=..."
+                      style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600 }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 6: REVIEW & PUBLISH */}
+              {modalSubTab === 'review' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  
+                  {/* Assigned Broker Section */}
+                  <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                    <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <FaUserTie /> Assign Verified Broker Partner
+                    </h4>
+                    <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '0 0 20px 0' }}>Select the authorized realty advisor responsible for client inquiries and site visits</p>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                      {dealersDb.map(broker => {
+                        const isAssigned = formData.assignedBrokerIds?.includes(broker.id) || formData.dealerId === broker.id;
+                        return (
+                          <div
+                            key={broker.id}
+                            onClick={() => {
+                              const curr = formData.assignedBrokerIds || [];
+                              if (isAssigned) {
+                                setFormData({ ...formData, assignedBrokerIds: curr.filter(id => id !== broker.id) });
+                              } else {
+                                setFormData({ ...formData, assignedBrokerIds: [...curr, broker.id], dealerId: broker.id });
+                              }
+                            }}
+                            style={{ padding: '16px 20px', backgroundColor: isAssigned ? '#EFF6FF' : '#F8FAFC', border: isAssigned ? '2px solid #2563EB' : '1px solid #E2E8F0', borderRadius: '16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s', boxShadow: isAssigned ? '0 4px 12px rgba(37, 99, 235, 0.15)' : 'none' }}
+                          >
+                            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                              <img src={broker.photo || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=100&q=80'} alt={broker.companyName} style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
+                              <div>
+                                <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.95rem' }}>{broker.companyName}</div>
+                                <div style={{ fontSize: '0.8rem', color: '#64748B' }}>{broker.fullName || 'Advisor'} • ⭐ {broker.rating}</div>
+                              </div>
+                            </div>
+                            <div>
+                              {isAssigned ? (
+                                <span style={{ padding: '6px 14px', backgroundColor: '#2563EB', color: '#FFF', fontWeight: 800, fontSize: '0.78rem', borderRadius: '20px' }}>✓ ASSIGNED</span>
+                              ) : (
+                                <span style={{ padding: '6px 14px', backgroundColor: '#E2E8F0', color: '#475569', fontWeight: 700, fontSize: '0.78rem', borderRadius: '20px' }}>SELECT</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* SEO & Summary Section */}
+                  <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>SEO Meta Data & Final Summary</h4>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>SEO TITLE TAG</label>
+                        <input type="text" value={formData.seoTitle || ''} onChange={e => setFormData({ ...formData, seoTitle: e.target.value })} placeholder="Buy 4BHK Sky Villa Jubilee Hills Hyderabad" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600 }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>URL SLUG</label>
+                        <input type="text" value={formData.urlSlug || ''} onChange={e => setFormData({ ...formData, urlSlug: e.target.value })} placeholder="ultra-luxury-sky-villa-jubilee-hills" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600 }} />
+                      </div>
+                    </div>
+
+                    <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <FaCheckCircle style={{ fontSize: '2rem', color: '#16A34A', flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#065F46', fontSize: '1.05rem' }}>Ready to Publish!</div>
+                        <div style={{ color: '#047857', fontSize: '0.88rem', marginTop: '4px' }}>
+                          Your listing "{formData.title || 'New Property'}" in {formData.area || 'Jubilee Hills'}, {formData.city || 'Hyderabad'} is verified and ready to go live on the enterprise marketplace.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </form>
+
+            {/* Modal Footer Bar */}
+            <div style={{ backgroundColor: '#FFFFFF', borderTop: '1px solid #E2E8F0', padding: '18px 36px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                style={{ padding: '12px 28px', backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '12px', fontWeight: 700, fontSize: '0.92rem', color: '#475569', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                Cancel
+              </button>
+              <div style={{ display: 'flex', gap: '14px' }}>
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  style={{ padding: '12px 28px', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '12px', fontWeight: 700, fontSize: '0.92rem', color: '#2563EB', cursor: 'pointer', transition: 'all 0.2s' }}
+                >
+                  Save as Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={e => {
+                    if (modalSubTab === 'location') setModalSubTab('basic');
+                    else if (modalSubTab === 'basic') setModalSubTab('specs');
+                    else if (modalSubTab === 'specs') setModalSubTab('pricing');
+                    else if (modalSubTab === 'pricing') setModalSubTab('media');
+                    else if (modalSubTab === 'media') setModalSubTab('review');
+                    else handleSaveProperty(e as any);
+                  }}
+                  style={{ padding: '12px 32px', backgroundColor: '#2563EB', color: '#FFFFFF', border: 'none', borderRadius: '12px', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)', transition: 'all 0.2s' }}
+                >
+                  {modalSubTab === 'review' ? (
+                    <>✓ Save & Publish</>
+                  ) : (
+                    <>Save & Continue <FaArrowRight style={{ fontSize: '0.8rem' }} /></>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

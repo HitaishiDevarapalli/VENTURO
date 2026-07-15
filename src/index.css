@@ -72,10 +72,11 @@ button, input, select, textarea {
 
 /* Container limits */
 .container {
-  width: 90%;
-  max-width: 1440px;
+  width: 100%;
+  max-width: 1360px;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 24px;
+  box-sizing: border-box;
 }
 
 /* Global Headings */
@@ -257,8 +258,8 @@ p {
   top: 0;
   left: 0;
   width: 100%;
-  z-index: 1000;
-  padding: 1.25rem 0;
+  z-index: 999999 !important;
+  padding: 0;
   transition: var(--transition-smooth);
   background-color: var(--nav-scrolled-bg);
   box-shadow: var(--shadow-soft);
@@ -266,9 +267,11 @@ p {
 }
 
 .navbar-container {
-  width: 90%;
-  max-width: 1440px;
+  width: 100%;
+  max-width: 1360px;
   margin: 0 auto;
+  padding: 0 24px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -407,7 +410,7 @@ p {
   background-color: var(--nav-scrolled-bg);
   box-shadow: var(--shadow-soft);
   border-bottom: 1px solid var(--border-color);
-  padding: 0.9rem 0;
+  padding: 0;
 }
 
 .navbar-scrolled .navbar-logo {
@@ -1366,7 +1369,7 @@ p {
 
 .subpage-header {
   padding: 2rem 0;
-  margin-top: 80px;
+  margin-top: 110px;
   background: var(--bg-main);
 }
 
@@ -3585,7 +3588,7 @@ p {
 .franchise-resales-page {
   min-height: 100vh;
   background-color: var(--bg-main);
-  padding-top: 80px; /* offset for navbar */
+  padding-top: 110px; /* offset for navbar */
 }
 
 .landscape-card {

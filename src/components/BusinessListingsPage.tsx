@@ -4,13 +4,15 @@ import { FaArrowLeft, FaMapMarkerAlt, FaBriefcase, FaChartLine, FaShoppingCart, 
 import { useWishlist } from '../context/WishlistContext';
 
 interface BusinessListingsPageProps {
-  industry: 'Food' | 'Healthcare' | 'Retail & Stores';
+  industry: 'Food' | 'Healthcare' | 'Retail & Stores' | 'All';
   onBack: () => void;
   onPropertyClick?: (id: string) => void;
   onBuyProperty?: (id: string) => void;
+  searchQuery?: string;
+  onClearSearch?: () => void;
 }
 
-export const BusinessListingsPage: React.FC<BusinessListingsPageProps> = ({ industry, onBack, onPropertyClick, onBuyProperty }) => {
+export const BusinessListingsPage: React.FC<BusinessListingsPageProps> = ({ industry, onBack, onPropertyClick, onBuyProperty, searchQuery, onClearSearch }) => {
   const { toggleWishlist, isWishlisted } = useWishlist();
   const [selectedDealer, setSelectedDealer] = useState<any | null>(null);
   const [showSellerPortfolio, setShowSellerPortfolio] = useState<any | null>(null);
@@ -24,6 +26,7 @@ export const BusinessListingsPage: React.FC<BusinessListingsPageProps> = ({ indu
   const getDbIndustryName = () => {
     if (industry === 'Food') return 'Food & Beverage';
     if (industry === 'Healthcare') return 'Healthcare';
+    if (industry === 'All') return 'All';
     return 'Retail / FMCG';
   };
 
@@ -49,7 +52,20 @@ export const BusinessListingsPage: React.FC<BusinessListingsPageProps> = ({ indu
   }, [showSellerPortfolio, selectedDealer]);
 
   const dbIndustry = getDbIndustryName();
-  const filteredListings = businessDb.filter(biz => biz.industry === dbIndustry);
+  const filteredListings = businessDb.filter(biz => {
+    if (dbIndustry !== 'All' && biz.industry !== dbIndustry) {
+      // If active search query is present, check if it matches regardless of industry
+      if (!searchQuery || searchQuery.trim() === '') return false;
+    }
+    if (searchQuery && searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesName = biz.name.toLowerCase().includes(q);
+      const matchesInd = biz.industry.toLowerCase().includes(q);
+      const matchesLoc = biz.location.toLowerCase().includes(q) || biz.city.toLowerCase().includes(q) || biz.state.toLowerCase().includes(q);
+      if (!matchesName && !matchesInd && !matchesLoc) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="franchise-resales-page">
@@ -62,10 +78,10 @@ export const BusinessListingsPage: React.FC<BusinessListingsPageProps> = ({ indu
           <div className="header-content" style={{ textAlign: 'center' }}>
             <span className="section-tag">Acquisition Registry</span>
             <h1 className="page-title">
-              {industry === 'Food' ? 'Food Businesses' : industry === 'Healthcare' ? 'Healthcare Businesses' : 'Retail & Stores'}
+              {industry === 'All' ? 'Business Marketplace' : industry === 'Food' ? 'Food Businesses' : industry === 'Healthcare' ? 'Healthcare Businesses' : 'Retail & Stores'}
             </h1>
             <p className="page-subtitle">
-              Secure investment-ready operational {industry.toLowerCase()} units with verified cashflow.
+              Secure investment-ready operational business units with verified cashflow.
             </p>
           </div>
         </div>
@@ -73,6 +89,18 @@ export const BusinessListingsPage: React.FC<BusinessListingsPageProps> = ({ indu
 
       {/* Directory Content */}
       <div className="container section-padding">
+        {searchQuery && searchQuery.trim() !== '' && (
+          <div style={{ backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', padding: '14px 22px', borderRadius: '12px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+            <span style={{ color: '#1E40AF', fontWeight: 600, fontSize: '0.95rem' }}>
+              🔍 Active Search Results for: <strong>"{searchQuery}"</strong> ({filteredListings.length} listings found)
+            </span>
+            {onClearSearch && (
+              <button onClick={onClearSearch} style={{ backgroundColor: '#1E40AF', color: '#FFFFFF', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>
+                Clear Search ✕
+              </button>
+            )}
+          </div>
+        )}
         <div className="property-feed-list">
           {filteredListings.length === 0 ? (
             <div style={{ textAlign: 'center', width: '100%', padding: '4rem 0' }}>
@@ -209,7 +237,7 @@ export const BusinessListingsPage: React.FC<BusinessListingsPageProps> = ({ indu
                   <button className="btn btn-gold w-100 mt-4" style={{marginTop: '1.5rem', width: '100%'}} onClick={() => alert(`Contacting ${selectedDealer.companyName}...`)}>Contact Seller</button>
                   <div style={{ marginTop: '1rem', textAlign: 'center' }}>
                     <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)', fontSize: '0.9rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
-                      📸 Instagram: @venturo_realty
+                      📸 Instagram: @thenexoop
                     </a>
                   </div>
                 </div>
@@ -323,7 +351,7 @@ export const BusinessListingsPage: React.FC<BusinessListingsPageProps> = ({ indu
                       <span className="info-label">📸 Instagram Profile</span>
                       <span className="info-value">
                         <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>
-                          @venturo_realty
+                          @thenexoop
                         </a>
                       </span>
                     </div>

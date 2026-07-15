@@ -51,7 +51,6 @@ export const ContactUs: React.FC = () => {
                       required 
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      placeholder="e.g. Ananth Kumar" 
                     />
                   </div>
                   <div className="form-group">
@@ -62,7 +61,6 @@ export const ContactUs: React.FC = () => {
                       required 
                       value={formData.phone}
                       onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      placeholder="e.g. +91 98765 43210" 
                     />
                   </div>
                 </div>
@@ -76,7 +74,6 @@ export const ContactUs: React.FC = () => {
                       required 
                       value={formData.email}
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      placeholder="e.g. ananth@example.com" 
                     />
                   </div>
                   <div className="form-group">
@@ -103,7 +100,6 @@ export const ContactUs: React.FC = () => {
                     required
                     value={formData.message}
                     onChange={(e) => setFormData({...formData, message: e.target.value})}
-                    placeholder="Provide details about target locations, budgets, or business industries..."
                   ></textarea>
                 </div>
 

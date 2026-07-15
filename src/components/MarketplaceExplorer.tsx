@@ -1,16 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   dealersDb, 
   propertiesDb, 
   franchiseDb, 
   businessDb, 
   insuranceDb, 
-  servicesDb
+  servicesDb,
+  selectedCity as globalCity,
+  setSelectedCity as setGlobalCity
 } from '../db/marketplaceDb';
+import { searchLivePlaces, geocodeLocationOnline } from '../utils/locationIntelligence';
 import type { 
   Dealer
 } from '../db/marketplaceDb';
-import AdminPanel from './AdminPanel';
 import { 
   FaMapMarkerAlt, 
   FaStar, 
@@ -33,8 +35,7 @@ interface MarketplaceExplorerProps {
 }
 
 export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onPropertyClick, onBuyProperty }) => {
-  // Navigation tabs
-  const [activeMarket, setActiveMarket] = useState<'properties' | 'franchises' | 'businesses' | 'finance' | 'admin'>('properties');
+  const [activeMarket, setActiveMarket] = useState<'properties' | 'franchises' | 'businesses' | 'finance'>('properties');
   
   // Layout Toggle State
   const [viewMode, setViewMode] = useState<'grid' | 'map' | 'split'>('split');
@@ -43,9 +44,69 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
   const [dbTick, setDbTick] = useState(0);
   const triggerRefresh = () => setDbTick(prev => prev + 1);
 
+  useEffect(() => {
+    const handleRefresh = () => triggerRefresh();
+    window.addEventListener('nexopp_data_changed', handleRefresh);
+    return () => window.removeEventListener('nexopp_data_changed', handleRefresh);
+  }, []);
+
   // Filters State
-  const [selectedState, setSelectedState] = useState<string>('Andhra Pradesh');
-  const [selectedCity, setSelectedCity] = useState<string>('Guntur');
+  const [selectedState, setSelectedState] = useState<string>('Telangana');
+  const [selectedCity, setSelectedCity] = useState<string>(globalCity === 'All India' || globalCity === 'All Cities' ? 'Hyderabad' : globalCity);
+
+  useEffect(() => {
+    const handler = () => {
+      const c = localStorage.getItem('nexopp_selected_city') || 'Hyderabad';
+      if (c !== 'All India' && c !== 'All Cities') {
+        setSelectedCity(c);
+      }
+    };
+    window.addEventListener('nexopp_data_changed', handler);
+    return () => window.removeEventListener('nexopp_data_changed', handler);
+  }, []);
+
+  const [expLocQuery, setExpLocQuery] = useState('');
+  const [expSuggestions, setExpSuggestions] = useState<any[]>([]);
+  const [isExpSearching, setIsExpSearching] = useState(false);
+  const [expDetecting, setExpDetecting] = useState(false);
+
+  useEffect(() => {
+    if (!expLocQuery || expLocQuery.trim().length < 2) {
+      setExpSuggestions([]);
+      return;
+    }
+    setIsExpSearching(true);
+    const timer = setTimeout(() => {
+      searchLivePlaces(expLocQuery).then(res => {
+        setExpSuggestions(res);
+        setIsExpSearching(false);
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [expLocQuery]);
+
+  const handleExpDetectGPS = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setExpDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const geo = await geocodeLocationOnline(`${latitude}, ${longitude}`);
+        const newCity = geo.city || geo.area || 'Guntur';
+        setSelectedCity(newCity);
+        setGlobalCity(newCity);
+        setExpDetecting(false);
+      },
+      () => {
+        setExpDetecting(false);
+        alert("Unable to retrieve your location. Please check browser permissions.");
+      }
+    );
+  };
+
   const [selectedArea, setSelectedArea] = useState<string>('All');
   const [selectedType, setSelectedType] = useState<string>('All');
   const [selectedBudget, setSelectedBudget] = useState<number>(300); // Max Lakhs slider
@@ -66,6 +127,16 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
   const [heatmapView, setHeatmapView] = useState(false);
   const [showTraffic, setShowTraffic] = useState(false);
   const [showDealerProfile, setShowDealerProfile] = useState<Dealer | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number }>({ lat: 17.4483, lon: 78.3741 });
+
+  React.useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+        () => console.log("Geolocation denied or unavailable, using default coordinates.")
+      );
+    }
+  }, []);
 
   // Hardcoded coordinate hubs for radius calculations
   const cityCoordinates: { [key: string]: { lat: number; lon: number } } = {
@@ -87,6 +158,12 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
       Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
+  };
+
+  const getCustomerDistance = (lat?: number, lon?: number) => {
+    if (!lat || !lon) return '1.2 km away';
+    const dist = calculateDistance(userLocation.lat, userLocation.lon, lat, lon);
+    return dist < 1 ? `${(dist * 1000).toFixed(0)} m away` : `${dist.toFixed(1)} km away`;
   };
 
   // Helper to resolve dealer detail
@@ -111,11 +188,11 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
 
     return items.filter(item => {
       // Location state/city matching
-      if (item.state !== selectedState) return false;
-      if (item.city !== selectedCity) {
-        // Fallback checks for radius search
-        const dist = calculateDistance(hub.lat, hub.lon, item.latitude, item.longitude);
-        if (dist > selectedRadius) return false;
+      if (selectedCity && selectedCity !== 'All India' && selectedCity !== 'All Cities') {
+        if (item.city !== selectedCity && item.district !== selectedCity && !item.area?.includes(selectedCity)) {
+          const dist = calculateDistance(hub.lat, hub.lon, item.latitude, item.longitude);
+          if (dist > selectedRadius) return false;
+        }
       }
       
       // Area Subcategory
@@ -150,8 +227,9 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     dbTick;
     return franchiseDb.filter(fran => {
-      if (fran.state !== selectedState) return false;
-      if (fran.city !== selectedCity) return false;
+      if (selectedCity && selectedCity !== 'All India' && selectedCity !== 'All Cities') {
+        if (fran.city !== selectedCity && !fran.location?.includes(selectedCity)) return false;
+      }
       if (verifiedOnly && !fran.verified) return false;
       if (topRatedOnly && fran.rating < 4.8) return false;
       return true;
@@ -163,8 +241,9 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     dbTick;
     return businessDb.filter(biz => {
-      if (biz.state !== selectedState) return false;
-      if (biz.city !== selectedCity) return false;
+      if (selectedCity && selectedCity !== 'All India' && selectedCity !== 'All Cities') {
+        if (biz.city !== selectedCity && !biz.location?.includes(selectedCity)) return false;
+      }
       if (verifiedOnly && !biz.verified) return false;
       if (topRatedOnly && biz.rating < 4.8) return false;
       return true;
@@ -231,13 +310,9 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
           <button className={`tab-btn ${activeMarket === 'franchises' ? 'active' : ''}`} onClick={() => setActiveMarket('franchises')}>Franchise Hub</button>
           <button className={`tab-btn ${activeMarket === 'businesses' ? 'active' : ''}`} onClick={() => setActiveMarket('businesses')}>Business Registry</button>
           <button className={`tab-btn ${activeMarket === 'finance' ? 'active' : ''}`} onClick={() => setActiveMarket('finance')}>Finance & Services</button>
-          <button className={`tab-btn tab-admin-btn ${activeMarket === 'admin' ? 'active' : ''}`} onClick={() => setActiveMarket('admin')}>Admin Database Console</button>
         </div>
 
-        {activeMarket === 'admin' ? (
-          <AdminPanel onRefresh={triggerRefresh} />
-        ) : (
-          <div className="explorer-dashboard-grid">
+        <div className="explorer-dashboard-grid">
             {/* Left Column: Advanced Search & Filtering Console */}
             <div className="explorer-filters-card premium-card">
               <div className="filter-header">
@@ -256,31 +331,53 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
                 }}><FaRedo /> Reset</button>
               </div>
 
-              <div className="filter-group">
-                <label>State Region</label>
-                <select value={selectedState} onChange={(e) => {
-                  setSelectedState(e.target.value);
-                  setSelectedCity(e.target.value === 'Telangana' ? 'Hyderabad' : (e.target.value === 'Karnataka' ? 'Bengaluru' : 'Guntur'));
-                }}>
-                  <option value="Andhra Pradesh">Andhra Pradesh</option>
-                  <option value="Telangana">Telangana</option>
-                  <option value="Karnataka">Karnataka</option>
-                </select>
-              </div>
-
-              <div className="filter-group">
-                <label>City Hub</label>
-                <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>
-                  {selectedState === 'Andhra Pradesh' && (
-                    <>
-                      <option value="Guntur">Guntur</option>
-                      <option value="Vijayawada">Vijayawada</option>
-                      <option value="Visakhapatnam">Visakhapatnam</option>
-                    </>
-                  )}
-                  {selectedState === 'Telangana' && <option value="Hyderabad">Hyderabad</option>}
-                  {selectedState === 'Karnataka' && <option value="Bengaluru">Bengaluru</option>}
-                </select>
+              {/* Live Location Picker & GPS (Replaces Manual Selects) */}
+              <div className="filter-group" style={{ position: 'relative' }}>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#0F172A', fontWeight: 700 }}><FaMapMarkerAlt style={{ color: '#10B981' }} /> Target Location</span>
+                  <button
+                    type="button"
+                    onClick={handleExpDetectGPS}
+                    disabled={expDetecting}
+                    style={{ background: 'none', border: 'none', color: '#059669', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <FaCompass /> {expDetecting ? 'Detecting...' : 'Use Live GPS'}
+                  </button>
+                </label>
+                <input
+                  type="text"
+                  value={expLocQuery}
+                  onChange={e => setExpLocQuery(e.target.value)}
+                  placeholder={selectedCity ? `${selectedCity} (Search area or city...)` : "Search city, locality, or road..."}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #CBD5E1', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', outline: 'none' }}
+                />
+                {isExpSearching && (
+                  <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '4px', fontWeight: 600 }}>Searching live places...</div>
+                )}
+                {expSuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, backgroundColor: '#FFF', border: '1px solid #CBD5E1', borderRadius: '8px', boxShadow: '0 10px 20px rgba(0,0,0,0.15)', maxHeight: '200px', overflowY: 'auto', marginTop: '4px' }}>
+                    {expSuggestions.map((sug, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          const c = sug.city || sug.area || sug.formatted_address.split(',')[0];
+                          setSelectedCity(c);
+                          setGlobalCity(c);
+                          setExpSuggestions([]);
+                          setExpLocQuery('');
+                        }}
+                        style={{ padding: '10px 12px', borderBottom: '1px solid #F1F5F9', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', transition: 'background 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#ECFDF5'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FFF'}
+                      >
+                        <FaMapMarkerAlt style={{ color: '#059669', flexShrink: 0 }} />
+                        <div>
+                          <span>{sug.area || sug.city}</span> <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 400 }}>({sug.formatted_address})</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {activeMarket === 'properties' && (
@@ -540,9 +637,9 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
                                   <FaShoppingCart /> Buy
                                 </button>
                                 <div className="card-badges">
-                                  {prop.verified && <span className="badge verified">✔ Verified</span>}
-                                  {prop.premium && <span className="badge premium">💎 Premium</span>}
-                                  {prop.trending && <span className="badge trending">🔥 Trending</span>}
+                                  {prop.verified && <span className="badge verified">Verified</span>}
+                                  {prop.premium && <span className="badge premium">Premium</span>}
+                                  {prop.trending && <span className="badge trending">Trending</span>}
                                 </div>
                                 <span className="availability-badge">Qty: {prop.availabilityCount} available</span>
                               </div>
@@ -558,7 +655,10 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
                                 >
                                   {prop.title}
                                 </h3>
-                                <p className="card-location-text">{prop.area}, {prop.city}</p>
+                                <p className="card-location-text" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                  <span>{prop.area}, {prop.city}</span>
+                                  <span style={{ padding: '2px 8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '600', border: '1px solid rgba(16, 185, 129, 0.3)' }}>Distance: {getCustomerDistance(prop.latitude, prop.longitude)}</span>
+                                </p>
                                 
                                 <div className="card-bottom-flex">
                                   <div className="card-price-block">
@@ -601,8 +701,8 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
                                   <FaShoppingCart /> Buy
                                 </button>
                                 <div className="card-badges">
-                                  {fran.verified && <span className="badge verified">✔ Verified</span>}
-                                  {fran.trending && <span className="badge trending">🔥 Trending</span>}
+                                  {fran.verified && <span className="badge verified">Verified</span>}
+                                  {fran.trending && <span className="badge trending">Trending</span>}
                                 </div>
                               </div>
                               <div className="card-body-wrap">
@@ -611,7 +711,10 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
                                   <span className="card-rating"><FaStar /> {fran.rating} ({fran.reviewCount})</span>
                                 </div>
                                 <h3 className="card-title-text">{fran.brand}</h3>
-                                <p className="card-location-text">{fran.location}</p>
+                                <p className="card-location-text" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                  <span>{fran.location}</span>
+                                  <span style={{ padding: '2px 8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '600', border: '1px solid rgba(16, 185, 129, 0.3)' }}>Distance: {getCustomerDistance(fran.latitude, fran.longitude)}</span>
+                                </p>
                                 
                                 <div className="card-bottom-flex">
                                   <div className="card-price-block">
@@ -649,8 +752,8 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
                                   <FaShoppingCart /> Buy
                                 </button>
                                 <div className="card-badges">
-                                  {biz.verified && <span className="badge verified">✔ Verified</span>}
-                                  {biz.trending && <span className="badge trending">🔥 Trending</span>}
+                                  {biz.verified && <span className="badge verified">Verified</span>}
+                                  {biz.trending && <span className="badge trending">Trending</span>}
                                 </div>
                               </div>
                               <div className="card-body-wrap">
@@ -659,7 +762,10 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
                                   <span className="card-rating"><FaStar /> {biz.rating} ({biz.reviewCount})</span>
                                 </div>
                                 <h3 className="card-title-text">{biz.name}</h3>
-                                <p className="card-location-text">{biz.location}</p>
+                                <p className="card-location-text" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                  <span>{biz.location}</span>
+                                  <span style={{ padding: '2px 8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '600', border: '1px solid rgba(16, 185, 129, 0.3)' }}>Distance: {getCustomerDistance(biz.latitude, biz.longitude)}</span>
+                                </p>
                                 
                                 <div className="card-bottom-flex">
                                   <div className="card-price-block">
@@ -724,7 +830,6 @@ export const MarketplaceExplorer: React.FC<MarketplaceExplorerProps> = ({ onProp
               </div>
             </div>
           </div>
-        )}
       </div>
 
       {/* Dealer Profile Modal Overlay Detail */}

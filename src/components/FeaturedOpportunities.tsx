@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FaHeart, FaRegHeart, FaChevronLeft, FaChevronRight, FaMapMarkerAlt, FaClock, FaArrowRight } from 'react-icons/fa';
 import { useWishlist } from '../context/WishlistContext';
+import { propertiesDb, franchiseDb, selectedCity } from '../db/marketplaceDb';
 
 interface FeaturedItem {
   id: string;
@@ -10,7 +11,7 @@ interface FeaturedItem {
   priceLabel?: string;
   details: string;
   image: string;
-  category: 'PROPERTY' | 'FRANCHISE' | 'FINANCE' | 'INSURANCE';
+  category: 'PROPERTY' | 'FRANCHISE';
   timeAgo: string;
 }
 
@@ -23,78 +24,57 @@ interface FeaturedOpportunitiesProps {
 const categoryColors: Record<string, string> = {
   PROPERTY: '#16A34A',
   FRANCHISE: '#EA580C',
-  FINANCE: '#2563EB',
-  INSURANCE: '#DC2626',
 };
 
 export const FeaturedOpportunities: React.FC<FeaturedOpportunitiesProps> = ({ onPropertyClick, onBuyProperty: _onBuyProperty, onViewAll }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toggleWishlist, isWishlisted } = useWishlist();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [_activeTab, _setActiveTab] = useState<'ALL' | 'PROPERTY' | 'FRANCHISE'>('ALL');
+  const [tick, setTick] = useState(0);
 
-  const items: FeaturedItem[] = [
-    {
-      id: 'P1',
-      title: '3 BHK Luxury Apartment',
-      location: 'Gachibowli, Hyderabad',
-      price: '₹ 1.25 Cr',
-      details: '3 Beds  •  2 Baths  •  1650 sqft',
-      image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=800',
-      category: 'PROPERTY',
-      timeAgo: '2 hours ago',
-    },
-    {
-      id: 'P3',
-      title: "Domino's Pizza Franchise",
-      location: 'Hyderabad, Telangana',
-      price: '₹ 30 - 40 Lakhs',
-      details: 'High Return  •  Full Support',
-      image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=800',
-      category: 'FRANCHISE',
-      timeAgo: '5 hours ago',
-    },
-    {
-      id: 'feat-fin1',
-      title: 'Home Loan',
-      location: 'Interest Starting from',
-      price: '8.40%',
-      priceLabel: 'p.a.',
-      details: 'Get quick approval in 24 hrs',
-      image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=800',
-      category: 'FINANCE',
-      timeAgo: '1 day ago',
-    },
-    {
-      id: 'feat-ins1',
-      title: 'Term Life Insurance',
-      location: 'Coverage up to',
-      price: '₹ 1 Crore',
-      details: 'Plans starting @ ₹ 499/month',
-      image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=800',
-      category: 'INSURANCE',
-      timeAgo: '3 hours ago',
-    },
-    {
-      id: 'P2',
-      title: 'Premium Villa with Pool',
-      location: 'Jubilee Hills, Hyderabad',
-      price: '₹ 2.8 Cr',
-      details: '4 Beds  •  3 Baths  •  3200 sqft',
-      image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=800',
-      category: 'PROPERTY',
-      timeAgo: '6 hours ago',
-    },
-    {
-      id: 'feat-fran2',
-      title: 'Starbucks Franchise',
-      location: 'Bangalore, Karnataka',
-      price: '₹ 50 - 80 Lakhs',
-      details: 'Premium Location  •  High ROI',
-      image: 'https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&q=80&w=800',
-      category: 'FRANCHISE',
-      timeAgo: '1 day ago',
-    },
-  ];
+  useEffect(() => {
+    const handler = () => setTick(t => t + 1);
+    window.addEventListener('nexopp_data_changed', handler);
+    return () => window.removeEventListener('nexopp_data_changed', handler);
+  }, []);
+
+  const items: FeaturedItem[] = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    tick;
+    const matchLoc = (locStr?: string, cityStr?: string) => {
+      if (!selectedCity || selectedCity === 'All India' || selectedCity === 'All Cities') return true;
+      return (locStr?.toLowerCase().includes(selectedCity.toLowerCase()) || cityStr?.toLowerCase().includes(selectedCity.toLowerCase()));
+    };
+
+    const propItems: FeaturedItem[] = propertiesDb
+      .filter(p => matchLoc(`${p.area}, ${p.city}`, p.city))
+      .map(p => ({
+        id: p.id,
+        title: p.title,
+        location: `${p.area}, ${p.city}`,
+        price: p.priceDisplay,
+        details: p.areaSqFt || p.category,
+        image: p.image || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=800',
+        category: 'PROPERTY',
+        timeAgo: 'Recently added'
+      }));
+
+    const franItems: FeaturedItem[] = franchiseDb
+      .filter(f => matchLoc(f.location, f.city))
+      .map(f => ({
+        id: f.id,
+        title: f.brand,
+        location: f.location || `${f.city}, ${f.state}`,
+        price: f.investmentDisplay,
+        details: `${f.type} • High ROI`,
+        image: f.image || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80',
+        category: 'FRANCHISE',
+        timeAgo: 'Recently added'
+      }));
+
+    return [...propItems, ...franItems];
+  }, [tick]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -194,7 +174,12 @@ export const FeaturedOpportunities: React.FC<FeaturedOpportunitiesProps> = ({ on
           msOverflowStyle: 'none' as const,
           padding: '0.5rem 0',
         }}>
-          {items.map((item) => (
+          {items.length === 0 ? (
+            <div style={{ width: '100%', padding: '2rem', textAlign: 'center', color: '#6B7280' }}>
+              No featured opportunities available at the moment.
+            </div>
+          ) : (
+            items.map((item) => (
             <div
               key={item.id}
               style={{
@@ -302,7 +287,8 @@ export const FeaturedOpportunities: React.FC<FeaturedOpportunitiesProps> = ({ on
                 </p>
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
       </div>
 

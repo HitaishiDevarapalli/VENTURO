@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FaHome, FaBuilding, FaBriefcase, FaCoins, FaInfoCircle, FaChevronDown, FaHeart, FaMapMarkedAlt, FaStore, FaHandHoldingUsd, FaChartLine, FaShieldAlt, FaUserCircle, FaEnvelope, FaCamera, FaSignOutAlt, FaCog, FaEdit, FaPen, FaCheck, FaTimes, FaPhone, FaUser, FaUtensils, FaMedkit } from 'react-icons/fa';
-import { useWishlist } from '../context/WishlistContext';
+import React, { useState, useEffect } from 'react';
+import { FaHome, FaBuilding, FaBriefcase, FaCoins, FaInfoCircle, FaChevronDown, FaMapMarkedAlt, FaStore, FaHandHoldingUsd, FaChartLine, FaShieldAlt, FaEnvelope, FaUtensils, FaMedkit, FaSearch, FaRegHeart, FaUser } from 'react-icons/fa';
+import { selectedCity, setSelectedCity } from '../db/marketplaceDb';
+import { searchLivePlaces, geocodeLocationOnline } from '../utils/locationIntelligence';
+import { Logo } from './Logo';
+import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
   heroBgIndex: number;
@@ -15,83 +18,65 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex: _heroBgIndex, onOpenWishlist, onNavigateBusiness, onNavigateProperties, onNavigateFranchise, onNavigateFinance, onGoHome, isSubpage: _isSubpage, onNavigateToPage }) => {
+  const { user, openLoginModal, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [profileName, setProfileName] = useState('Guest User');
-  const [profileEmail, setProfileEmail] = useState('');
-  const [profilePhone, setProfilePhone] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [tempName, setTempName] = useState('');
-  const [settingsForm, setSettingsForm] = useState({ name: '', email: '', phone: '' });
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
-  const { wishlistItems } = useWishlist();
+  const [currentCity, setCurrentCityState] = useState(selectedCity);
 
-  // Load saved profile data
+  // Live Location Modal State
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locSearchQuery, setLocSearchQuery] = useState('');
+  const [locSuggestions, setLocSuggestions] = useState<any[]>([]);
+  const [isLocSearching, setIsLocSearching] = useState(false);
+  const [locDetecting, setLocDetecting] = useState(false);
+
   useEffect(() => {
-    const savedImage = localStorage.getItem('profileImage');
-    const savedName = localStorage.getItem('profileName');
-    const savedEmail = localStorage.getItem('profileEmail');
-    const savedPhone = localStorage.getItem('profilePhone');
-    if (savedImage) setProfileImage(savedImage);
-    if (savedName) setProfileName(savedName);
-    if (savedEmail) setProfileEmail(savedEmail);
-    if (savedPhone) setProfilePhone(savedPhone);
+    if (!locSearchQuery || locSearchQuery.trim().length < 2) {
+      setLocSuggestions([]);
+      return;
+    }
+    setIsLocSearching(true);
+    const timer = setTimeout(() => {
+      searchLivePlaces(locSearchQuery).then(res => {
+        setLocSuggestions(res);
+        setIsLocSearching(false);
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [locSearchQuery]);
+
+  const handleDetectGPS = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setLocDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const geo = await geocodeLocationOnline(`${latitude}, ${longitude}`);
+        const newCity = geo.city || geo.area || 'Guntur';
+        setSelectedCity(newCity);
+        setCurrentCityState(newCity);
+        setLocDetecting(false);
+        setShowLocationModal(false);
+      },
+      () => {
+        setLocDetecting(false);
+        alert("Unable to retrieve your location. Please check browser permissions.");
+      }
+    );
+  };
+
+  useEffect(() => {
+    const handler = () => setCurrentCityState(localStorage.getItem('nexopp_selected_city') || 'Hyderabad');
+    window.addEventListener('nexopp_data_changed', handler);
+    return () => window.removeEventListener('nexopp_data_changed', handler);
   }, []);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setProfileImage(result);
-        localStorage.setItem('profileImage', result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
-  const handleSaveName = () => {
-    if (tempName.trim()) {
-      setProfileName(tempName.trim());
-      localStorage.setItem('profileName', tempName.trim());
-    }
-    setEditingName(false);
-  };
-
-  const handleSaveSettings = () => {
-    if (settingsForm.name.trim()) {
-      setProfileName(settingsForm.name.trim());
-      localStorage.setItem('profileName', settingsForm.name.trim());
-    }
-    if (settingsForm.email.trim()) {
-      setProfileEmail(settingsForm.email.trim());
-      localStorage.setItem('profileEmail', settingsForm.email.trim());
-    }
-    if (settingsForm.phone.trim()) {
-      setProfilePhone(settingsForm.phone.trim());
-      localStorage.setItem('profilePhone', settingsForm.phone.trim());
-    }
-    setShowSettings(false);
-  };
-
-  const handleLogout = () => {
-    setProfileImage(null);
-    setProfileName('Guest User');
-    setProfileEmail('');
-    setProfilePhone('');
-    localStorage.removeItem('profileImage');
-    localStorage.removeItem('profileName');
-    localStorage.removeItem('profileEmail');
-    localStorage.removeItem('profilePhone');
-    setShowProfileDropdown(false);
-  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -179,12 +164,23 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex: _heroBgIndex, onOpe
       setOpenDropdown(null);
       return;
     }
+    if (itemId === 'adminPortal') {
+      if (onNavigateToPage) onNavigateToPage('adminPortal');
+      else window.location.href = '/admin';
+      setOpenDropdown(null);
+      return;
+    }
     if (itemId === 'hero' && onGoHome) {
       onGoHome();
       setOpenDropdown(null);
       return;
     }
-    // For about/contact, scroll on the homepage
+    if (itemId === 'about' && onNavigateToPage) {
+      onNavigateToPage('aboutUsPage');
+      setOpenDropdown(null);
+      return;
+    }
+    // For contact, scroll on the homepage
     handleScrollTo(itemId);
   };
 
@@ -240,64 +236,36 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex: _heroBgIndex, onOpe
       transition: 'box-shadow 0.3s ease',
     }}>
       <div style={{
-        maxWidth: '1400px',
+        maxWidth: '1360px',
         margin: '0 auto',
         padding: '0 24px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: '68px',
+        height: '80px',
         width: '100%',
+        boxSizing: 'border-box',
       }}>
 
         {/* Left: Logo */}
         <a
           href="#hero"
           onClick={(e) => { e.preventDefault(); if (onGoHome) onGoHome(); }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            if (onNavigateToPage) onNavigateToPage('adminPortal');
+            else window.location.href = '/secret-admin';
+          }}
+          title="Double-click for Admin Portal"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
             textDecoration: 'none',
             cursor: 'pointer',
             flexShrink: 0,
           }}
         >
-          <div style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '8px',
-            background: 'linear-gradient(135deg, #10B981, #059669)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#FFFFFF',
-            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)',
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
-              <path d="M3 21h18" />
-              <path d="M3 7v1a3 3 0 0 0 6 0v-1m0 0V3h12v18H3" />
-              <path d="M13 7h4" />
-              <path d="M13 11h4" />
-              <path d="M13 15h4" />
-            </svg>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{
-              fontSize: '20px',
-              fontWeight: 800,
-              color: '#1F2937',
-              letterSpacing: '-0.3px',
-              lineHeight: '1.2',
-            }}>TheNexOop</span>
-            <span style={{
-              fontSize: '11px',
-              color: '#9CA3AF',
-              fontWeight: 500,
-              letterSpacing: '0.5px',
-              lineHeight: '1',
-            }}>Find. Invest. Grow.</span>
-          </div>
+          <Logo size="md" />
         </a>
 
         {/* Center: Nav Items */}
@@ -413,520 +381,302 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex: _heroBgIndex, onOpe
           flexShrink: 0,
           marginLeft: '8px',
         }}>
-          {/* Watchlist */}
+          {/* Location Trigger Button */}
+          <button
+            onClick={() => setShowLocationModal(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#ECFDF5', border: '1px solid #10B981', padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            <FaMapMarkedAlt style={{ color: '#10B981', fontSize: '14px' }} />
+            <span style={{ color: '#0F172A', fontWeight: 700, fontSize: '13px' }}>{currentCity || 'Guntur'}</span>
+            <FaChevronDown style={{ color: '#10B981', fontSize: '11px', marginLeft: '2px' }} />
+          </button>
+
+          {/* Saved / Wishlist Button */}
           <button
             onClick={onOpenWishlist}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '5px',
-              background: 'none',
-              border: 'none',
+              gap: '6px',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              padding: '6px 14px',
+              borderRadius: '20px',
               cursor: 'pointer',
-              color: '#4B5563',
+              color: '#0F172A',
+              fontWeight: 600,
               fontSize: '13px',
-              fontWeight: 500,
-              padding: '6px 8px',
-              borderRadius: '6px',
-              transition: 'color 0.2s ease, background-color 0.2s ease',
               position: 'relative',
-              whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.color = '#16A34A';
-              (e.currentTarget as HTMLElement).style.backgroundColor = '#F0FDF4';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.color = '#4B5563';
-              (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              transition: 'all 0.2s'
             }}
           >
-            <FaHeart style={{ fontSize: '14px' }} />
-            <span>Watchlist</span>
-            {wishlistItems.length > 0 && (
-              <span style={{
-                position: 'absolute',
-                top: '0px',
-                left: '18px',
-                backgroundColor: '#EF4444',
-                color: '#FFFFFF',
-                fontSize: '9px',
-                fontWeight: 700,
-                borderRadius: '50%',
-                width: '15px',
-                height: '15px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                lineHeight: 1,
-              }}>
-                {wishlistItems.length}
-              </span>
-            )}
+            <FaRegHeart style={{ color: '#EF4444', fontSize: '14px' }} />
+            <span>Saved</span>
           </button>
 
-          {/* Post Opportunity */}
+          {/* Post Property Button */}
           <button
-            onClick={() => handleScrollTo('contact')}
+            onClick={() => {
+              if (onNavigateProperties) onNavigateProperties();
+              if (onNavigateToPage) onNavigateToPage('properties');
+            }}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              backgroundColor: '#16A34A',
+              backgroundColor: '#10B981',
               color: '#FFFFFF',
               border: 'none',
-              borderRadius: '50px',
-              padding: '8px 16px',
+              padding: '8px 18px',
+              borderRadius: '20px',
+              fontWeight: 700,
               fontSize: '13px',
-              fontWeight: 600,
               cursor: 'pointer',
-              transition: 'background-color 0.2s ease, transform 0.15s ease',
-              whiteSpace: 'nowrap',
+              boxShadow: '0 4px 10px rgba(16, 185, 129, 0.25)',
+              transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = '#15803D';
-              (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)';
+              e.currentTarget.style.backgroundColor = '#059669';
+              e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = '#16A34A';
-              (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+              e.currentTarget.style.backgroundColor = '#10B981';
+              e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
-            <span style={{ fontSize: '14px', fontWeight: 700 }}>+</span>
-            <span>Post Opportunity</span>
+            + Post Property
           </button>
 
-          {/* Profile */}
-          <div style={{ position: 'relative' }}>
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/*"
-              onChange={handleImageUpload}
-              style={{ display: 'none' }}
-            />
+          {/* Login / Profile Section */}
+          {user ? (
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setOpenDropdown(openDropdown === 'user' ? null : 'user')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: '#F1F5F9',
+                  border: '1px solid #CBD5E1',
+                  padding: '5px 12px',
+                  borderRadius: '20px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  color: '#1E293B',
+                }}
+              >
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  backgroundColor: '#10B981',
+                  color: '#FFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '11px',
+                  fontWeight: 700
+                }}>
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <span>{user.name.split(' ')[0]}</span>
+                <FaChevronDown style={{ fontSize: '10px', color: '#64748B' }} />
+              </button>
+
+              {openDropdown === 'user' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '8px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                  minWidth: '180px',
+                  zIndex: 50,
+                  overflow: 'hidden',
+                  padding: '6px 0'
+                }}>
+                  <div style={{ padding: '8px 16px', borderBottom: '1px solid #F1F5F9' }}>
+                    <div style={{ fontSize: '12px', color: '#64748B' }}>Signed in as</div>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      if (onNavigateToPage) onNavigateToPage('admin');
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 16px',
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: '#0F172A',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <FaUser style={{ color: '#10B981' }} /> My Dashboard
+                  </button>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setOpenDropdown(null);
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 16px',
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: '#EF4444',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'background 0.15s',
+                      borderTop: '1px solid #F1F5F9'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FEF2F2'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
             <button
-              onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+              onClick={openLoginModal}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                background: 'none',
-                border: '2px solid #E5E7EB',
-                borderRadius: '50%',
-                width: '36px',
-                height: '36px',
+                gap: '6px',
+                backgroundColor: '#FFFFFF',
+                color: '#16A34A',
+                border: '1px solid #16A34A',
+                padding: '7px 16px',
+                borderRadius: '20px',
+                fontWeight: 700,
+                fontSize: '13px',
                 cursor: 'pointer',
-                color: '#6B7280',
-                fontSize: '20px',
-                transition: 'border-color 0.2s ease, color 0.2s ease',
-                padding: 0,
-                overflow: 'hidden',
+                transition: 'all 0.2s',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = '#16A34A';
-                (e.currentTarget as HTMLElement).style.color = '#16A34A';
+                e.currentTarget.style.backgroundColor = '#F0FDF4';
+                e.currentTarget.style.color = '#15803D';
               }}
               onMouseLeave={(e) => {
-                if (!showProfileDropdown) {
-                  (e.currentTarget as HTMLElement).style.borderColor = '#E5E7EB';
-                  (e.currentTarget as HTMLElement).style.color = '#6B7280';
-                }
+                e.currentTarget.style.backgroundColor = '#FFFFFF';
+                e.currentTarget.style.color = '#16A34A';
               }}
             >
-              {profileImage ? (
-                <img src={profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-              ) : (
-                <FaUserCircle />
-              )}
+              <FaUser style={{ fontSize: '12px' }} />
+              <span>Login / Register</span>
             </button>
-
-            {/* Profile Dropdown */}
-            {showProfileDropdown && (
-              <>
-                <div
-                  onClick={() => setShowProfileDropdown(false)}
-                  style={{ position: 'fixed', inset: 0, zIndex: 99 }}
-                />
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 8px)',
-                  right: 0,
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: '12px',
-                  boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-                  border: '1px solid #E5E7EB',
-                  padding: '0',
-                  minWidth: '260px',
-                  zIndex: 100,
-                  overflow: 'hidden',
-                }}>
-                  {/* Profile Header with Image + Name */}
-                  <div style={{
-                    padding: '20px 18px 16px',
-                    borderBottom: '1px solid #F3F4F6',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '10px',
-                    background: 'linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 50%, #F0F9FF 100%)',
-                  }}>
-                    {/* Profile Image with camera overlay */}
-                    <div style={{ position: 'relative' }}>
-                      <div
-                        style={{
-                          width: '64px',
-                          height: '64px',
-                          borderRadius: '50%',
-                          border: '3px solid #16A34A',
-                          overflow: 'hidden',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: '#F9FAFB',
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        {profileImage ? (
-                          <img src={profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <FaUserCircle style={{ fontSize: '36px', color: '#9CA3AF' }} />
-                        )}
-                      </div>
-                      <div
-                        onClick={() => fileInputRef.current?.click()}
-                        style={{
-                          position: 'absolute',
-                          bottom: '-2px',
-                          right: '-2px',
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          backgroundColor: '#16A34A',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          border: '2px solid #FFFFFF',
-                        }}
-                      >
-                        <FaCamera style={{ fontSize: '10px', color: '#FFFFFF' }} />
-                      </div>
-                    </div>
-
-                    {/* Editable Name */}
-                    {editingName ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <input
-                          ref={nameInputRef}
-                          type="text"
-                          value={tempName}
-                          onChange={(e) => setTempName(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false); }}
-                          autoFocus
-                          style={{
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            color: '#111827',
-                            border: '1px solid #D1D5DB',
-                            borderRadius: '6px',
-                            padding: '4px 8px',
-                            width: '140px',
-                            textAlign: 'center',
-                            outline: 'none',
-                          }}
-                          onFocus={(e) => { e.target.style.borderColor = '#16A34A'; }}
-                          onBlur={(e) => { e.target.style.borderColor = '#D1D5DB'; }}
-                        />
-                        <button onClick={handleSaveName} style={{ background: '#16A34A', border: 'none', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: '11px' }}><FaCheck /></button>
-                        <button onClick={() => setEditingName(false)} style={{ background: '#EF4444', border: 'none', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: '11px' }}><FaTimes /></button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '15px', fontWeight: 600, color: '#111827' }}>{profileName}</span>
-                        <FaPen
-                          onClick={() => { setTempName(profileName); setEditingName(true); }}
-                          style={{ fontSize: '10px', color: '#9CA3AF', cursor: 'pointer', transition: 'color 0.15s' }}
-                          onMouseEnter={(e) => { e.currentTarget.style.color = '#16A34A'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.color = '#9CA3AF'; }}
-                        />
-                      </div>
-                    )}
-
-                    {/* Email if set */}
-                    {profileEmail && (
-                      <span style={{ fontSize: '12px', color: '#6B7280', marginTop: '-6px' }}>{profileEmail}</span>
-                    )}
-                  </div>
-
-                  {/* Menu Items */}
-                  <div style={{ padding: '6px 0' }}>
-                    {/* Change Photo */}
-                    <div
-                      onClick={() => { fileInputRef.current?.click(); setShowProfileDropdown(false); }}
-                      style={{
-                        padding: '10px 18px',
-                        fontSize: '14px',
-                        color: '#374151',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'background-color 0.15s',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F0FDF4'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                    >
-                      <FaCamera style={{ fontSize: '14px', color: '#16A34A' }} />
-                      <span>{profileImage ? 'Change Photo' : 'Upload Photo'}</span>
-                    </div>
-
-                    {/* Edit Name */}
-                    <div
-                      onClick={() => { setTempName(profileName); setEditingName(true); }}
-                      style={{
-                        padding: '10px 18px',
-                        fontSize: '14px',
-                        color: '#374151',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'background-color 0.15s',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F0FDF4'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                    >
-                      <FaEdit style={{ fontSize: '14px', color: '#16A34A' }} />
-                      <span>Edit Name</span>
-                    </div>
-
-                    {/* Settings */}
-                    <div
-                      onClick={() => { setSettingsForm({ name: profileName, email: profileEmail, phone: profilePhone }); setShowSettings(true); setShowProfileDropdown(false); }}
-                      style={{
-                        padding: '10px 18px',
-                        fontSize: '14px',
-                        color: '#374151',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'background-color 0.15s',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                    >
-                      <FaCog style={{ fontSize: '14px', color: '#6B7280' }} />
-                      <span>Settings</span>
-                    </div>
-                  </div>
-
-                  {/* Logout */}
-                  <div style={{ borderTop: '1px solid #F3F4F6', padding: '6px 0' }}>
-                    <div
-                      onClick={handleLogout}
-                      style={{
-                        padding: '10px 18px',
-                        fontSize: '14px',
-                        color: '#EF4444',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'background-color 0.15s',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                    >
-                      <FaSignOutAlt style={{ fontSize: '14px' }} />
-                      <span>Log Out</span>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+          )}
         </div>
 
       </div>
 
-      {/* Settings Modal */}
-      {showSettings && (
-        <>
-          <div
-            onClick={() => setShowSettings(false)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              backgroundColor: 'rgba(0,0,0,0.5)',
-              zIndex: 2000,
-              backdropFilter: 'blur(4px)',
-            }}
-          />
-          <div style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: '#FFFFFF',
-            borderRadius: '16px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-            padding: '0',
-            width: '420px',
-            maxWidth: '90vw',
-            zIndex: 2001,
-            overflow: 'hidden',
-          }}>
-            {/* Settings Header */}
-            <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid #F3F4F6',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <FaCog style={{ fontSize: '18px', color: '#16A34A' }} />
-                <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#111827', margin: 0 }}>Account Settings</h3>
+      {/* LIVE LOCATION MODAL - PROFESSIONAL VENTURO THEME */}
+      {showLocationModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, backgroundColor: 'rgba(6, 78, 59, 0.65)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(6, 78, 59, 0.3)', overflow: 'hidden', border: '1px solid #D1FAE5' }}>
+            <div style={{ padding: '20px 24px', backgroundColor: '#064E3B', color: '#FFFFFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #047857' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'rgba(255, 255, 255, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FaMapMarkedAlt style={{ color: '#10B981', fontSize: '1.4rem' }} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.3px' }}>Select Target Location</h3>
+                  <span style={{ fontSize: '0.8rem', color: '#A7F3D0', fontWeight: 500 }}>Real-Time Geocoding & GPS Navigation</span>
+                </div>
               </div>
+              <button onClick={() => setShowLocationModal(false)} style={{ background: 'none', border: 'none', color: '#A7F3D0', fontSize: '1.5rem', cursor: 'pointer', padding: '4px', lineHeight: 1, fontWeight: 700, transition: 'color 0.2s' }} onMouseEnter={e => e.currentTarget.style.color = '#FFFFFF'} onMouseLeave={e => e.currentTarget.style.color = '#A7F3D0'}>×</button>
+            </div>
+
+            <div style={{ padding: '24px' }}>
               <button
-                onClick={() => setShowSettings(false)}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#6B7280', fontSize: '18px', padding: '4px',
-                  borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'background-color 0.15s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F3F4F6'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                type="button"
+                onClick={handleDetectGPS}
+                disabled={locDetecting}
+                style={{ width: '100%', padding: '14px', backgroundColor: '#ECFDF5', border: '2px solid #10B981', borderRadius: '12px', color: '#047857', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '20px', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)' }}
+                onMouseEnter={e => !locDetecting && (e.currentTarget.style.backgroundColor = '#D1FAE5')}
+                onMouseLeave={e => !locDetecting && (e.currentTarget.style.backgroundColor = '#ECFDF5')}
               >
-                <FaTimes />
+                <FaMapMarkedAlt style={{ fontSize: '1.1rem', color: '#059669' }} />
+                {locDetecting ? 'Auto-Detecting GPS Location...' : 'Use Current GPS Location'}
               </button>
-            </div>
 
-            {/* Profile Image in Settings */}
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', borderBottom: '1px solid #F3F4F6' }}>
-              <div style={{ position: 'relative', marginBottom: '8px' }}>
-                <div style={{
-                  width: '80px', height: '80px', borderRadius: '50%', border: '3px solid #16A34A',
-                  overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB',
-                }}>
-                  {profileImage ? (
-                    <img src={profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <FaUserCircle style={{ fontSize: '44px', color: '#9CA3AF' }} />
-                  )}
-                </div>
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    position: 'absolute', bottom: '0', right: '0',
-                    width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#16A34A',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px solid #FFFFFF',
-                  }}
-                >
-                  <FaCamera style={{ fontSize: '11px', color: '#FFFFFF' }} />
-                </div>
-              </div>
-              <span style={{ fontSize: '16px', fontWeight: 600, color: '#111827' }}>{profileName}</span>
-              {profileEmail && <span style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{profileEmail}</span>}
-            </div>
-
-            {/* Form Fields */}
-            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Name Field */}
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <FaUser style={{ fontSize: '12px', color: '#16A34A' }} /> Full Name
-                </label>
+              <div style={{ position: 'relative', marginBottom: '16px' }}>
                 <input
                   type="text"
-                  value={settingsForm.name}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, name: e.target.value })}
-                  placeholder="Enter your name"
-                  style={{
-                    width: '100%', padding: '10px 14px', fontSize: '14px', border: '1px solid #D1D5DB',
-                    borderRadius: '8px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box',
-                    backgroundColor: '#F9FAFB',
-                  }}
-                  onFocus={(e) => { e.target.style.borderColor = '#16A34A'; e.target.style.backgroundColor = '#FFFFFF'; }}
-                  onBlur={(e) => { e.target.style.borderColor = '#D1D5DB'; e.target.style.backgroundColor = '#F9FAFB'; }}
+                  value={locSearchQuery}
+                  onChange={e => setLocSearchQuery(e.target.value)}
+                  placeholder="Search city, locality, or street name..."
+                  style={{ width: '100%', padding: '14px 14px 14px 44px', border: '2px solid #E2E8F0', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none', color: '#0F172A', transition: 'border-color 0.2s' }}
+                  onFocus={e => e.currentTarget.style.borderColor = '#10B981'}
+                  onBlur={e => e.currentTarget.style.borderColor = '#E2E8F0'}
                 />
+                <FaSearch style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#059669' }} />
               </div>
 
-              {/* Email Field */}
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <FaEnvelope style={{ fontSize: '12px', color: '#16A34A' }} /> Email
-                </label>
-                <input
-                  type="email"
-                  value={settingsForm.email}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, email: e.target.value })}
-                  placeholder="Enter your email"
-                  style={{
-                    width: '100%', padding: '10px 14px', fontSize: '14px', border: '1px solid #D1D5DB',
-                    borderRadius: '8px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box',
-                    backgroundColor: '#F9FAFB',
-                  }}
-                  onFocus={(e) => { e.target.style.borderColor = '#16A34A'; e.target.style.backgroundColor = '#FFFFFF'; }}
-                  onBlur={(e) => { e.target.style.borderColor = '#D1D5DB'; e.target.style.backgroundColor = '#F9FAFB'; }}
-                />
-              </div>
+              {isLocSearching && (
+                <div style={{ padding: '12px', textAlign: 'center', color: '#059669', fontWeight: 600, fontSize: '0.85rem' }}>
+                  Searching live location data...
+                </div>
+              )}
 
-              {/* Phone Field */}
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <FaPhone style={{ fontSize: '12px', color: '#16A34A' }} /> Phone
-                </label>
-                <input
-                  type="tel"
-                  value={settingsForm.phone}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, phone: e.target.value })}
-                  placeholder="Enter your phone number"
-                  style={{
-                    width: '100%', padding: '10px 14px', fontSize: '14px', border: '1px solid #D1D5DB',
-                    borderRadius: '8px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box',
-                    backgroundColor: '#F9FAFB',
-                  }}
-                  onFocus={(e) => { e.target.style.borderColor = '#16A34A'; e.target.style.backgroundColor = '#FFFFFF'; }}
-                  onBlur={(e) => { e.target.style.borderColor = '#D1D5DB'; e.target.style.backgroundColor = '#F9FAFB'; }}
-                />
+              <div style={{ maxHeight: '260px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {locSuggestions.map((sug, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      const c = sug.city || sug.area || sug.formatted_address.split(',')[0];
+                      setSelectedCity(c);
+                      setCurrentCityState(c);
+                      setShowLocationModal(false);
+                    }}
+                    style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.2s' }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.backgroundColor = '#ECFDF5';
+                      e.currentTarget.style.borderColor = '#10B981';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.backgroundColor = '#F8FAFC';
+                      e.currentTarget.style.borderColor = '#E2E8F0';
+                    }}
+                  >
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FaMapMarkedAlt style={{ color: '#059669', fontSize: '0.9rem' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.9rem' }}>{sug.area || sug.city || sug.formatted_address}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{sug.formatted_address}</div>
+                    </div>
+                  </div>
+                ))}
+                {!isLocSearching && locSuggestions.length === 0 && locSearchQuery.length > 1 && (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#64748B', fontSize: '0.85rem' }}>No location found matching your search. Try another locality or city.</div>
+                )}
+                {!isLocSearching && locSuggestions.length === 0 && locSearchQuery.length <= 1 && (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#64748B', fontSize: '0.85rem' }}>Type at least 2 characters to search for any locality, street, or city.</div>
+                )}
               </div>
-            </div>
-
-            {/* Save / Cancel Buttons */}
-            <div style={{ padding: '16px 24px 20px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #F3F4F6' }}>
-              <button
-                onClick={() => setShowSettings(false)}
-                style={{
-                  padding: '10px 20px', fontSize: '14px', fontWeight: 600, borderRadius: '8px',
-                  border: '1px solid #D1D5DB', backgroundColor: '#FFFFFF', color: '#374151', cursor: 'pointer',
-                  transition: 'background-color 0.15s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveSettings}
-                style={{
-                  padding: '10px 24px', fontSize: '14px', fontWeight: 600, borderRadius: '8px',
-                  border: 'none', backgroundColor: '#16A34A', color: '#FFFFFF', cursor: 'pointer',
-                  transition: 'background-color 0.15s, transform 0.1s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#15803D'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#16A34A'; }}
-              >
-                Save Changes
-              </button>
             </div>
           </div>
-        </>
+        </div>
       )}
 
     </nav>

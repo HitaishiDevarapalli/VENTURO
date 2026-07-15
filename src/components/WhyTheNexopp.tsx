@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaListAlt, FaUsers, FaMapMarkerAlt, FaCheckCircle, FaHeadset } from 'react-icons/fa';
+import { siteSettingsDb } from '../db/marketplaceDb';
 
 interface StatItem {
   icon: React.ReactNode;
@@ -7,15 +8,23 @@ interface StatItem {
   label: string;
 }
 
-const stats: StatItem[] = [
-  { icon: <FaListAlt />, value: '10,000+', label: 'Active Listings' },
-  { icon: <FaUsers />, value: '5,000+', label: 'Happy Customers' },
-  { icon: <FaMapMarkerAlt />, value: '50+', label: 'Cities Covered' },
-  { icon: <FaCheckCircle />, value: '100%', label: 'Verified Listings' },
-  { icon: <FaHeadset />, value: '24/7', label: 'Customer Support' },
-];
-
 export const WhyTheNexopp: React.FC = () => {
+  const s = siteSettingsDb.mainPageStats || {
+    activeListingsWhy: '10,000+',
+    happyCustomersWhy: '5,000+',
+    citiesCoveredWhy: '50+',
+    verifiedListingsWhy: '100%',
+    customerSupportWhy: '24/7'
+  };
+
+  const stats: StatItem[] = [
+    { icon: <FaListAlt />, value: s.activeListingsWhy || '10,000+', label: 'Active Listings' },
+    { icon: <FaUsers />, value: s.happyCustomersWhy || '5,000+', label: 'Happy Customers' },
+    { icon: <FaMapMarkerAlt />, value: s.citiesCoveredWhy || '50+', label: 'Cities Covered' },
+    { icon: <FaCheckCircle />, value: s.verifiedListingsWhy || '100%', label: 'Verified Listings' },
+    { icon: <FaHeadset />, value: s.customerSupportWhy || '24/7', label: 'Customer Support' },
+  ];
+
   return (
     <section
       style={{

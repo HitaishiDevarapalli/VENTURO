@@ -1,79 +1,727 @@
-import React, { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { FaStore, FaHotel } from 'react-icons/fa';
-
-gsap.registerPlugin(ScrollTrigger);
-
-
+import React, { useState, useMemo } from 'react';
+import { franchiseDb } from '../db/marketplaceDb';
+import {
+  FaSearch,
+  FaMapMarkerAlt,
+  FaStore,
+  FaUtensils,
+  FaShoppingBag,
+  FaGraduationCap,
+  FaMedkit,
+  FaHeart,
+  FaRegHeart,
+  FaStar,
+  FaCheckCircle,
+  FaCrown,
+  FaFire,
+  FaList,
+  FaMap,
+  FaColumns,
+  FaChevronDown,
+  FaChevronUp,
+  FaCrosshairs,
+  FaPlus,
+  FaMinus,
+  FaExpand,
+  FaChartLine,
+  FaRulerCombined,
+  FaCoins,
+} from 'react-icons/fa';
+import { LiveLocationMap } from './LiveLocationMap';
 
 interface FranchiseMarketplaceProps {
   onExploreResales?: () => void;
   onExploreNew?: () => void;
   onPropertyClick?: (id: string) => void;
   onBuyProperty?: (id: string) => void;
+  title?: string;
+  subtitle?: string;
+  onBack?: () => void;
 }
 
-export const FranchiseMarketplace: React.FC<FranchiseMarketplaceProps> = ({ 
-  onExploreResales, 
-  onExploreNew
+export const FranchiseMarketplace: React.FC<FranchiseMarketplaceProps> = ({
+  onPropertyClick,
+  onBuyProperty,
+  title,
+  subtitle,
+  onBack,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Top Search Card State
+  const [activeTab, setActiveTab] = useState<'All' | 'Food' | 'Retail' | 'Education' | 'Healthcare'>('All');
+  const [locationText, setLocationText] = useState('Hyderabad & Andhra Pradesh');
+  const [brandCategory, setBrandCategory] = useState('All Brands');
+  const [investment, setInvestment] = useState('₹ 10L - 2Cr+');
+  const [spaceReq, setSpaceReq] = useState('Any Size');
 
-  useEffect(() => {
-    const cards = containerRef.current?.querySelectorAll('.franchise-grid-card');
-    if (cards) {
-      gsap.fromTo(cards, 
-        { opacity: 0, y: 40 },
-        { 
-          opacity: 1, 
-          y: 0, 
-          duration: 0.9, 
-          stagger: 0.2,
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: 'top 80%',
-            toggleActions: 'play none none none'
-          }
-        }
-      );
-    }
-  }, []);
+  // Left Sidebar Filters State
+  const [budgetOpen, setBudgetOpen] = useState(true);
+  const [catOpen, setCatOpen] = useState(true);
+  const [spaceOpen, setSpaceOpen] = useState(true);
+  const [modelOpen, setModelOpen] = useState(false);
+
+  const [selectedCats, setSelectedCats] = useState<string[]>([]);
+  const [selectedSpaces, setSelectedSpaces] = useState<string[]>([]);
+
+  // Right Results State
+  const [viewMode, setViewMode] = useState<'list' | 'map' | 'split'>('list');
+  const [sortBy, setSortBy] = useState('Relevance');
+  const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
+  const [wishlisted, setWishlisted] = useState<Record<string, boolean>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+
+  const toggleWishlist = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setWishlisted((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleCat = (val: string) => {
+    setSelectedCats((prev) =>
+      prev.includes(val) ? prev.filter((item) => item !== val) : [...prev, val]
+    );
+  };
+
+  const toggleSpace = (val: string) => {
+    setSelectedSpaces((prev) =>
+      prev.includes(val) ? prev.filter((item) => item !== val) : [...prev, val]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setSelectedCats([]);
+    setSelectedSpaces([]);
+    setActiveQuickFilter(null);
+    setBrandCategory('All Brands');
+    setInvestment('₹ 10L - 2Cr+');
+    setSpaceReq('Any Size');
+  };
+
+  const franchisesList = useMemo(() => {
+    const list = franchiseDb.map((f) => ({
+      id: f.id,
+      brand: f.brand || 'Franchise Brand',
+      category: f.category || f.type || 'Food & Beverage',
+      badge: f.verified ? 'Verified' : (f.trending ? 'High ROI' : 'Premium'),
+      badgeType: f.verified ? 'verified' : (f.trending ? 'roi' : 'premium'),
+      image: f.image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80',
+      investment: f.investmentDisplay || (`₹ ${f.investment || 25} Lac`),
+      space: f.minAreaSqFt ? `${f.minAreaSqFt} - ${f.maxAreaSqFt || f.minAreaSqFt} sq.ft` : '500 - 800 sq.ft',
+      roi: f.expectedRoi || '32% per annum',
+      breakeven: f.paybackPeriod || '18 - 24 months',
+      location: `${f.city || ''}${f.state ? ', ' + f.state : ''}`,
+      brokerName: f.dealerId ? 'Authorized Dealer' : 'Karan Sharma',
+      brokerRating: f.rating ? `${f.rating} (${f.reviewCount || 10})` : '4.9 (24)',
+      brokerImg: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+      latitude: f.latitude,
+      longitude: f.longitude,
+      city: f.city,
+      locality: f.area || f.location,
+    }));
+
+    return list.filter((item) => {
+      if (activeTab !== 'All') {
+        if (activeTab === 'Food' && item.category !== 'Food & Beverage') return false;
+        if (activeTab === 'Retail' && item.category !== 'Retail & Stores') return false;
+        if (activeTab === 'Education' && item.category !== 'Education') return false;
+        if (activeTab === 'Healthcare' && item.category !== 'Healthcare') return false;
+      }
+      if (selectedCats.length > 0 && !selectedCats.includes(item.category)) return false;
+      if (activeQuickFilter) {
+        if (activeQuickFilter === 'Verified Brands' && item.badgeType !== 'verified') return false;
+        if (activeQuickFilter === 'High ROI (>30%)' && item.badgeType !== 'roi') return false;
+        if (activeQuickFilter === 'Premium Brands' && item.badgeType !== 'premium') return false;
+      }
+      return true;
+    });
+  }, [franchiseDb, activeTab, selectedCats, activeQuickFilter]);
+
+  const totalPages = Math.ceil(franchisesList.length / itemsPerPage);
+  const validPage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
+  const paginatedFranchises = useMemo(() => {
+    const start = (validPage - 1) * itemsPerPage;
+    return franchisesList.slice(start, start + itemsPerPage);
+  }, [franchisesList, validPage, itemsPerPage]);
+
+  const tabs = [
+    { id: 'All' as const, label: 'All Franchises', icon: FaStore },
+    { id: 'Food' as const, label: 'Food & Beverage', icon: FaUtensils },
+    { id: 'Retail' as const, label: 'Retail & Stores', icon: FaShoppingBag },
+    { id: 'Education' as const, label: 'Education', icon: FaGraduationCap },
+    { id: 'Healthcare' as const, label: 'Healthcare & Pharma', icon: FaMedkit },
+  ];
 
   return (
-    <section id="franchise" className="section-padding franchise-section" ref={containerRef}>
-      <div className="container">
-        {/* Header Area */}
-        <div className="feed-header">
-          <div className="feed-header-text">
-            <span className="section-tag">Franchise Models</span>
-            <h2 className="section-title">Franchise Marketplace</h2>
+    <section
+      style={{
+        backgroundColor: '#F8FAFC',
+        paddingTop: '115px',
+        paddingBottom: '60px',
+        minHeight: '100vh',
+        fontFamily: "'Outfit', 'Inter', -apple-system, sans-serif",
+      }}
+    >
+      <div style={{ maxWidth: '1360px', width: '100%', margin: '0 auto', padding: '0 24px', boxSizing: 'border-box' }}>
+        
+        {/* TOP HEADER ROW WITH BACK BUTTON */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #E2E8F0', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {onBack && (
+              <button
+                onClick={onBack}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 18px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '12px',
+                  color: '#0F172A',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.borderColor = '#16A34A'; e.currentTarget.style.color = '#16A34A'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#0F172A'; }}
+              >
+                <span>←</span>
+                <span>Back</span>
+              </button>
+            )}
+            <div>
+              <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
+                {title || 'Franchise Marketplace'}
+              </h1>
+              <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0 0', fontWeight: 500 }}>
+                {subtitle || 'Explore top brand franchises, resales, and new commercial opportunities across India'}
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#16A34A', backgroundColor: '#DCFCE7', padding: '6px 14px', borderRadius: '9999px', border: '1px solid #BBF7D0' }}>
+              ● {franchiseDb.length} Active Brands
+            </span>
           </div>
         </div>
 
-        {/* Categories as Icons */}
-        <div className="category-icon-grid" style={{ marginTop: '3rem', justifyContent: 'center', gap: '5rem' }}>
+        {/* TOP BIG WHITE SEARCH BOX CARD */}
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '24px',
+            padding: '24px 28px',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)',
+            border: '1px solid #E2E8F0',
+            marginBottom: '32px',
+          }}
+        >
+          {/* Top Tabs */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              borderBottom: '1px solid #F1F5F9',
+              paddingBottom: '16px',
+              marginBottom: '20px',
+              flexWrap: 'wrap',
+            }}
+          >
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 18px',
+                    borderRadius: '9999px',
+                    border: 'none',
+                    backgroundColor: isActive ? '#DCFCE7' : 'transparent',
+                    color: isActive ? '#16A34A' : '#475569',
+                    fontWeight: 700,
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    position: 'relative',
+                  }}
+                >
+                  <Icon style={{ fontSize: '15px' }} />
+                  <span>{tab.label}</span>
+                  {isActive && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        bottom: '-17px',
+                        left: '15%',
+                        right: '15%',
+                        height: '3px',
+                        backgroundColor: '#16A34A',
+                        borderRadius: '3px 3px 0 0',
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Row of Filter Inputs */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '2.2fr 1.3fr 1.3fr 1.1fr auto',
+              gap: '14px',
+              alignItems: 'start',
+            }}
+          >
+            {/* Location Input */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: '6px' }}>
+                Location
+              </label>
+              <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '12px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <FaSearch style={{ color: '#94A3B8', fontSize: '14px', flexShrink: 0 }} />
+                <input
+                  type="text"
+                  placeholder="Search city, state or landmark"
+                  value={locationText}
+                  onChange={(e) => setLocationText(e.target.value)}
+                  style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '13px', fontWeight: 600, color: '#0F172A' }}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(() => setLocationText('Current Location (GPS)'));
+                  }
+                }}
+                style={{ background: 'none', border: 'none', color: '#16A34A', fontWeight: 700, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', padding: 0 }}
+              >
+                <FaCrosshairs />
+                <span>Use My Current Location</span>
+              </button>
+            </div>
+
+            {/* Brand Category Dropdown */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: '6px' }}>
+                Brand / Category
+              </label>
+              <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '12px', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <select
+                  value={brandCategory}
+                  onChange={(e) => setBrandCategory(e.target.value)}
+                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '13px', fontWeight: 600, color: '#0F172A', cursor: 'pointer', width: '100%' }}
+                >
+                  <option value="All Brands">All Brands</option>
+                  <option value="Food & Beverage">Food & Beverage</option>
+                  <option value="Retail & Stores">Retail & Stores</option>
+                  <option value="Education">Education</option>
+                  <option value="Healthcare">Healthcare</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Investment Budget Dropdown */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: '6px' }}>
+                Investment Budget
+              </label>
+              <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '12px', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <select
+                  value={investment}
+                  onChange={(e) => setInvestment(e.target.value)}
+                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '13px', fontWeight: 600, color: '#0F172A', cursor: 'pointer', width: '100%' }}
+                >
+                  <option value="₹ 10L - 2Cr+">₹ 10L - 2Cr+</option>
+                  <option value="Under ₹ 25L">Under ₹ 25L</option>
+                  <option value="₹ 25L - ₹ 50L">₹ 25L - ₹ 50L</option>
+                  <option value="₹ 50L - ₹ 1Cr">₹ 50L - ₹ 1Cr</option>
+                  <option value="₹ 1Cr+">₹ 1Cr+</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Space Required Dropdown */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: '6px' }}>
+                Space Required
+              </label>
+              <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '12px', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <select
+                  value={spaceReq}
+                  onChange={(e) => setSpaceReq(e.target.value)}
+                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '13px', fontWeight: 600, color: '#0F172A', cursor: 'pointer', width: '100%' }}
+                >
+                  <option value="Any Size">Any Size</option>
+                  <option value="Under 300 sq.ft">Under 300 sq.ft</option>
+                  <option value="300 - 800 sq.ft">300 - 800 sq.ft</option>
+                  <option value="800 - 1500 sq.ft">800 - 1500 sq.ft</option>
+                  <option value="1500+ sq.ft">1500+ sq.ft</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Search Button & Advanced Search */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '22px' }}>
+              <button
+                onClick={() => alert('Searching Franchises...')}
+                style={{
+                  backgroundColor: '#16A34A',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px 28px',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)',
+                  transition: 'all 0.2s',
+                  width: '100%',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#15803D')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#16A34A')}
+              >
+                <FaSearch />
+                <span>Search Franchises</span>
+              </button>
+              <button
+                onClick={() => alert('Opening Advanced Search Options...')}
+                style={{ background: 'none', border: 'none', color: '#64748B', fontWeight: 600, fontSize: '12px', cursor: 'pointer', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <span>Advanced Search</span>
+                <FaChevronDown style={{ fontSize: '10px' }} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* MAIN 2-COLUMN GRID AREA */}
+        <div style={{ display: 'grid', gridTemplateColumns: '270px 1fr', gap: '28px', alignItems: 'start' }}>
           
-          <div className="category-icon-item" onClick={onExploreNew}>
-            <div className="category-icon-btn">
-              <div className="category-icon-svg">
-                <FaStore />
-              </div>
+          {/* LEFT SIDEBAR: "Filter By" Card */}
+          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '22px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', borderBottom: '1px solid #F1F5F9', paddingBottom: '14px' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>Filter By</h3>
+              <button onClick={clearAllFilters} style={{ background: 'none', border: 'none', color: '#16A34A', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>Clear All</button>
             </div>
-            <span className="category-icon-label" style={{ fontSize: '1.2rem' }}>New Franchise Openings</span>
+
+            {/* Investment Budget Slider */}
+            <div style={{ marginBottom: '24px', borderBottom: '1px solid #F1F5F9', paddingBottom: '20px' }}>
+              <div onClick={() => setBudgetOpen(!budgetOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '14px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>Investment Budget</span>
+                {budgetOpen ? <FaChevronUp style={{ fontSize: '11px', color: '#64748B' }} /> : <FaChevronDown style={{ fontSize: '11px', color: '#64748B' }} />}
+              </div>
+
+              {budgetOpen && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '10px' }}>
+                    <span>₹ 5 Lac</span>
+                    <span>₹ 5 Cr+</span>
+                  </div>
+                  <div style={{ position: 'relative', height: '6px', backgroundColor: '#E2E8F0', borderRadius: '3px', margin: '14px 6px' }}>
+                    <div style={{ position: 'absolute', left: '15%', right: '20%', top: 0, bottom: 0, backgroundColor: '#16A34A', borderRadius: '3px' }} />
+                    <div style={{ position: 'absolute', left: '15%', top: '-6px', width: '18px', height: '18px', borderRadius: '50%', backgroundColor: '#FFFFFF', border: '3px solid #16A34A', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', cursor: 'pointer' }} />
+                    <div style={{ position: 'absolute', right: '20%', top: '-6px', width: '18px', height: '18px', borderRadius: '50%', backgroundColor: '#FFFFFF', border: '3px solid #16A34A', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', cursor: 'pointer' }} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Franchise Category Checkboxes */}
+            <div style={{ marginBottom: '24px', borderBottom: '1px solid #F1F5F9', paddingBottom: '20px' }}>
+              <div onClick={() => setCatOpen(!catOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '14px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>Category</span>
+                {catOpen ? <FaChevronUp style={{ fontSize: '11px', color: '#64748B' }} /> : <FaChevronDown style={{ fontSize: '11px', color: '#64748B' }} />}
+              </div>
+
+              {catOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {[
+                    { label: 'Food & Beverage', icon: FaUtensils },
+                    { label: 'Retail & Stores', icon: FaShoppingBag },
+                    { label: 'Education', icon: FaGraduationCap },
+                    { label: 'Healthcare', icon: FaMedkit },
+                  ].map((catItem) => {
+                    const checked = selectedCats.includes(catItem.label);
+                    const Icon = catItem.icon;
+                    return (
+                      <label key={catItem.label} onClick={() => toggleCat(catItem.label)} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', fontWeight: checked ? 700 : 500, color: checked ? '#0F172A' : '#475569', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleCat(catItem.label)} style={{ accentColor: '#16A34A', width: '16px', height: '16px', cursor: 'pointer' }} />
+                        <Icon style={{ color: checked ? '#16A34A' : '#94A3B8', fontSize: '14px' }} />
+                        <span>{catItem.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Space Requirement Checkboxes */}
+            <div style={{ marginBottom: '20px', borderBottom: '1px solid #F1F5F9', paddingBottom: '20px' }}>
+              <div onClick={() => setSpaceOpen(!spaceOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '14px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>Space Requirement</span>
+                {spaceOpen ? <FaChevronUp style={{ fontSize: '11px', color: '#64748B' }} /> : <FaChevronDown style={{ fontSize: '11px', color: '#64748B' }} />}
+              </div>
+
+              {spaceOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {['Under 300 sq.ft', '300 - 800 sq.ft', '800 - 1500 sq.ft', '1500+ sq.ft'].map((sp) => {
+                    const checked = selectedSpaces.includes(sp);
+                    return (
+                      <label key={sp} onClick={() => toggleSpace(sp)} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: checked ? 700 : 500, color: checked ? '#0F172A' : '#475569', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleSpace(sp)} style={{ accentColor: '#16A34A', width: '16px', height: '16px', cursor: 'pointer' }} />
+                        <span>{sp}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Business Model Section */}
+            <div>
+              <div onClick={() => setModelOpen(!modelOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>Business Model</span>
+                {modelOpen ? <FaChevronUp style={{ fontSize: '11px', color: '#64748B' }} /> : <FaChevronDown style={{ fontSize: '11px', color: '#64748B' }} />}
+              </div>
+
+              {modelOpen && (
+                <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {['FOFO (Franchise Owned)', 'FOCO (Company Operated)', 'COCO (Company Owned)'].map((mod) => (
+                    <label key={mod} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#475569', cursor: 'pointer' }}>
+                      <input type="checkbox" style={{ accentColor: '#16A34A' }} />
+                      <span>{mod}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="category-icon-item" onClick={onExploreResales}>
-            <div className="category-icon-btn">
-              <div className="category-icon-svg">
-                <FaHotel />
+          {/* RIGHT RESULTS AREA */}
+          <div>
+            
+            {/* Top Bar: View toggles + Count + Sort */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', borderBottom: '1px solid #E2E8F0', paddingBottom: '8px' }}>
+                {[
+                  { id: 'list' as const, label: 'List View', icon: FaList },
+                  { id: 'map' as const, label: 'Map View', icon: FaMap },
+                  { id: 'split' as const, label: 'Split View', icon: FaColumns },
+                ].map((vm) => {
+                  const Icon = vm.icon;
+                  const isActive = viewMode === vm.id;
+                  return (
+                    <button key={vm.id} onClick={() => setViewMode(vm.id)} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', color: isActive ? '#16A34A' : '#64748B', fontWeight: isActive ? 800 : 600, fontSize: '14px', cursor: 'pointer', paddingBottom: '8px', position: 'relative' }}>
+                      <Icon />
+                      <span>{vm.label}</span>
+                      {isActive && <span style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2.5px', backgroundColor: '#16A34A', borderRadius: '2px' }} />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>
+                  Showing <strong style={{ color: '#0F172A' }}>{franchisesList.length} franchise opportunities</strong>
+                </span>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '10px', padding: '6px 12px' }}>
+                  <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>Sort by:</span>
+                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', fontWeight: 800, color: '#0F172A', cursor: 'pointer' }}>
+                    <option value="Relevance">Relevance</option>
+                    <option value="Investment: Low to High">Investment: Low to High</option>
+                    <option value="ROI: High to Low">ROI: High to Low</option>
+                    <option value="Fastest Breakeven">Fastest Breakeven</option>
+                  </select>
+                </div>
               </div>
             </div>
-            <span className="category-icon-label" style={{ fontSize: '1.2rem' }}>Existing Franchise Resales</span>
-          </div>
 
+
+
+            {/* INTERACTIVE MAP VIEW BOX */}
+            {(viewMode === 'list' || viewMode === 'map' || viewMode === 'split') && (
+              <div style={{ marginBottom: '24px' }}>
+                <LiveLocationMap
+                  items={franchisesList}
+                  type="franchise"
+                  onSelectItem={(id) => {
+                    if (onPropertyClick) onPropertyClick(id);
+                    else if (onBuyProperty) onBuyProperty(id);
+                  }}
+                  height={viewMode === 'map' ? '550px' : '360px'}
+                />
+              </div>
+            )}
+
+            {/* QUICK FILTERS ROW */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '24px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', marginRight: '4px' }}>Quick Filters:</span>
+              {[
+                { label: 'Verified Brands', icon: FaCheckCircle, id: 'Verified Brands' },
+                { label: 'High ROI (>30%)', icon: FaChartLine, id: 'High ROI (>30%)' },
+                { label: 'Premium Brands', icon: FaCrown, id: 'Premium Brands' },
+                { label: 'Fast Breakeven', icon: FaCoins, id: 'Fast Breakeven' },
+                { label: 'Top Brokers', icon: FaStar, id: 'Top Brokers' },
+              ].map((qf) => {
+                const Icon = qf.icon;
+                const isActive = activeQuickFilter === qf.id;
+                return (
+                  <button key={qf.id} onClick={() => setActiveQuickFilter(isActive ? null : qf.id)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '9999px', border: isActive ? '1px solid #16A34A' : '1px solid #CBD5E1', backgroundColor: isActive ? '#DCFCE7' : '#FFFFFF', color: isActive ? '#16A34A' : '#334155', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                    <Icon style={{ color: '#16A34A', fontSize: '13px' }} />
+                    <span>{qf.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* FRANCHISE CARDS GRID */}
+            <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'map' ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '20px', marginBottom: '36px' }}>
+              {franchisesList.length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', backgroundColor: '#FFFFFF', padding: '60px 20px', borderRadius: '24px', border: '1px solid #E2E8F0', textAlign: 'center', color: '#64748B' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>🏬</div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>No Franchises Found</h3>
+                  <p style={{ fontSize: '0.95rem', maxWidth: '400px', margin: '0 auto' }}>There are currently no franchise opportunities matching your filter criteria.</p>
+                </div>
+              ) : (
+                paginatedFranchises.map((item) => {
+                const isFav = !!wishlisted[item.id];
+                let badgeBg = '#DCFCE7';
+                let badgeColor = '#16A34A';
+                let BadgeIcon = FaCheckCircle;
+
+                if (item.badgeType === 'premium') {
+                  badgeBg = '#E0E7FF';
+                  badgeColor = '#4F46E5';
+                  BadgeIcon = FaCrown;
+                } else if (item.badgeType === 'roi') {
+                  badgeBg = '#FFEDD5';
+                  badgeColor = '#EA580C';
+                  BadgeIcon = FaChartLine;
+                }
+
+                return (
+                  <div key={item.id} onClick={() => onPropertyClick?.(item.id)} style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}>
+                    {/* Image Banner */}
+                    <div style={{ position: 'relative', height: '180px', backgroundColor: '#0F172A' }}>
+                      <img src={item.image} alt={item.brand} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <div style={{ position: 'absolute', top: '12px', left: '12px', backgroundColor: badgeBg, color: badgeColor, padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <BadgeIcon />
+                        <span>{item.badge}</span>
+                      </div>
+                      <button onClick={(e) => toggleWishlist(item.id, e)} style={{ position: 'absolute', top: '12px', right: '12px', width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(0, 0, 0, 0.4)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        {isFav ? <FaHeart style={{ color: '#EF4444', fontSize: '15px' }} /> : <FaRegHeart style={{ color: '#FFFFFF', fontSize: '15px' }} />}
+                      </button>
+                    </div>
+
+                    {/* Content */}
+                    <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '1.1rem', fontWeight: 800, color: '#0F172A' }}>{item.brand}</h4>
+                        <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 500, marginBottom: '12px' }}>{item.category} • {item.location}</div>
+
+                        {/* Specs Row */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', fontWeight: 600, color: '#475569', backgroundColor: '#F8FAFC', padding: '10px', borderRadius: '10px', marginBottom: '14px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span><FaRulerCombined style={{ color: '#3B82F6', marginRight: '4px' }} /> Space Required:</span>
+                            <strong style={{ color: '#0F172A' }}>{item.space}</strong>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span><FaChartLine style={{ color: '#16A34A', marginRight: '4px' }} /> Expected ROI:</span>
+                            <strong style={{ color: '#16A34A' }}>{item.roi}</strong>
+                          </div>
+                        </div>
+
+                        {/* Investment Cost */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                          <div>
+                            <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Investment</div>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A' }}>{item.investment}</div>
+                          </div>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#2563EB', backgroundColor: '#DBEAFE', padding: '4px 8px', borderRadius: '6px' }}>{item.breakeven}</span>
+                        </div>
+                      </div>
+
+                      {/* Broker Footer */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F1F5F9', paddingTop: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <img src={item.brokerImg} alt={item.brokerName} style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>{item.brokerName}</div>
+                            <div style={{ fontSize: '10px', fontWeight: 700, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: '2px' }}><FaStar /> {item.brokerRating}</div>
+                          </div>
+                        </div>
+
+                        <button onClick={(e) => { e.stopPropagation(); onPropertyClick?.(item.id); }} style={{ backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', padding: '6px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: 700, color: '#0F172A', cursor: 'pointer' }}>View Details</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }))}
+            </div>
+
+            {/* BOTTOM PAGINATION BAR */}
+            {franchisesList.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #CBD5E1', paddingTop: '20px', flexWrap: 'wrap', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={validPage <= 1}
+                    style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: validPage <= 1 ? '#F1F5F9' : '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: validPage <= 1 ? 'not-allowed' : 'pointer', color: validPage <= 1 ? '#94A3B8' : '#334155', fontWeight: 700 }}
+                  >&lt;</button>
+                  {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1).map((pNum) => {
+                    const isCur = validPage === pNum;
+                    return (
+                      <button
+                        key={pNum}
+                        onClick={() => setCurrentPage(pNum)}
+                        style={{ width: '36px', height: '36px', borderRadius: '8px', border: isCur ? '1px solid #16A34A' : '1px solid #CBD5E1', backgroundColor: isCur ? '#16A34A' : '#FFFFFF', color: isCur ? '#FFFFFF' : '#334155', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}
+                      >{pNum}</button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(Math.max(1, totalPages), p + 1))}
+                    disabled={validPage >= totalPages}
+                    style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: validPage >= totalPages ? '#F1F5F9' : '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: validPage >= totalPages ? 'not-allowed' : 'pointer', color: validPage >= totalPages ? '#94A3B8' : '#334155', fontWeight: 700 }}
+                  >&gt;</button>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 600 }}>Show:</span>
+                  <select
+                    value={`${itemsPerPage} per page`}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value.split(' ')[0], 10);
+                      if (!isNaN(val)) {
+                        setItemsPerPage(val);
+                        setCurrentPage(1);
+                      }
+                    }}
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', fontWeight: 700, color: '#0F172A', cursor: 'pointer' }}
+                  >
+                    <option value="12 per page">12 per page</option>
+                    <option value="24 per page">24 per page</option>
+                    <option value="48 per page">48 per page</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+          </div>
         </div>
-
 
       </div>
     </section>

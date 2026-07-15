@@ -1,509 +1,780 @@
-import React, { useState } from 'react';
-import { FaSearch, FaChevronDown, FaMapMarkerAlt, FaCheck, FaImages } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import {
+  FaSearch,
+  FaHome,
+  FaStore,
+  FaBriefcase,
+  FaMapMarkerAlt,
+  FaBuilding,
+  FaChevronDown,
+  FaCheckCircle,
+  FaHeart,
+  FaRegHeart,
+  FaChevronLeft,
+  FaChevronRight,
+  FaBed,
+  FaBath,
+  FaRulerCombined,
+  FaUsers,
+  FaCity,
+  FaCoins,
+  FaSmile,
+  FaCrosshairs,
+} from 'react-icons/fa';
+import { siteSettingsDb, selectedCity } from '../db/marketplaceDb';
 
 interface HeroProps {
-  currentBg: number;
-  setCurrentBg: React.Dispatch<React.SetStateAction<number>>;
+  currentBg?: number;
+  setCurrentBg?: React.Dispatch<React.SetStateAction<number>>;
   onPropertyClick?: (id: string) => void;
   onSearch?: (category: string, query: string) => void;
 }
 
-export const Hero: React.FC<HeroProps> = ({ currentBg: _currentBg, setCurrentBg: _setCurrentBg, onPropertyClick, onSearch }) => {
-  const [searchText, setSearchText] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState('Hyderabad');
-  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('All Categories');
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+export const Hero: React.FC<HeroProps> = ({ onPropertyClick, onSearch }) => {
+  const [activeTab, setActiveTab] = useState<'Property' | 'Franchise' | 'Business' | 'Plots/Land' | 'Commercial'>('Property');
+  const [locationText, setLocationText] = useState(selectedCity || 'Guntur, Andhra Pradesh');
+  const [radius, setRadius] = useState('5 KM');
+  const [budget, setBudget] = useState('₹10L - ₹5 Cr');
+  const [propertyType, setPropertyType] = useState('All Types');
+  const [bhk, setBhk] = useState('All BHK');
+  const [priceRange, setPriceRange] = useState('Any Price');
+  const [isSaved, setIsSaved] = useState(false);
+  const [sliderIndex, setSliderIndex] = useState(0);
 
-  const locations = ['Hyderabad', 'Bengaluru', 'Mumbai', 'Delhi', 'Chennai', 'Pune', 'Kolkata', 'Ahmedabad', 'Vijayawada', 'Visakhapatnam'];
-  const categories = ['All Categories', 'Property', 'Franchise', 'Business', 'Finance', 'Insurance'];
-  const popularTags = ['Apartment', 'Villa', 'Franchise', 'Home Loan', 'Health Insurance', 'Commercial Property'];
+  // Sync location text if selectedCity changes
+  useEffect(() => {
+    if (selectedCity && selectedCity !== 'All India') {
+      setLocationText(selectedCity);
+    }
+  }, [selectedCity]);
 
-  const avatars = [
-    { initials: 'AK', color: '#4F46E5' },
-    { initials: 'SR', color: '#E11D48' },
-    { initials: 'PM', color: '#F59E0B' },
+  const handleSearch = () => {
+    if (onSearch) {
+      let query = locationText;
+      if (activeTab === 'Plots/Land') query += ' land plot';
+      else if (activeTab === 'Commercial') query += ' commercial office shop';
+      onSearch(activeTab, query);
+    }
+  };
+
+  const handlePopularSearch = (tag: string) => {
+    if (onSearch) {
+      if (tag === 'Apartment' || tag === 'Villa' || tag === 'Plots' || tag === 'Commercial' || tag === 'Farm Land') {
+        onSearch('Property', tag);
+      } else if (tag === 'Franchise') {
+        onSearch('Franchise', '');
+      } else {
+        onSearch('All Categories', tag);
+      }
+    }
+  };
+
+  const tabs = [
+    { id: 'Property' as const, label: 'Property', icon: FaHome },
+    { id: 'Franchise' as const, label: 'Franchise', icon: FaStore },
+    { id: 'Business' as const, label: 'Business', icon: FaBriefcase },
+    { id: 'Plots/Land' as const, label: 'Plots/Land', icon: FaMapMarkerAlt },
+    { id: 'Commercial' as const, label: 'Commercial', icon: FaBuilding },
   ];
 
-  const handleSearchSubmit = () => {
-    if (onSearch) {
-      onSearch(selectedCategory, searchText);
-    }
+  const s = siteSettingsDb.mainPageStats || {
+    propertiesListed: '18,500+',
+    franchisesCount: '950+',
+    verifiedBrokers: '2,400+',
+    citiesCovered: '32',
+    totalPropertyValue: '₹850 Cr+',
+    happyClients: '15K+',
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearchSubmit();
-    }
-  };
-
-  const handleTagClick = (tag: string) => {
-    if (onSearch) {
-      if (tag === 'Apartment') onSearch('Property', 'Apartment');
-      else if (tag === 'Villa') onSearch('Property', 'Villa');
-      else if (tag === 'Franchise') onSearch('Franchise', '');
-      else if (tag === 'Home Loan') onSearch('Finance', 'Loan');
-      else if (tag === 'Health Insurance') onSearch('Insurance', 'Health');
-      else if (tag === 'Commercial Property') onSearch('Property', 'Commercial');
-      else onSearch('All Categories', tag);
-    }
-  };
+  const stats = [
+    { icon: FaHome, color: '#16A34A', bg: '#DCFCE7', value: s.propertiesListed, label: 'Properties Listed' },
+    { icon: FaStore, color: '#9333EA', bg: '#F3E8FF', value: s.franchisesCount, label: 'Franchises' },
+    { icon: FaUsers, color: '#EA580C', bg: '#FFEDD5', value: s.verifiedBrokers, label: 'Verified Brokers' },
+    { icon: FaCity, color: '#2563EB', bg: '#DBEAFE', value: s.citiesCovered, label: 'Cities Covered' },
+    { icon: FaCoins, color: '#DB2777', bg: '#FCE7F3', value: s.totalPropertyValue, label: 'Total Property Value' },
+    { icon: FaSmile, color: '#16A34A', bg: '#DCFCE7', value: s.happyClients, label: 'Happy Clients' },
+  ];
 
   return (
     <section
       id="hero"
       style={{
-        paddingTop: '100px',
+        paddingTop: '90px',
         paddingBottom: '3rem',
-        backgroundColor: '#FFFFFF',
-        minHeight: '90vh',
-        display: 'flex',
-        alignItems: 'center',
+        background: 'linear-gradient(135deg, #E0F2FE 0%, #F0F9FF 40%, #FFFFFF 100%)',
+        minHeight: '100vh',
+        position: 'relative',
+        overflow: 'hidden',
+        fontFamily: "'Outfit', 'Inter', -apple-system, sans-serif",
       }}
     >
+      {/* Main Container */}
       <div
         style={{
-          maxWidth: '1280px',
+          maxWidth: '1360px',
           margin: '0 auto',
-          padding: '0 2rem',
+          padding: '2rem 24px',
           width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '3rem',
+          boxSizing: 'border-box',
         }}
       >
-        {/* Left Column */}
-        <div style={{ flex: '0 0 60%', maxWidth: '60%' }}>
-          {/* Location Selector */}
-          <div style={{ position: 'relative', display: 'inline-block', marginBottom: '1.5rem' }}>
-            <div
-              onClick={() => setShowLocationDropdown(!showLocationDropdown)}
+        {/* Top 2-Column Hero Section */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1.1fr 1fr',
+            gap: '40px',
+            alignItems: 'center',
+            marginBottom: '50px',
+          }}
+        >
+          {/* Left Column: Typography & Search Card */}
+          <div>
+            <h1
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                backgroundColor: '#F3F4F6',
-                borderRadius: '9999px',
-                padding: '8px 16px',
-                fontSize: '14px',
-                color: '#374151',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s ease',
-                userSelect: 'none',
+                fontSize: '3.4rem',
+                fontWeight: 800,
+                color: '#0F172A',
+                lineHeight: 1.15,
+                letterSpacing: '-0.03em',
+                margin: '0 0 16px 0',
               }}
             >
-              <FaMapMarkerAlt style={{ color: '#16A34A', fontSize: '13px' }} />
-              <span>{selectedLocation}</span>
-              <FaChevronDown style={{ fontSize: '10px', color: '#9CA3AF', transform: showLocationDropdown ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
-            </div>
-
-            {/* Location Dropdown */}
-            {showLocationDropdown && (
-              <>
-                {/* Backdrop to close dropdown */}
-                <div
-                  onClick={() => setShowLocationDropdown(false)}
-                  style={{ position: 'fixed', inset: 0, zIndex: 99 }}
-                />
-                <div
+              Your Next Opportunity
+              <br />
+              Is Just{' '}
+              <span style={{ color: '#16A34A', position: 'relative', display: 'inline-block' }}>
+                One Click Away
+                {/* Hand-drawn underline graphic */}
+                <svg
+                  viewBox="0 0 260 20"
                   style={{
                     position: 'absolute',
-                    top: 'calc(100% + 8px)',
+                    bottom: '-8px',
                     left: 0,
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: '12px',
-                    boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
-                    border: '1px solid #E5E7EB',
-                    padding: '8px 0',
-                    minWidth: '200px',
-                    zIndex: 100,
-                    maxHeight: '280px',
-                    overflowY: 'auto',
+                    width: '100%',
+                    height: '16px',
+                    overflow: 'visible',
                   }}
                 >
-                  {locations.map((loc) => (
-                    <div
-                      key={loc}
-                      onClick={() => {
-                        setSelectedLocation(loc);
-                        setShowLocationDropdown(false);
-                      }}
+                  <path
+                    d="M 5 15 Q 130 -5, 255 12"
+                    fill="none"
+                    stroke="#FACC15"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+            </h1>
+
+            <p
+              style={{
+                fontSize: '1.1rem',
+                color: '#475569',
+                lineHeight: 1.6,
+                marginBottom: '28px',
+                maxWidth: '560px',
+                fontWeight: 500,
+              }}
+            >
+              Discover verified properties, premium franchises, profitable businesses, financing & insurance – All in one place.
+            </p>
+
+            {/* Multi-Tab Search Box Card */}
+            <div
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: '24px',
+                padding: '24px',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.08)',
+                border: '1px solid #E2E8F0',
+              }}
+            >
+              {/* Top Tabs */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  flexWrap: 'wrap',
+                  marginBottom: '20px',
+                  borderBottom: '1px solid #F1F5F9',
+                  paddingBottom: '16px',
+                }}
+              >
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
                       style={{
-                        padding: '10px 18px',
-                        fontSize: '14px',
-                        color: loc === selectedLocation ? '#16A34A' : '#374151',
-                        fontWeight: loc === selectedLocation ? 600 : 400,
-                        backgroundColor: loc === selectedLocation ? '#F0FDF4' : 'transparent',
-                        cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        transition: 'background-color 0.15s',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (loc !== selectedLocation) e.currentTarget.style.backgroundColor = '#F9FAFB';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (loc !== selectedLocation) e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    >
-                      <FaMapMarkerAlt style={{ fontSize: '11px', color: loc === selectedLocation ? '#16A34A' : '#9CA3AF' }} />
-                      {loc}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Heading */}
-          <h1
-            style={{
-              fontSize: '3.2rem',
-              fontWeight: 800,
-              lineHeight: 1.15,
-              color: '#111827',
-              marginBottom: '1.25rem',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            Your Next Opportunity
-            <br />
-            Is Just{' '}
-            <span style={{ color: '#16A34A' }}>One Click Away</span>
-          </h1>
-
-          {/* Subtitle */}
-          <p
-            style={{
-              fontSize: '1.1rem',
-              lineHeight: 1.7,
-              color: '#6B7280',
-              marginBottom: '2rem',
-              maxWidth: '540px',
-            }}
-          >
-            Explore the best Properties, Franchises, Finance &amp; Insurance
-            opportunities all in one place.
-          </p>
-
-          {/* Search Bar */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'stretch',
-              border: '1.5px solid #E5E7EB',
-              borderRadius: '12px',
-              backgroundColor: '#FFFFFF',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-              marginBottom: '1.25rem',
-              maxWidth: '600px',
-              position: 'relative',
-            }}
-          >
-            {/* Category Dropdown Toggle */}
-            <div
-              onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '0 18px',
-                backgroundColor: '#F9FAFB',
-                borderRight: '1.5px solid #E5E7EB',
-                borderTopLeftRadius: '10px',
-                borderBottomLeftRadius: '10px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                fontSize: '14px',
-                fontWeight: 500,
-                color: '#374151',
-                transition: 'background-color 0.2s ease',
-                userSelect: 'none',
-              }}
-            >
-              <span>{selectedCategory}</span>
-              <FaChevronDown style={{ fontSize: '10px', color: '#9CA3AF', transform: showCategoryDropdown ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
-            </div>
-
-            {/* Category Dropdown List */}
-            {showCategoryDropdown && (
-              <>
-                <div
-                  onClick={() => setShowCategoryDropdown(false)}
-                  style={{ position: 'fixed', inset: 0, zIndex: 99 }}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: '10px',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.1)',
-                    border: '1px solid #E5E7EB',
-                    padding: '6px 0',
-                    minWidth: '170px',
-                    zIndex: 100,
-                  }}
-                >
-                  {categories.map((cat) => (
-                    <div
-                      key={cat}
-                      onClick={() => {
-                        setSelectedCategory(cat);
-                        setShowCategoryDropdown(false);
-                      }}
-                      style={{
-                        padding: '8px 16px',
+                        padding: '10px 18px',
+                        borderRadius: '9999px',
+                        border: isActive ? '1px solid #16A34A' : '1px solid #E2E8F0',
+                        backgroundColor: isActive ? '#16A34A' : '#F8FAFC',
+                        color: isActive ? '#FFFFFF' : '#475569',
+                        fontWeight: 600,
                         fontSize: '14px',
-                        color: cat === selectedCategory ? '#16A34A' : '#374151',
-                        fontWeight: cat === selectedCategory ? 600 : 400,
-                        backgroundColor: cat === selectedCategory ? '#F0FDF4' : 'transparent',
                         cursor: 'pointer',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (cat !== selectedCategory) e.currentTarget.style.backgroundColor = '#F9FAFB';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (cat !== selectedCategory) e.currentTarget.style.backgroundColor = 'transparent';
+                        transition: 'all 0.2s ease',
                       }}
                     >
-                      {cat}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+                      <Icon style={{ fontSize: '15px' }} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* Text Input */}
-            <input
-              type="text"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="What are you looking for?"
-              style={{
-                flex: 1,
-                border: 'none',
-                outline: 'none',
-                padding: '16px 18px',
-                fontSize: '15px',
-                color: '#111827',
-                backgroundColor: 'transparent',
-              }}
-            />
-
-            {/* Search Button */}
-            <button
-              onClick={handleSearchSubmit}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '0 24px',
-                backgroundColor: '#16A34A',
-                color: '#FFFFFF',
-                border: 'none',
-                borderTopRightRadius: '10px',
-                borderBottomRightRadius: '10px',
-                cursor: 'pointer',
-                fontSize: '15px',
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                transition: 'background-color 0.2s ease',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#15803D')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#16A34A')}
-            >
-              <FaSearch style={{ fontSize: '14px' }} />
-              <span>Search</span>
-            </button>
-          </div>
-
-          {/* Popular Tags */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '8px',
-              maxWidth: '600px',
-            }}
-          >
-            <span style={{ fontSize: '13px', color: '#9CA3AF', fontWeight: 500 }}>
-              Popular:
-            </span>
-            {popularTags.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => handleTagClick(tag)}
+              {/* Row 1: Main Search Inputs */}
+              <div
                 style={{
-                  padding: '6px 14px',
-                  borderRadius: '9999px',
-                  border: '1px solid #E5E7EB',
-                  backgroundColor: '#FFFFFF',
-                  color: '#374151',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  whiteSpace: 'nowrap',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F0FDF4';
-                  e.currentTarget.style.borderColor = '#16A34A';
-                  e.currentTarget.style.color = '#16A34A';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                  e.currentTarget.style.borderColor = '#E5E7EB';
-                  e.currentTarget.style.color = '#374151';
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1fr 1.2fr auto',
+                  gap: '12px',
+                  marginBottom: '16px',
                 }}
               >
-                {tag}
+                {/* Search Location */}
+                <div
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '14px',
+                    padding: '10px 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                    <FaMapMarkerAlt style={{ color: '#16A34A' }} /> Search Location
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <input
+                      type="text"
+                      value={locationText}
+                      onChange={(e) => setLocationText(e.target.value)}
+                      style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '13px', fontWeight: 600, color: '#0F172A', width: '100%' }}
+                    />
+                    <FaChevronDown style={{ fontSize: '10px', color: '#94A3B8' }} />
+                  </div>
+                </div>
+
+                {/* Radius */}
+                <div
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '14px',
+                    padding: '10px 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', marginBottom: '2px' }}>
+                    Radius
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <select
+                      value={radius}
+                      onChange={(e) => setRadius(e.target.value)}
+                      style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '13px', fontWeight: 600, color: '#0F172A', width: '100%', cursor: 'pointer' }}
+                    >
+                      <option value="1 KM">1 KM</option>
+                      <option value="3 KM">3 KM</option>
+                      <option value="5 KM">5 KM</option>
+                      <option value="10 KM">10 KM</option>
+                      <option value="20 KM">20 KM</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Budget */}
+                <div
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '14px',
+                    padding: '10px 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', marginBottom: '2px' }}>
+                    Budget
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <select
+                      value={budget}
+                      onChange={(e) => setBudget(e.target.value)}
+                      style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '13px', fontWeight: 600, color: '#0F172A', width: '100%', cursor: 'pointer' }}
+                    >
+                      <option value="₹10L - ₹5 Cr">₹10L - ₹5 Cr</option>
+                      <option value="Under ₹25L">Under ₹25L</option>
+                      <option value="₹25L - ₹50L">₹25L - ₹50L</option>
+                      <option value="₹50L - ₹1 Cr">₹50L - ₹1 Cr</option>
+                      <option value="₹1 Cr - ₹5 Cr">₹1 Cr - ₹5 Cr</option>
+                      <option value="₹5 Cr+">₹5 Cr+</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Search Button */}
+                <button
+                  onClick={handleSearch}
+                  style={{
+                    backgroundColor: '#16A34A',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '14px',
+                    padding: '0 28px',
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#15803D')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#16A34A')}
+                >
+                  <FaSearch />
+                  <span>Search</span>
+                </button>
+              </div>
+
+              {/* Row 2: Secondary Filters & Use My Location */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  marginBottom: '18px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <select
+                    value={propertyType}
+                    onChange={(e) => setPropertyType(e.target.value)}
+                    style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', fontWeight: 600, color: '#334155', cursor: 'pointer', outline: 'none' }}
+                  >
+                    <option value="All Types">Property Type</option>
+                    <option value="Apartment">Apartment</option>
+                    <option value="Villa">Villa</option>
+                    <option value="Independent House">Independent House</option>
+                    <option value="Plot/Land">Plot / Land</option>
+                  </select>
+
+                  <select
+                    value={bhk}
+                    onChange={(e) => setBhk(e.target.value)}
+                    style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', fontWeight: 600, color: '#334155', cursor: 'pointer', outline: 'none' }}
+                  >
+                    <option value="All BHK">BHK</option>
+                    <option value="1 BHK">1 BHK</option>
+                    <option value="2 BHK">2 BHK</option>
+                    <option value="3 BHK">3 BHK</option>
+                    <option value="4+ BHK">4+ BHK</option>
+                  </select>
+
+                  <select
+                    value={priceRange}
+                    onChange={(e) => setPriceRange(e.target.value)}
+                    style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', fontWeight: 600, color: '#334155', cursor: 'pointer', outline: 'none' }}
+                  >
+                    <option value="Any Price">Price Range</option>
+                    <option value="Under 50L">Under ₹50 Lakh</option>
+                    <option value="50L - 1Cr">₹50 Lakh - ₹1 Cr</option>
+                    <option value="1Cr - 3Cr">₹1 Cr - ₹3 Cr</option>
+                  </select>
+
+                  <button
+                    onClick={() => alert('Opening More Filters...')}
+                    style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', fontWeight: 600, color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <span>⚙ More Filters</span>
+                    <FaChevronDown style={{ fontSize: '10px' }} />
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (navigator.geolocation) {
+                      navigator.geolocation.getCurrentPosition(() => {
+                        setLocationText('Current Location (GPS)');
+                      });
+                    } else {
+                      setLocationText('Guntur, AP');
+                    }
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#16A34A',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <FaCrosshairs />
+                  <span>Use My Location</span>
+                </button>
+              </div>
+
+              {/* Row 3: Popular Searches & Advanced Search */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderTop: '1px solid #F1F5F9',
+                  paddingTop: '16px',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>
+                    Popular Searches:
+                  </span>
+                  {['Apartment', 'Villa', 'Plots', 'Commercial', 'Franchise', 'Farm Land'].map((tag) => {
+                    const isPurple = tag === 'Villa';
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => handlePopularSearch(tag)}
+                        style={{
+                          padding: '4px 12px',
+                          borderRadius: '9999px',
+                          border: isPurple ? '1px solid #D8B4FE' : '1px solid #E2E8F0',
+                          backgroundColor: isPurple ? '#F3E8FF' : '#F8FAFC',
+                          color: isPurple ? '#7E22CE' : '#475569',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <a
+                  href="#advanced"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    alert('Opening Advanced Search...');
+                  }}
+                  style={{
+                    color: '#0284C7',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <span>Advanced Search</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Hero Image Slider Card */}
+          <div style={{ position: 'relative' }}>
+            <div
+              style={{
+                borderRadius: '28px',
+                overflow: 'hidden',
+                boxShadow: '0 25px 60px -15px rgba(0,0,0,0.2)',
+                border: '4px solid #FFFFFF',
+                position: 'relative',
+                aspectRatio: '16 / 10.5',
+                backgroundColor: '#0F172A',
+              }}
+            >
+              {/* Image */}
+              <img
+                src={sliderIndex === 0 ? "/assets/hero_villa.jpg" : "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80"}
+                alt="Skyline Heights Villa"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                  transition: 'transform 0.5s ease',
+                }}
+              />
+
+              {/* Top Left Badges */}
+              <div style={{ position: 'absolute', top: '20px', left: '20px', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 10 }}>
+                <span
+                  style={{
+                    backgroundColor: '#FEF08A',
+                    color: '#854D0E',
+                    padding: '6px 14px',
+                    borderRadius: '9999px',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  }}
+                >
+                  👑 Premium Listing
+                </span>
+                <span
+                  style={{
+                    backgroundColor: '#DCFCE7',
+                    color: '#16A34A',
+                    padding: '6px 14px',
+                    borderRadius: '9999px',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  }}
+                >
+                  <FaCheckCircle /> Verified
+                </span>
+              </div>
+
+              {/* Top Right Heart Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsSaved(!isSaved);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '20px',
+                  right: '20px',
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                  backdropFilter: 'blur(8px)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 10,
+                  transition: 'transform 0.2s',
+                }}
+              >
+                {isSaved ? <FaHeart style={{ color: '#EF4444', fontSize: '20px' }} /> : <FaRegHeart style={{ color: '#FFFFFF', fontSize: '20px' }} />}
               </button>
-            ))}
+
+              {/* Slider Arrows */}
+              <button
+                onClick={() => setSliderIndex((sliderIndex + 1) % 2)}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '16px',
+                  transform: 'translateY(-50%)',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  zIndex: 10,
+                }}
+              >
+                <FaChevronLeft style={{ color: '#0F172A', fontSize: '14px' }} />
+              </button>
+              <button
+                onClick={() => setSliderIndex((sliderIndex + 1) % 2)}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  right: '16px',
+                  transform: 'translateY(-50%)',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  zIndex: 10,
+                }}
+              >
+                <FaChevronRight style={{ color: '#0F172A', fontSize: '14px' }} />
+              </button>
+
+              {/* Bottom Overlay Banner */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  background: 'linear-gradient(to top, rgba(15, 23, 42, 0.96) 0%, rgba(15, 23, 42, 0.75) 65%, transparent 100%)',
+                  padding: '36px 24px 24px 24px',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  justifyContent: 'space-between',
+                  zIndex: 5,
+                }}
+              >
+                <div>
+                  <h3 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.02em' }}>
+                    Skyline Heights Villa
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#CBD5E1', marginBottom: '14px', fontWeight: 500 }}>
+                    <FaMapMarkerAlt style={{ color: '#16A34A' }} />
+                    <span>Gachibowli, Hyderabad</span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '13px', fontWeight: 600, color: '#E2E8F0' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <FaBed style={{ color: '#38BDF8' }} /> 4 BHK
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <FaBath style={{ color: '#38BDF8' }} /> 5 Bath
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <FaRulerCombined style={{ color: '#38BDF8' }} /> 3200 Sq.ft
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <FaHome style={{ color: '#38BDF8' }} /> Villa
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                  <div style={{ fontSize: '1.7rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1 }}>
+                    ₹1.82 Cr
+                  </div>
+                  <button
+                    onClick={() => onPropertyClick?.('P5')}
+                    style={{
+                      backgroundColor: '#16A34A',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '10px 20px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      boxShadow: '0 4px 12px rgba(22, 163, 74, 0.4)',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#15803D')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#16A34A')}
+                  >
+                    <span>View Details</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Bottom Center Dots */}
+              <div style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '6px', zIndex: 10 }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: sliderIndex === 0 ? '#16A34A' : 'rgba(255,255,255,0.4)', display: 'block' }} />
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: sliderIndex === 1 ? '#16A34A' : 'rgba(255,255,255,0.4)', display: 'block' }} />
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.4)', display: 'block' }} />
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.4)', display: 'block' }} />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Right Column */}
-        <div style={{ flex: '0 0 42%', maxWidth: '42%', position: 'relative', paddingBottom: '50px' }}>
-          {/* Soft green gradient background frame */}
-          <div
-            style={{
-              position: 'absolute',
-              inset: '-24px',
-              background: 'linear-gradient(135deg, rgba(22,163,74,0.07) 0%, rgba(22,163,74,0.03) 30%, transparent 50%, rgba(22,163,74,0.05) 100%)',
-              borderRadius: '2.5rem',
-              zIndex: 0,
-            }}
-          />
-
-          {/* House Image */}
-          <div
-            onClick={() => onPropertyClick?.('P5')}
-            style={{
-              position: 'relative',
-              cursor: 'pointer',
-              borderRadius: '1.5rem',
-              overflow: 'hidden',
-              zIndex: 1,
-              transition: 'transform 0.3s ease',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.01)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-          >
-            <img
-              src="/assets/hero_villa.jpg"
-              alt="Modern luxury house"
-              style={{
-                width: '100%',
-                height: 'auto',
-                display: 'block',
-              }}
-            />
-          </div>
-
-          {/* Trusted By Badge — floats at top-right edge */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '-10px',
-              right: '-30px',
-              backgroundColor: '#FFFFFF',
-              borderRadius: '16px',
-              padding: '18px 24px',
-              boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-              minWidth: '170px',
-              textAlign: 'center',
-              zIndex: 5,
-            }}
-          >
-            <div style={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 500, marginBottom: '4px', letterSpacing: '0.03em' }}>
-              Trusted by
-            </div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#16A34A', lineHeight: 1.1 }}>
-              10,000+
-            </div>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginTop: '4px', marginBottom: '12px' }}>
-              Happy Customers
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              {avatars.map((avatar, idx) => (
+        {/* Stats Row (6 Horizontal Pill Cards) */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(6, 1fr)',
+            gap: '16px',
+            marginTop: '20px',
+          }}
+        >
+          {stats.map((stat, idx) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={idx}
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '18px',
+                  padding: '18px 16px',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
+                  border: '1px solid #F1F5F9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-3px)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.04)';
+                }}
+              >
                 <div
-                  key={idx}
                   style={{
-                    width: '32px',
-                    height: '32px',
+                    width: '46px',
+                    height: '46px',
                     borderRadius: '50%',
-                    backgroundColor: avatar.color,
-                    color: '#FFFFFF',
+                    backgroundColor: stat.bg,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    border: '2.5px solid #FFFFFF',
-                    marginLeft: idx === 0 ? 0 : '-10px',
-                    position: 'relative',
-                    zIndex: avatars.length - idx,
+                    flexShrink: 0,
                   }}
                 >
-                  {avatar.initials}
+                  <Icon style={{ color: stat.color, fontSize: '20px' }} />
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Bottom row below image: View More Pics + Verified Genuine Listings */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', position: 'relative', zIndex: 1 }}>
-            <div
-              onClick={() => onPropertyClick?.('P5')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 20px',
-                cursor: 'pointer',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #E5E7EB',
-                borderRadius: '9999px',
-                boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#16A34A';
-                e.currentTarget.style.borderColor = '#16A34A';
-                const label = e.currentTarget.querySelector('span');
-                const svg = e.currentTarget.querySelector('svg');
-                if (label) label.style.color = '#FFFFFF';
-                if (svg) svg.style.color = '#FFFFFF';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#FFFFFF';
-                e.currentTarget.style.borderColor = '#E5E7EB';
-                const label = e.currentTarget.querySelector('span');
-                const svg = e.currentTarget.querySelector('svg');
-                if (label) label.style.color = '#111827';
-                if (svg) svg.style.color = '#16A34A';
-              }}
-            >
-              <FaImages style={{ fontSize: '15px', color: '#16A34A', transition: 'color 0.2s' }} />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827', transition: 'color 0.2s' }}>
-                View More Pics
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: '#FFFFFF', borderRadius: '9999px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
-              <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FaCheck style={{ fontSize: '10px', color: '#16A34A' }} />
+                <div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.1 }}>
+                    {stat.value}
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748B', marginTop: '4px' }}>
+                    {stat.label}
+                  </div>
+                </div>
               </div>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>
-                Verified Genuine Listings
-              </span>
-            </div>
-          </div>
+            );
+          })}
         </div>
       </div>
     </section>

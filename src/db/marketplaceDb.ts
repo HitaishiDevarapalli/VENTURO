@@ -520,6 +520,81 @@ export let siteSettingsDb: SiteSettings = defaultSettings;
 export let teamMembersDb: TeamMember[] = [];
 export let demandRegionsDb: DemandRegion[] = [];
 
+export interface ShowcaseVideo {
+  id: string;
+  videoUrl: string;
+  thumbnailUrl?: string;
+  linkedCategory: 'Property' | 'Franchise' | 'Business' | 'None';
+  linkedId?: string;
+  title: string;
+  displayOrder: number;
+  status: 'Active' | 'Inactive';
+  autoplayDuration?: number;
+  createdDate: string;
+}
+
+export interface ShowcaseSettings {
+  maxVideoSizeMB: number;
+  maxVideoDurationSec: number;
+  defaultPlaybackDurationSec: number;
+}
+
+export let showcaseVideosDb: ShowcaseVideo[] = [];
+export let showcaseSettingsDb: ShowcaseSettings = {
+  maxVideoSizeMB: 200,
+  maxVideoDurationSec: 60,
+  defaultPlaybackDurationSec: 10
+};
+
+const defaultShowcaseVideos: ShowcaseVideo[] = [
+  {
+    id: 'sv1',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-modern-villa-with-a-swimming-pool-42526-large.mp4',
+    title: 'Luxury Villa Showcase',
+    linkedCategory: 'None',
+    displayOrder: 1,
+    status: 'Active',
+    createdDate: new Date().toLocaleDateString()
+  },
+  {
+    id: 'sv2',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-office-building-glass-facade-reflecting-the-sky-40439-large.mp4',
+    title: 'Commercial Business Center',
+    linkedCategory: 'None',
+    displayOrder: 2,
+    status: 'Active',
+    createdDate: new Date().toLocaleDateString()
+  },
+  {
+    id: 'sv3',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-hands-of-a-man-typing-on-a-laptop-42171-large.mp4',
+    title: 'Modern Workspaces & Offices',
+    linkedCategory: 'None',
+    displayOrder: 3,
+    status: 'Active',
+    createdDate: new Date().toLocaleDateString()
+  },
+  {
+    id: 'sv4',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-fresh-vegetable-salad-41617-large.mp4',
+    title: 'Premium Restaurant Opportunities',
+    linkedCategory: 'None',
+    displayOrder: 4,
+    status: 'Active',
+    createdDate: new Date().toLocaleDateString()
+  },
+  {
+    id: 'sv5',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-woman-shopping-in-a-clothing-store-42323-large.mp4',
+    title: 'Retail Shops & Showrooms',
+    linkedCategory: 'None',
+    displayOrder: 5,
+    status: 'Active',
+    createdDate: new Date().toLocaleDateString()
+  }
+];
+
+
 const defaultDemandRegions: DemandRegion[] = [
   {
     id: 'dr1',
@@ -635,6 +710,8 @@ const loadData = () => {
     const t = localStorage.getItem('nexopp_team_members');
     const b = localStorage.getItem('nexopp_businesses');
     const dr = localStorage.getItem('nexopp_demand_regions');
+    const sv = localStorage.getItem('nexopp_showcase_videos');
+    const ss = localStorage.getItem('nexopp_showcase_settings');
 
     propertiesDb = p ? JSON.parse(p) : [];
     franchiseDb = f ? JSON.parse(f) : [];
@@ -645,6 +722,12 @@ const loadData = () => {
     siteSettingsDb = s ? JSON.parse(s) : defaultSettings;
     teamMembersDb = t ? JSON.parse(t) : [];
     demandRegionsDb = dr ? JSON.parse(dr) : defaultDemandRegions;
+    showcaseVideosDb = sv ? JSON.parse(sv) : defaultShowcaseVideos;
+    showcaseSettingsDb = ss ? JSON.parse(ss) : {
+      maxVideoSizeMB: 200,
+      maxVideoDurationSec: 60,
+      defaultPlaybackDurationSec: 10
+    };
 
     if (siteSettingsDb.primaryColor === '#D4AF37') {
       siteSettingsDb.primaryColor = '#10B981';
@@ -676,7 +759,6 @@ const loadData = () => {
     if (!siteSettingsDb.mainPageStats) {
       siteSettingsDb.mainPageStats = defaultSettings.mainPageStats;
     }
-    businessDb = [];
     insuranceDb = [];
     servicesDb = [];
   } catch (err) {
@@ -688,6 +770,12 @@ const loadData = () => {
     franchiseEnquiriesDb = [];
     siteSettingsDb = defaultSettings;
     teamMembersDb = [];
+    showcaseVideosDb = defaultShowcaseVideos;
+    showcaseSettingsDb = {
+      maxVideoSizeMB: 200,
+      maxVideoDurationSec: 60,
+      defaultPlaybackDurationSec: 10
+    };
   }
 };
 
@@ -703,6 +791,8 @@ export const notifyDataChanged = () => {
     localStorage.setItem('nexopp_settings', JSON.stringify(siteSettingsDb));
     localStorage.setItem('nexopp_team_members', JSON.stringify(teamMembersDb));
     localStorage.setItem('nexopp_demand_regions', JSON.stringify(demandRegionsDb));
+    localStorage.setItem('nexopp_showcase_videos', JSON.stringify(showcaseVideosDb));
+    localStorage.setItem('nexopp_showcase_settings', JSON.stringify(showcaseSettingsDb));
     window.dispatchEvent(new Event('nexopp_data_changed'));
   } catch (err) {
     console.error("Error saving data to localStorage:", err);
@@ -725,6 +815,7 @@ export const updateProperty = (id: string, updated: Partial<PropertyListing>) =>
 
 export const deleteProperty = (id: string) => {
   propertiesDb = propertiesDb.filter(p => p.id !== id);
+  showcaseVideosDb = showcaseVideosDb.filter(v => !(v.linkedCategory === 'Property' && v.linkedId === id));
   notifyDataChanged();
 };
 
@@ -754,6 +845,7 @@ export const updateFranchise = (id: string, updated: Partial<FranchiseListing>) 
 
 export const deleteFranchise = (id: string) => {
   franchiseDb = franchiseDb.filter(f => f.id !== id);
+  showcaseVideosDb = showcaseVideosDb.filter(v => !(v.linkedCategory === 'Franchise' && v.linkedId === id));
   notifyDataChanged();
 };
 
@@ -774,6 +866,38 @@ export const deleteDealer = (id: string) => {
 
 export const addBusiness = (item: BusinessListing) => {
   businessDb = [item, ...businessDb];
+  notifyDataChanged();
+};
+
+export const deleteBusiness = (id: string) => {
+  businessDb = businessDb.filter(b => b.id !== id);
+  showcaseVideosDb = showcaseVideosDb.filter(v => !(v.linkedCategory === 'Business' && v.linkedId === id));
+  notifyDataChanged();
+};
+
+// Showcase Video Mutations
+export const addShowcaseVideo = (video: Omit<ShowcaseVideo, 'id' | 'createdDate'>) => {
+  const newVideo: ShowcaseVideo = {
+    ...video,
+    id: 'sv_' + Date.now(),
+    createdDate: new Date().toLocaleDateString()
+  };
+  showcaseVideosDb = [...showcaseVideosDb, newVideo];
+  notifyDataChanged();
+};
+
+export const updateShowcaseVideo = (id: string, updated: Partial<ShowcaseVideo>) => {
+  showcaseVideosDb = showcaseVideosDb.map(v => v.id === id ? { ...v, ...updated } : v);
+  notifyDataChanged();
+};
+
+export const deleteShowcaseVideo = (id: string) => {
+  showcaseVideosDb = showcaseVideosDb.filter(v => v.id !== id);
+  notifyDataChanged();
+};
+
+export const updateShowcaseSettings = (updated: Partial<ShowcaseSettings>) => {
+  showcaseSettingsDb = { ...showcaseSettingsDb, ...updated };
   notifyDataChanged();
 };
 

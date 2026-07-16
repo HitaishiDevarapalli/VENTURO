@@ -61,7 +61,13 @@ import {
   addDemandRegion,
   updateDemandRegion,
   deleteDemandRegion,
-  recalculateAllDemandRegions
+  recalculateAllDemandRegions,
+  showcaseVideosDb,
+  showcaseSettingsDb,
+  addShowcaseVideo,
+  updateShowcaseVideo,
+  deleteShowcaseVideo,
+  updateShowcaseSettings
 } from '../db/marketplaceDb';
 import { BrokerManagementSystem } from './BrokerManagementSystem';
 import { Logo } from './Logo';
@@ -72,7 +78,9 @@ import type {
   FranchiseListing,
   Dealer,
   SiteSettings,
-  TeamMember
+  TeamMember,
+  ShowcaseVideo,
+  ShowcaseSettings
 } from '../db/marketplaceDb';
 
 interface AdminPanelProps {
@@ -92,7 +100,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
   const [newTagInput, setNewTagInput] = useState('');
 
   // Main Category Tabs
-  const [activeTab, setActiveTab] = useState<'overview' | 'main_stats' | 'customization' | 'hero_cms' | 'properties' | 'franchises' | 'businesses' | 'demand_regions' | 'brokers' | 'inquiries' | 'team'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'main_stats' | 'customization' | 'hero_cms' | 'properties' | 'franchises' | 'businesses' | 'demand_regions' | 'brokers' | 'inquiries' | 'team' | 'media_manager'>('overview');
   const [expandedMenu, setExpandedMenu] = useState<string | null>('brokers');
   const [analyticsDateRange, setAnalyticsDateRange] = useState<'This Week' | 'This Month' | 'Last 30 Days' | 'This Year'>('This Week');
   const [activeAnalyticsSlide, setActiveAnalyticsSlide] = useState<'property' | 'franchise' | 'business'>('property');
@@ -385,6 +393,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
       case 'customization': return { title: 'Website Settings & Customization', sub: 'Configure Showcase Feeds, Brand Interactions & Stats' };
       case 'inquiries': return { title: 'Orders & Leads Enquiries', sub: 'Track Customer Leads, Consultation Requests & Inquiries' };
       case 'team': return { title: 'Team Members Manager', sub: 'Manage Internal Staff, Roles & Portal Access' };
+      case 'media_manager': return { title: '🎬 Featured Showcase Videos', sub: 'Manage videos displayed on the homepage carousel' };
       default: return { title: 'Welcome back, Super Admin! 👋', sub: "Here's what's happening with your marketplace today." };
     }
   };
@@ -605,6 +614,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
           </div>
 
           {[
+            { id: 'media_manager', label: '🎬 Media Manager', icon: <FaVideo /> },
             { id: 'main_stats', label: 'Main Page Stats', icon: <FaChartLine /> },
             { id: 'hero_cms', label: 'CMS Builder', icon: <FaDesktop /> },
             { id: 'customization', label: 'Website Settings', icon: <FaPalette /> },
@@ -2508,6 +2518,201 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
             </div>
           </div>
         )}
+
+        {/* ================= MEDIA MANAGER TAB ================= */}
+        {activeTab === 'media_manager' && (() => {
+          const videos: ShowcaseVideo[] = showcaseVideosDb;
+          const settings: ShowcaseSettings = showcaseSettingsDb;
+          return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+            {/* Header */}
+            <div style={{ backgroundColor: '#FFFFFF', padding: '24px 28px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'linear-gradient(135deg, #16A34A, #059669)', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
+                  <FaVideo />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>🎬 Featured Showcase Videos</h2>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.88rem', color: '#64748B', fontWeight: 500 }}>Manage videos displayed on the homepage carousel</p>
+                </div>
+                <div style={{ marginLeft: 'auto', backgroundColor: '#DCFCE7', color: '#16A34A', padding: '8px 16px', borderRadius: '10px', fontWeight: 700, fontSize: '0.85rem' }}>
+                  {videos.filter(v => v.status === 'Active').length} Active / {videos.length} Total
+                </div>
+              </div>
+            </div>
+
+            {/* Settings Card */}
+            <div style={{ backgroundColor: '#FFFFFF', padding: '24px 28px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+              <h3 style={{ margin: '0 0 20px 0', fontSize: '1.05rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FaCog style={{ color: '#16A34A' }} /> Showcase Settings
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                {/* Default Playback Duration */}
+                <div style={{ padding: '16px', backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                  <label style={{ display: 'block', fontWeight: 700, fontSize: '0.75rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>Default Playback Duration (sec)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <button onClick={() => { const val = Math.max(3, settings.defaultPlaybackDurationSec - 1); updateShowcaseSettings({ defaultPlaybackDurationSec: val }); triggerRefresh(); }} style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFF', cursor: 'pointer', fontWeight: 800, fontSize: '1.1rem', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                    <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A', minWidth: '40px', textAlign: 'center' }}>{settings.defaultPlaybackDurationSec}</span>
+                    <button onClick={() => { const val = settings.defaultPlaybackDurationSec + 1; updateShowcaseSettings({ defaultPlaybackDurationSec: val }); triggerRefresh(); }} style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFF', cursor: 'pointer', fontWeight: 800, fontSize: '1.1rem', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                  </div>
+                </div>
+                {/* Max Video Size */}
+                <div style={{ padding: '16px', backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                  <label style={{ display: 'block', fontWeight: 700, fontSize: '0.75rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>Max Video Size (MB)</label>
+                  <input type="number" value={settings.maxVideoSizeMB} onChange={e => { updateShowcaseSettings({ maxVideoSizeMB: Number(e.target.value) || 200 }); triggerRefresh(); }} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '1rem', fontWeight: 700, color: '#0F172A', boxSizing: 'border-box', outline: 'none' }} />
+                </div>
+                {/* Max Video Duration */}
+                <div style={{ padding: '16px', backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                  <label style={{ display: 'block', fontWeight: 700, fontSize: '0.75rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>Max Video Duration (sec)</label>
+                  <input type="number" value={settings.maxVideoDurationSec} onChange={e => { updateShowcaseSettings({ maxVideoDurationSec: Number(e.target.value) || 60 }); triggerRefresh(); }} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '1rem', fontWeight: 700, color: '#0F172A', boxSizing: 'border-box', outline: 'none' }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Add New Video Form */}
+            <div style={{ backgroundColor: '#FFFFFF', padding: '24px 28px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+              <h3 style={{ margin: '0 0 20px 0', fontSize: '1.05rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FaPlus style={{ color: '#16A34A' }} /> Add New Video
+              </h3>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const form = e.target as HTMLFormElement;
+                const formData = new FormData(form);
+                const videoUrl = (formData.get('videoUrl') as string || '').trim();
+                const title = (formData.get('title') as string || '').trim();
+                const linkedCategory = (formData.get('linkedCategory') as string || 'None') as ShowcaseVideo['linkedCategory'];
+                const linkedId = (formData.get('linkedId') as string || '').trim();
+                const displayOrder = Number(formData.get('displayOrder')) || (videos.length + 1);
+                const status = formData.get('statusToggle') ? 'Active' as const : 'Inactive' as const;
+                if (!videoUrl || !title) { showNotification('Please enter Video URL and Title', 'warning'); return; }
+                addShowcaseVideo({ videoUrl, title, linkedCategory, linkedId: linkedId || undefined, displayOrder, status });
+                showNotification(`Added "${title}" to showcase videos!`);
+                form.reset();
+                triggerRefresh();
+              }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.75rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Video URL *</label>
+                    <input name="videoUrl" type="url" placeholder="https://example.com/video.mp4" required style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '0.9rem', color: '#0F172A', boxSizing: 'border-box', outline: 'none', backgroundColor: '#F8FAFC' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.75rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Title *</label>
+                    <input name="title" type="text" placeholder="e.g. Luxury Villa Showcase" required style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '0.9rem', color: '#0F172A', boxSizing: 'border-box', outline: 'none', backgroundColor: '#F8FAFC' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.75rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Linked Category</label>
+                    <select name="linkedCategory" defaultValue="None" style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '0.9rem', color: '#0F172A', boxSizing: 'border-box', outline: 'none', backgroundColor: '#F8FAFC' }}>
+                      <option value="None">None</option>
+                      <option value="Property">Property</option>
+                      <option value="Franchise">Franchise</option>
+                      <option value="Business">Business</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.75rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Linked ID</label>
+                    <input name="linkedId" type="text" placeholder="Optional ID" style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '0.9rem', color: '#0F172A', boxSizing: 'border-box', outline: 'none', backgroundColor: '#F8FAFC' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.75rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Display Order</label>
+                    <input name="displayOrder" type="number" defaultValue={videos.length + 1} min={1} style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '0.9rem', color: '#0F172A', boxSizing: 'border-box', outline: 'none', backgroundColor: '#F8FAFC' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.75rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Status</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px', borderRadius: '10px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', cursor: 'pointer' }}>
+                      <input name="statusToggle" type="checkbox" defaultChecked style={{ width: '18px', height: '18px', accentColor: '#16A34A' }} />
+                      <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#0F172A' }}>Active</span>
+                    </label>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="submit" style={{ padding: '12px 28px', backgroundColor: '#16A34A', color: '#FFF', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 8px rgba(22,163,74,0.25)', transition: 'all 0.2s' }}>
+                    <FaPlus /> Add Showcase Video
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Video List */}
+            <div style={{ backgroundColor: '#FFFFFF', padding: '24px 28px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+              <h3 style={{ margin: '0 0 20px 0', fontSize: '1.05rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FaListAlt style={{ color: '#16A34A' }} /> All Showcase Videos ({videos.length})
+              </h3>
+              {videos.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '48px 20px', color: '#94A3B8' }}>
+                  <FaVideo style={{ fontSize: '2.5rem', marginBottom: '12px', opacity: 0.5 }} />
+                  <p style={{ fontWeight: 600, fontSize: '1rem' }}>No showcase videos yet</p>
+                  <p style={{ fontSize: '0.85rem' }}>Add your first video using the form above</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {[...videos].sort((a, b) => a.displayOrder - b.displayOrder).map((video) => (
+                    <div key={video.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 18px', borderRadius: '12px', border: '1px solid #F1F5F9', backgroundColor: '#FAFBFC', transition: 'all 0.15s' }}>
+                      {/* Order Badge */}
+                      <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', flexShrink: 0 }}>
+                        #{video.displayOrder}
+                      </div>
+                      {/* Video Thumbnail */}
+                      <div style={{ width: '100px', height: '60px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#0F172A', flexShrink: 0 }}>
+                        <video src={video.videoUrl} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} preload="metadata" />
+                      </div>
+                      {/* Info */}
+                      <div style={{ flexGrow: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0F172A', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{video.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', backgroundColor: '#F1F5F9', padding: '2px 8px', borderRadius: '6px' }}>{video.linkedCategory}</span>
+                          {video.linkedId && <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>ID: {video.linkedId}</span>}
+                          <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>{video.createdDate}</span>
+                        </div>
+                      </div>
+                      {/* Status Badge */}
+                      <span style={{ padding: '5px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.75rem', letterSpacing: '0.03em', backgroundColor: video.status === 'Active' ? '#DCFCE7' : '#F1F5F9', color: video.status === 'Active' ? '#16A34A' : '#94A3B8', flexShrink: 0 }}>
+                        {video.status === 'Active' ? '● Active' : '○ Inactive'}
+                      </span>
+                      {/* Actions */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                        <button onClick={() => {
+                          const newTitle = window.prompt('Edit video title:', video.title);
+                          if (newTitle !== null && newTitle.trim()) {
+                            const newUrl = window.prompt('Edit video URL:', video.videoUrl);
+                            if (newUrl !== null && newUrl.trim()) {
+                              const newOrder = window.prompt('Edit display order:', String(video.displayOrder));
+                              updateShowcaseVideo(video.id, { title: newTitle.trim(), videoUrl: newUrl.trim(), displayOrder: Number(newOrder) || video.displayOrder });
+                              showNotification(`Updated "${newTitle.trim()}"`);
+                              triggerRefresh();
+                            }
+                          }
+                        }} title="Edit" style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563EB', fontSize: '0.8rem', transition: 'all 0.15s' }}>
+                          <FaEdit />
+                        </button>
+                        <button onClick={() => {
+                          updateShowcaseVideo(video.id, { status: video.status === 'Active' ? 'Inactive' : 'Active' });
+                          showNotification(`${video.title} is now ${video.status === 'Active' ? 'Inactive' : 'Active'}`);
+                          triggerRefresh();
+                        }} title="Toggle Status" style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: video.status === 'Active' ? '#16A34A' : '#94A3B8', fontSize: '0.8rem', transition: 'all 0.15s' }}>
+                          <FaEye />
+                        </button>
+                        <button onClick={() => {
+                          if (window.confirm(`Delete "${video.title}"? This cannot be undone.`)) {
+                            deleteShowcaseVideo(video.id);
+                            showNotification(`Deleted "${video.title}"`, 'warning');
+                            triggerRefresh();
+                          }
+                        }} title="Delete" style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #FEE2E2', backgroundColor: '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444', fontSize: '0.8rem', transition: 'all 0.15s' }}>
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+          );
+        })()}
 
       </div>
 

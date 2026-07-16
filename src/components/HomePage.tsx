@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { propertiesDb, dealersDb } from '../db/marketplaceDb';
 import { LiveLocationMap } from './LiveLocationMap';
+import { ShowcaseVideoCarousel } from './ShowcaseVideoCarousel';
 import {
   FaBuilding,
   FaHome,
@@ -100,6 +101,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick 
           {/* LEFT SIDE: Categories + Featured Properties */}
           <div>
             
+            {/* Featured Showcase Videos */}
+            <ShowcaseVideoCarousel onNavigate={onNavigate} onPropertyClick={onPropertyClick} />
+
             {/* Explore by Category */}
             <div style={{ marginBottom: '44px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>

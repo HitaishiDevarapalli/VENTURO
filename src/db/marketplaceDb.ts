@@ -1016,7 +1016,7 @@ export const calculateDemandScore = (region: DemandRegion): { score: number; lev
     if (p.latitude && p.longitude) {
       const dist = getDistance(region.latitude, region.longitude, p.latitude, p.longitude);
       if (dist <= region.radius) {
-        if (p.approvalStatus === 'Sold' || p.listingStatus === 'Sold') {
+        if (p.approvalStatus === 'Sold') {
           propSales++;
         } else {
           activeProps++;
@@ -1031,7 +1031,7 @@ export const calculateDemandScore = (region: DemandRegion): { score: number; lev
     if (f.latitude && f.longitude) {
       const dist = getDistance(region.latitude, region.longitude, f.latitude, f.longitude);
       if (dist <= region.radius) {
-        if (f.status === 'Sold' || f.approvalStatus === 'Sold') {
+        if (f.status === 'Sold' || f.approvalStatus === 'Closed') {
           franSales++;
         } else {
           activeFrans++;
@@ -1046,11 +1046,8 @@ export const calculateDemandScore = (region: DemandRegion): { score: number; lev
     if (b.latitude && b.longitude) {
       const dist = getDistance(region.latitude, region.longitude, b.latitude, b.longitude);
       if (dist <= region.radius) {
-        if (b.status === 'Sold' || b.approvalStatus === 'Sold') {
-          busSales++;
-        } else {
-          activeBuses++;
-        }
+        // BusinessListing does not have status/approvalStatus. Treat all matched businesses as active
+        activeBuses++;
       }
     }
   });

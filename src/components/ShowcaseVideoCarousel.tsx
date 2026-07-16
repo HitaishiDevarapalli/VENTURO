@@ -5,8 +5,8 @@ import {
   propertiesDb,
   franchiseDb,
   businessDb,
-  ShowcaseVideo,
 } from '../db/marketplaceDb';
+import type { ShowcaseVideo } from '../db/marketplaceDb';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

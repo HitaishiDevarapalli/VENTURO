@@ -54,7 +54,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick 
   ];
 
   const featuredProperties = propertiesDb
-    .filter(p => p.approvalStatus !== 'Sold' && p.listingStatus !== 'Sold')
     .slice(0, 4)
     .map((p) => {
       const assignedBroker = dealersDb.find(d => d.id === p.dealerId || (p.assignedBrokerIds && p.assignedBrokerIds.includes(d.id)));
@@ -77,6 +76,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick 
         brokerName,
         brokerRating,
         brokerImg,
+        approvalStatus: p.approvalStatus,
+        listingStatus: p.listingStatus,
       };
     });
 
@@ -221,10 +222,42 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick 
                         <img src={prop.image} alt={prop.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         
                         {/* Badge */}
-                        <div style={{ position: 'absolute', top: '12px', left: '12px', backgroundColor: prop.badgeColor, color: prop.badgeText, padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <BadgeIcon />
-                          <span>{prop.badge}</span>
-                        </div>
+                        {prop.approvalStatus === 'Sold' || prop.listingStatus === 'Sold' ? (
+                          <>
+                            <style>{`
+                              @keyframes soldBadgeFadeIn {
+                                from { opacity: 0; transform: scale(0.9) rotate(-10deg); }
+                                to { opacity: 1; transform: scale(1) rotate(-10deg); }
+                              }
+                            `}</style>
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: '12px',
+                                left: '12px',
+                                backgroundColor: '#E53935',
+                                color: '#FFFFFF',
+                                padding: '6px 14px',
+                                borderRadius: '9999px',
+                                fontSize: '12px',
+                                fontWeight: 900,
+                                letterSpacing: '0.05em',
+                                boxShadow: '0 4px 10px rgba(229, 57, 53, 0.4)',
+                                zIndex: 10,
+                                transform: 'rotate(-10deg)',
+                                animation: 'soldBadgeFadeIn 0.4s ease-out forwards',
+                                fontFamily: "'Outfit', 'Inter', sans-serif"
+                              }}
+                            >
+                              SOLD
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{ position: 'absolute', top: '12px', left: '12px', backgroundColor: prop.badgeColor, color: prop.badgeText, padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <BadgeIcon />
+                            <span>{prop.badge}</span>
+                          </div>
+                        )}
 
                         {/* Wishlist Heart */}
                         <button
@@ -313,7 +346,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick 
                   }}
                 >
                   <LiveLocationMap
-                    items={propertiesDb.filter(p => p.approvalStatus !== 'Sold' && p.listingStatus !== 'Sold')}
+                    items={propertiesDb}
                     type="property"
                     height="220px"
                     onSelectItem={onPropertyClick}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { propertiesDb, selectedCity, dealersDb } from '../db/marketplaceDb';
+import { propertiesDb, selectedCity, dealersDb, demandRegionsDb, getDistance } from '../db/marketplaceDb';
 import {
   FaSearch,
   FaMapMarkerAlt,
@@ -218,6 +218,7 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
   const [sortBy, setSortBy] = useState('Relevance');
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
   const [wishlisted, setWishlisted] = useState<Record<string, boolean>>({});
+  const [demandFilter, setDemandFilter] = useState<'All' | 'High' | 'Medium' | 'Low'>('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
 
@@ -266,7 +267,7 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
 
   // Rich screenshot-matching properties list
   const displayProperties = useMemo(() => {
-    const activeListings = propertiesDb.filter(p => p.approvalStatus !== 'Sold' && p.listingStatus !== 'Sold');
+    const activeListings = propertiesDb;
     const baseList = activeListings.map((p) => {
       const assignedBroker = dealersDb.find(d => d.id === p.dealerId || (p.assignedBrokerIds && p.assignedBrokerIds.includes(d.id)));
       const brokerName = assignedBroker?.companyName || assignedBroker?.fullName || p.agentName || 'RealtyPlus Advisors';
@@ -297,10 +298,26 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
         status: p.status || 'Buy',
         availabilityCount: p.availabilityCount || 0,
         trending: p.trending || false,
+        approvalStatus: p.approvalStatus,
+        listingStatus: p.listingStatus,
       };
     });
 
     return baseList.filter((item) => {
+      // 0.5 Demand Region Filter
+      if (demandFilter !== 'All') {
+        const matchingRegions = demandRegionsDb.filter(r => r.demandLevel === demandFilter);
+        if (item.latitude && item.longitude) {
+          const matchDemand = matchingRegions.some(r => {
+            const dist = getDistance(r.latitude, r.longitude, item.latitude, item.longitude);
+            return dist <= r.radius;
+          });
+          if (!matchDemand) return false;
+        } else {
+          return false;
+        }
+      }
+
       // 1. Search Query
       if (searchQuery && searchQuery.trim() !== '') {
         const q = searchQuery.toLowerCase();
@@ -522,7 +539,7 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '2.2fr 1.3fr 1.3fr 1.1fr auto',
+              gridTemplateColumns: '2.2fr 1.3fr 1.3fr 1.1fr 1.3fr auto',
               gap: '14px',
               alignItems: 'start',
             }}
@@ -722,6 +739,44 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
                   <option value="2 BHK">2 BHK</option>
                   <option value="3 BHK">3 BHK</option>
                   <option value="4+ BHK">4+ BHK</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Demand Region Filter */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: '6px' }}>
+                Demand Region
+              </label>
+              <div
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <select
+                  value={demandFilter}
+                  onChange={(e) => setDemandFilter(e.target.value as any)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#0F172A',
+                    cursor: 'pointer',
+                    width: '100%',
+                  }}
+                >
+                  <option value="All">All Regions</option>
+                  <option value="High">🟢 High Demand</option>
+                  <option value="Medium">🟡 Medium Demand</option>
+                  <option value="Low">🔴 Low Demand</option>
                 </select>
               </div>
             </div>
@@ -1204,26 +1259,58 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
                       />
 
                       {/* Top Left Badge */}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '12px',
-                          left: '12px',
-                          backgroundColor: badgeBg,
-                          color: badgeColor,
-                          padding: '4px 10px',
-                          borderRadius: '9999px',
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                        }}
-                      >
-                        <BadgeIcon />
-                        <span>{prop.badge}</span>
-                      </div>
+                      {prop.approvalStatus === 'Sold' || prop.listingStatus === 'Sold' ? (
+                        <>
+                          <style>{`
+                            @keyframes soldBadgeFadeIn {
+                              from { opacity: 0; transform: scale(0.9) rotate(-10deg); }
+                              to { opacity: 1; transform: scale(1) rotate(-10deg); }
+                            }
+                          `}</style>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '12px',
+                              left: '12px',
+                              backgroundColor: '#E53935',
+                              color: '#FFFFFF',
+                              padding: '6px 14px',
+                              borderRadius: '9999px',
+                              fontSize: '12px',
+                              fontWeight: 900,
+                              letterSpacing: '0.05em',
+                              boxShadow: '0 4px 10px rgba(229, 57, 53, 0.4)',
+                              zIndex: 10,
+                              transform: 'rotate(-10deg)',
+                              animation: 'soldBadgeFadeIn 0.4s ease-out forwards',
+                              fontFamily: "'Outfit', 'Inter', sans-serif"
+                            }}
+                          >
+                            SOLD
+                          </div>
+                        </>
+                      ) : (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '12px',
+                            left: '12px',
+                            backgroundColor: badgeBg,
+                            color: badgeColor,
+                            padding: '4px 10px',
+                            borderRadius: '9999px',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                          }}
+                        >
+                          <BadgeIcon />
+                          <span>{prop.badge}</span>
+                        </div>
+                      )}
 
                       {/* Top Right Heart Button */}
                       <button

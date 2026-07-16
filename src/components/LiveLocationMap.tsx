@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { parseIndiaLocation } from '../utils/locationIntelligence';
-import { selectedCity as dbSelectedCity } from '../db/marketplaceDb';
+import { selectedCity as dbSelectedCity, demandRegionsDb, getDistance } from '../db/marketplaceDb';
 import { FaLocationArrow, FaPlus, FaMinus, FaCompressArrowsAlt, FaMapMarkerAlt } from 'react-icons/fa';
 
 interface LiveLocationMapProps {
@@ -27,6 +27,7 @@ export const LiveLocationMap: React.FC<LiveLocationMapProps> = ({
   });
   const [userGps, setUserGps] = useState<{ lat: number; lng: number; label: string } | null>(null);
   const [detectingGps, setDetectingGps] = useState(false);
+  const [demandFilter, setDemandFilter] = useState<'All' | 'High' | 'Medium' | 'Low'>('All');
 
   // Listen to city changes in localStorage or db
   useEffect(() => {
@@ -103,8 +104,56 @@ export const LiveLocationMap: React.FC<LiveLocationMapProps> = ({
 
     const boundsPoints: L.LatLng[] = [L.latLng(mapCenter.lat, mapCenter.lng)];
 
-    // 2. Add property / business / franchise markers
-    items.forEach((item, idx) => {
+    // 1.5 Draw Demand Regions if filtered/enabled
+    const activeRegions = demandRegionsDb.filter(r => 
+      r.city.toLowerCase() === centerCity.toLowerCase() && 
+      (demandFilter === 'All' || r.demandLevel === demandFilter)
+    );
+
+    activeRegions.forEach(region => {
+      const color = region.demandLevel === 'High' ? '#16A34A' : (region.demandLevel === 'Medium' ? '#EAB308' : '#EF4444');
+      
+      // Draw Circle Overlay based on configured radius
+      L.circle([region.latitude, region.longitude], {
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.12,
+        radius: region.radius * 1000, // in meters
+        weight: 2
+      }).addTo(layer);
+
+      // Draw Region Label Marker
+      const labelIcon = L.divIcon({
+        className: 'demand-region-label',
+        html: `
+          <div style="background-color: ${color}; color: #FFFFFF; padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.15); cursor: pointer;">
+            📍 ${region.name} (${region.demandLevel} Demand)
+          </div>
+        `,
+        iconSize: [120, 24],
+        iconAnchor: [60, 12]
+      });
+
+      const regionMarker = L.marker([region.latitude, region.longitude], { icon: labelIcon }).addTo(layer);
+      regionMarker.on('click', () => {
+        map.flyTo([region.latitude, region.longitude], 14, { duration: 1.2 });
+      });
+    });
+
+    // 2. Filter items according to Selected Demand Level inside configured radius
+    const filteredItems = items.filter(item => {
+      if (demandFilter === 'All') return true;
+      return activeRegions.some(region => {
+        if (item.latitude && item.longitude) {
+          const dist = getDistance(region.latitude, region.longitude, item.latitude, item.longitude);
+          return dist <= region.radius;
+        }
+        return false;
+      });
+    });
+
+    // 3. Add property / business / franchise markers
+    filteredItems.forEach((item, idx) => {
       let lat = item.latitude;
       let lng = item.longitude;
 
@@ -149,6 +198,9 @@ export const LiveLocationMap: React.FC<LiveLocationMapProps> = ({
           <div style="width: 100%; height: 110px; border-radius: 12px; overflow: hidden; margin-bottom: 8px; position: relative; background-color: #F1F5F9;">
             <img src="${img}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=500&q=80'" />
             <span style="position: absolute; top: 6px; left: 6px; background: rgba(15,23,42,0.75); color: #FFF; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; backdrop-filter: blur(4px);">${cat}</span>
+            ${(item.approvalStatus === 'Sold' || item.listingStatus === 'Sold' || item.status === 'Sold') ? `
+              <div style="position: absolute; top: 6px; right: 6px; background-color: #E53935; color: #FFFFFF; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 4px; box-shadow: 0 2px 6px rgba(229, 57, 53, 0.4); transform: rotate(5deg); font-family: 'Outfit', sans-serif; z-index: 10;">SOLD</div>
+            ` : ''}
           </div>
           <h4 style="font-size: 14px; font-weight: 800; color: #0F172A; margin: 0 0 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${title}</h4>
           <p style="font-size: 12px; color: #64748B; margin: 0 0 8px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📍 ${item.area || item.city || item.location || centerCity}</p>
@@ -184,7 +236,7 @@ export const LiveLocationMap: React.FC<LiveLocationMapProps> = ({
     } else {
       map.flyTo([mapCenter.lat, mapCenter.lng], 13, { duration: 1.2 });
     }
-  }, [items, mapCenter, centerCity, type, onSelectItem]);
+  }, [items, mapCenter, centerCity, type, onSelectItem, demandFilter]);
 
   const handleDetectLiveGps = () => {
     if (!navigator.geolocation) {
@@ -296,6 +348,21 @@ export const LiveLocationMap: React.FC<LiveLocationMapProps> = ({
           <FaLocationArrow className={detectingGps ? 'animate-spin' : ''} />
           <span>{detectingGps ? 'Locating GPS...' : 'Live GPS'}</span>
         </button>
+
+        {/* Demand Region Selector */}
+        <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)', padding: '7px 14px', borderRadius: '14px', border: '1px solid #CBD5E1', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Demand Region</span>
+          <select
+            value={demandFilter}
+            onChange={(e) => setDemandFilter(e.target.value as any)}
+            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', fontWeight: 800, color: '#0F172A', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            <option value="All">All Regions</option>
+            <option value="High">🟢 High Demand</option>
+            <option value="Medium">🟡 Medium Demand</option>
+            <option value="Low">🔴 Low Demand</option>
+          </select>
+        </div>
       </div>
 
       {/* Right Zoom & Reset Controls */}

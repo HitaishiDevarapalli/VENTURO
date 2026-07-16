@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { franchiseDb, dealersDb, addFranchiseEnquiry } from '../db/marketplaceDb';
+import { franchiseDb, dealersDb, addFranchiseEnquiry, demandRegionsDb, getDistance } from '../db/marketplaceDb';
 import {
   FaArrowLeft,
   FaCheckCircle,
@@ -82,9 +82,43 @@ export const FranchiseDetailsPage: React.FC<FranchiseDetailsPageProps> = ({
     setMobile('');
   };
 
+  const demandBadge = React.useMemo(() => {
+    if (!franchise.latitude || !franchise.longitude) return null;
+    let closestRegion: any = null;
+    let minDistance = Infinity;
+
+    demandRegionsDb.forEach(r => {
+      const dist = getDistance(r.latitude, r.longitude, franchise.latitude, franchise.longitude);
+      if (dist <= r.radius && dist < minDistance) {
+        minDistance = dist;
+        closestRegion = r;
+      }
+    });
+
+    if (!closestRegion) return null;
+
+    const level = closestRegion.demandLevel;
+    const color = level === 'High' ? '#DCFCE7' : (level === 'Medium' ? '#FEF9C3' : '#FEE2E2');
+    const textColor = level === 'High' ? '#16A34A' : (level === 'Medium' ? '#CA8A04' : '#EF4444');
+    const icon = level === 'High' ? '🔥' : (level === 'Medium' ? '⭐' : '📍');
+    const label = level === 'High' ? 'High Demand Area' : (level === 'Medium' ? 'Moderate Demand Area' : 'Low Demand Area');
+    const desc = level === 'High' ? `Located in one of the most demanded regions within a ${closestRegion.radius} km radius.` : `Located in a ${level.toLowerCase()} demand zone within a ${closestRegion.radius} km radius.`;
+
+    return (
+      <div style={{ backgroundColor: color, color: textColor, padding: '12px 20px', borderRadius: '12px', border: `1px solid ${textColor}`, display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.9rem', fontWeight: 700, marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <span style={{ fontSize: '1.5rem' }}>{icon}</span>
+        <div>
+          <span style={{ display: 'block', fontWeight: 800 }}>{label}</span>
+          <span style={{ fontSize: '0.8rem', opacity: 0.85, fontWeight: 500 }}>{desc}</span>
+        </div>
+      </div>
+    );
+  }, [franchise]);
+
   return (
     <div style={{ backgroundColor: '#F8FAFC', padding: '115px 0 32px', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 20px' }}>
+        {demandBadge}
         
         {/* Top bar & Navigation */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>

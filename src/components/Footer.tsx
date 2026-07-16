@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaWhatsapp } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaWhatsapp, FaEye } from 'react-icons/fa';
 import { Logo } from './Logo';
+import { siteSettingsDb } from '../db/marketplaceDb';
 
 interface FooterProps {
   onNavigate?: (page: string) => void;
@@ -10,6 +11,15 @@ interface FooterProps {
 export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection }) => {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [visitorCount, setVisitorCount] = useState(siteSettingsDb.analytics?.totalVisitors || 0);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setVisitorCount(siteSettingsDb.analytics?.totalVisitors || 0);
+    };
+    window.addEventListener('nexopp_data_changed', handleUpdate);
+    return () => window.removeEventListener('nexopp_data_changed', handleUpdate);
+  }, []);
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,7 +203,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
         {/* Column 5 - FOLLOW US */}
         <div>
           <h4 style={columnHeaderStyle}>FOLLOW US</h4>
-          <div style={{ display: 'flex', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
             <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook" style={socialIconStyle}>
               <FaFacebookF />
             </a>
@@ -209,6 +219,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onScrollToSection })
             <a href="https://wa.me/" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" style={socialIconStyle}>
               <FaWhatsapp />
             </a>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', fontSize: '0.85rem', fontWeight: 600, fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" }}>
+            <FaEye style={{ color: '#1E40AF' }} />
+            <span>Total Visitors: {visitorCount.toLocaleString()}</span>
           </div>
         </div>
       </div>

@@ -51,6 +51,39 @@ export const FeaturedProperties: React.FC<FeaturedPropertiesProps> = ({ onProper
                   style={{ cursor: 'pointer' }}
                   onClick={() => onPropertyClick?.(prop.id)}
                 />
+                
+                {(prop.approvalStatus === 'Sold' || prop.listingStatus === 'Sold') && (
+                  <>
+                    <style>{`
+                      @keyframes soldBadgeFadeIn {
+                        from { opacity: 0; transform: scale(0.9) rotate(-10deg); }
+                        to { opacity: 1; transform: scale(1) rotate(-10deg); }
+                      }
+                    `}</style>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '12px',
+                        left: '12px',
+                        backgroundColor: '#E53935',
+                        color: '#FFFFFF',
+                        padding: '6px 14px',
+                        borderRadius: '9999px',
+                        fontSize: '12px',
+                        fontWeight: 900,
+                        letterSpacing: '0.05em',
+                        boxShadow: '0 4px 10px rgba(229, 57, 53, 0.4)',
+                        zIndex: 10,
+                        transform: 'rotate(-10deg)',
+                        animation: 'soldBadgeFadeIn 0.4s ease-out forwards',
+                        fontFamily: "'Outfit', 'Inter', sans-serif"
+                      }}
+                    >
+                      SOLD
+                    </div>
+                  </>
+                )}
+
                 <button 
                   className={`wishlist-btn ${isWishlisted(prop.id) ? 'active' : ''}`}
                   onClick={(e) => {
@@ -60,18 +93,32 @@ export const FeaturedProperties: React.FC<FeaturedPropertiesProps> = ({ onProper
                 >
                   {isWishlisted(prop.id) ? <FaHeart className="heart-icon filled" /> : <FaRegHeart className="heart-icon outline" />}
                 </button>
-                <button 
-                  className="buy-now-badge"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onBuyProperty?.(prop.id);
-                  }}
-                >
-                  <FaShoppingCart /> Buy
-                </button>
-                <span className={`status-badge ${prop.status.toLowerCase()}`}>
-                  For {prop.status}
-                </span>
+                {prop.approvalStatus === 'Sold' || prop.listingStatus === 'Sold' ? (
+                  <button 
+                    className="buy-now-badge"
+                    style={{ backgroundColor: '#DC2626', cursor: 'not-allowed' }}
+                    disabled
+                    onClick={(e) => e.stopPropagation()}
+                    title="This property has been sold."
+                  >
+                    Sold
+                  </button>
+                ) : (
+                  <button 
+                    className="buy-now-badge"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onBuyProperty?.(prop.id);
+                    }}
+                  >
+                    <FaShoppingCart /> Buy
+                  </button>
+                )}
+                {!(prop.approvalStatus === 'Sold' || prop.listingStatus === 'Sold') && (
+                  <span className={`status-badge ${prop.status.toLowerCase()}`}>
+                    For {prop.status}
+                  </span>
+                )}
               </div>
               <div className="property-details">
                 <div className="property-meta-top">
@@ -88,9 +135,19 @@ export const FeaturedProperties: React.FC<FeaturedPropertiesProps> = ({ onProper
                 <p className="property-location">{prop.area}, {prop.city}</p>
                 <div className="property-meta-bottom">
                   <span className="property-price">{prop.priceDisplay}</span>
-                  <button className="btn btn-gold btn-view-details" onClick={() => onBuyProperty?.(prop.id)}>
-                    BUY NOW
-                  </button>
+                  {prop.approvalStatus === 'Sold' || prop.listingStatus === 'Sold' ? (
+                    <button 
+                      className="btn btn-gold btn-view-details" 
+                      style={{ backgroundColor: '#DC2626', borderColor: '#DC2626', color: '#FFFFFF', cursor: 'not-allowed' }} 
+                      disabled
+                    >
+                      Property Sold
+                    </button>
+                  ) : (
+                    <button className="btn btn-gold btn-view-details" onClick={() => onBuyProperty?.(prop.id)}>
+                      BUY NOW
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

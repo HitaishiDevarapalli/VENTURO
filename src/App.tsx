@@ -22,7 +22,7 @@ import PropertyDetailsPage from './components/PropertyDetailsPage';
 import CloseDealPage from './components/CloseDealPage';
 import AdminPanel from './components/AdminPanel';
 import { FaArrowLeft } from 'react-icons/fa';
-import { siteSettingsDb, propertiesDb, franchiseDb, businessDb } from './db/marketplaceDb';
+import { siteSettingsDb, propertiesDb, franchiseDb, businessDb, updateSiteSettings } from './db/marketplaceDb';
 import { useAuth } from './context/AuthContext';
 import { LoginPage } from './components/LoginPage';
 import { LoginModal } from './components/LoginModal';
@@ -97,13 +97,27 @@ export const App: React.FC = () => {
   const [heroBgIndex, setHeroBgIndex] = useState(0);
   
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
-
-  // Sync state with URL
-  useEffect(() => {
-    const handlePopState = () => setCurrentPath(window.location.pathname);
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+ 
+   // Sync state with URL
+   useEffect(() => {
+     const handlePopState = () => setCurrentPath(window.location.pathname);
+     window.addEventListener('popstate', handlePopState);
+     return () => window.removeEventListener('popstate', handlePopState);
+   }, []);
+ 
+   // Visitor counter increment
+   useEffect(() => {
+     if (!sessionStorage.getItem('nexopp_visited_session')) {
+       sessionStorage.setItem('nexopp_visited_session', 'true');
+       const currentCount = siteSettingsDb.analytics?.totalVisitors || 0;
+       updateSiteSettings({
+         analytics: {
+           ...(siteSettingsDb.analytics || {}),
+           totalVisitors: currentCount + 1
+         }
+       });
+     }
+   }, []);
 
   const routeData = parseUrl(currentPath);
   const currentPage = routeData.page;

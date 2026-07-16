@@ -446,6 +446,24 @@ export interface SiteSettings {
   mainPageStats?: MainPageStats;
 }
 
+export interface DemandRegion {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  latitude: number;
+  longitude: number;
+  radius: number;
+  demandScore: number;
+  demandLevel: 'High' | 'Medium' | 'Low';
+  propertySalesCount: number;
+  franchiseSalesCount: number;
+  businessSalesCount: number;
+  lastUpdated: string;
+  isAiEnabled: boolean;
+  manualOverrideLevel?: 'High' | 'Medium' | 'Low' | null;
+}
+
 const sampleTeamMembers: TeamMember[] = [];
 const sampleDealers: Dealer[] = [];
 const sampleProperties: PropertyListing[] = [];
@@ -500,6 +518,90 @@ export let enquiriesDb: CustomerEnquiry[] = [];
 export let franchiseEnquiriesDb: FranchiseEnquiry[] = [];
 export let siteSettingsDb: SiteSettings = defaultSettings;
 export let teamMembersDb: TeamMember[] = [];
+export let demandRegionsDb: DemandRegion[] = [];
+
+const defaultDemandRegions: DemandRegion[] = [
+  {
+    id: 'dr1',
+    name: 'Jubilee Hills',
+    city: 'Hyderabad',
+    state: 'Telangana',
+    latitude: 17.4300,
+    longitude: 78.4000,
+    radius: 5,
+    demandScore: 85,
+    demandLevel: 'High',
+    propertySalesCount: 12,
+    franchiseSalesCount: 4,
+    businessSalesCount: 2,
+    lastUpdated: new Date().toLocaleDateString(),
+    isAiEnabled: true
+  },
+  {
+    id: 'dr2',
+    name: 'Koramangala',
+    city: 'Bengaluru',
+    state: 'Karnataka',
+    latitude: 12.9300,
+    longitude: 77.6200,
+    radius: 5,
+    demandScore: 78,
+    demandLevel: 'High',
+    propertySalesCount: 15,
+    franchiseSalesCount: 6,
+    businessSalesCount: 1,
+    lastUpdated: new Date().toLocaleDateString(),
+    isAiEnabled: true
+  },
+  {
+    id: 'dr3',
+    name: 'Bandra West',
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    latitude: 19.0500,
+    longitude: 72.8200,
+    radius: 2,
+    demandScore: 92,
+    demandLevel: 'High',
+    propertySalesCount: 18,
+    franchiseSalesCount: 8,
+    businessSalesCount: 3,
+    lastUpdated: new Date().toLocaleDateString(),
+    isAiEnabled: true
+  },
+  {
+    id: 'dr4',
+    name: 'Gachibowli',
+    city: 'Hyderabad',
+    state: 'Telangana',
+    latitude: 17.4400,
+    longitude: 78.3400,
+    radius: 5,
+    demandScore: 55,
+    demandLevel: 'Medium',
+    propertySalesCount: 6,
+    franchiseSalesCount: 2,
+    businessSalesCount: 0,
+    lastUpdated: new Date().toLocaleDateString(),
+    isAiEnabled: true
+  },
+  {
+    id: 'dr5',
+    name: 'Whitefield',
+    city: 'Bengaluru',
+    state: 'Karnataka',
+    latitude: 12.9600,
+    longitude: 77.7500,
+    radius: 10,
+    demandScore: 48,
+    demandLevel: 'Medium',
+    propertySalesCount: 8,
+    franchiseSalesCount: 1,
+    businessSalesCount: 1,
+    lastUpdated: new Date().toLocaleDateString(),
+    isAiEnabled: true
+  }
+];
 
 
 // Reactive Selected City State
@@ -532,6 +634,7 @@ const loadData = () => {
     const s = localStorage.getItem('nexopp_settings');
     const t = localStorage.getItem('nexopp_team_members');
     const b = localStorage.getItem('nexopp_businesses');
+    const dr = localStorage.getItem('nexopp_demand_regions');
 
     propertiesDb = p ? JSON.parse(p) : [];
     franchiseDb = f ? JSON.parse(f) : [];
@@ -541,6 +644,7 @@ const loadData = () => {
     franchiseEnquiriesDb = fe ? JSON.parse(fe) : [];
     siteSettingsDb = s ? JSON.parse(s) : defaultSettings;
     teamMembersDb = t ? JSON.parse(t) : [];
+    demandRegionsDb = dr ? JSON.parse(dr) : defaultDemandRegions;
 
     if (siteSettingsDb.primaryColor === '#D4AF37') {
       siteSettingsDb.primaryColor = '#10B981';
@@ -598,6 +702,7 @@ export const notifyDataChanged = () => {
     localStorage.setItem('nexopp_franchise_enquiries', JSON.stringify(franchiseEnquiriesDb));
     localStorage.setItem('nexopp_settings', JSON.stringify(siteSettingsDb));
     localStorage.setItem('nexopp_team_members', JSON.stringify(teamMembersDb));
+    localStorage.setItem('nexopp_demand_regions', JSON.stringify(demandRegionsDb));
     window.dispatchEvent(new Event('nexopp_data_changed'));
   } catch (err) {
     console.error("Error saving data to localStorage:", err);
@@ -759,5 +864,149 @@ export const bulkArchiveFranchises = (ids: string[]) => {
 
 export const bulkDeleteFranchises = (ids: string[]) => {
   franchiseDb = franchiseDb.filter(f => !ids.includes(f.id));
+  notifyDataChanged();
+};
+
+export const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Earth's radius in KM
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
+export const calculateDemandScore = (region: DemandRegion): { score: number; level: 'High' | 'Medium' | 'Low'; propSales: number; franSales: number; busSales: number } => {
+  if (!region.isAiEnabled && region.manualOverrideLevel) {
+    const level = region.manualOverrideLevel;
+    const score = level === 'High' ? 85 : (level === 'Medium' ? 50 : 15);
+    return { score, level, propSales: region.propertySalesCount, franSales: region.franchiseSalesCount, busSales: region.businessSalesCount };
+  }
+
+  let propSales = 0;
+  let activeProps = 0;
+  propertiesDb.forEach(p => {
+    if (p.latitude && p.longitude) {
+      const dist = getDistance(region.latitude, region.longitude, p.latitude, p.longitude);
+      if (dist <= region.radius) {
+        if (p.approvalStatus === 'Sold' || p.listingStatus === 'Sold') {
+          propSales++;
+        } else {
+          activeProps++;
+        }
+      }
+    }
+  });
+
+  let franSales = 0;
+  let activeFrans = 0;
+  franchiseDb.forEach(f => {
+    if (f.latitude && f.longitude) {
+      const dist = getDistance(region.latitude, region.longitude, f.latitude, f.longitude);
+      if (dist <= region.radius) {
+        if (f.status === 'Sold' || f.approvalStatus === 'Sold') {
+          franSales++;
+        } else {
+          activeFrans++;
+        }
+      }
+    }
+  });
+
+  let busSales = 0;
+  let activeBuses = 0;
+  businessDb.forEach(b => {
+    if (b.latitude && b.longitude) {
+      const dist = getDistance(region.latitude, region.longitude, b.latitude, b.longitude);
+      if (dist <= region.radius) {
+        if (b.status === 'Sold' || b.approvalStatus === 'Sold') {
+          busSales++;
+        } else {
+          activeBuses++;
+        }
+      }
+    }
+  });
+
+  const totalSales = propSales + franSales + busSales;
+  const totalActive = activeProps + activeFrans + activeBuses;
+  
+  let score = 25 + (totalSales * 15) + (totalActive * 3);
+  if (score > 100) score = 100;
+  if (score < 0) score = 0;
+
+  let level: 'High' | 'Medium' | 'Low' = 'Low';
+  if (score > 70) level = 'High';
+  else if (score > 30) level = 'Medium';
+
+  return { score: Math.round(score), level, propSales, franSales, busSales };
+};
+
+export const recalculateAllDemandRegions = () => {
+  demandRegionsDb = demandRegionsDb.map(r => {
+    const calc = calculateDemandScore(r);
+    return {
+      ...r,
+      demandScore: calc.score,
+      demandLevel: calc.level,
+      propertySalesCount: calc.propSales,
+      franchiseSalesCount: calc.franSales,
+      businessSalesCount: calc.busSales,
+      lastUpdated: new Date().toLocaleDateString()
+    };
+  });
+  notifyDataChanged();
+};
+
+export const addDemandRegion = (item: Omit<DemandRegion, 'id' | 'demandScore' | 'demandLevel' | 'propertySalesCount' | 'franchiseSalesCount' | 'businessSalesCount' | 'lastUpdated'>) => {
+  const newId = 'dr_' + Date.now();
+  const tempRegion: DemandRegion = {
+    ...item,
+    id: newId,
+    demandScore: 0,
+    demandLevel: 'Low',
+    propertySalesCount: 0,
+    franchiseSalesCount: 0,
+    businessSalesCount: 0,
+    lastUpdated: new Date().toLocaleDateString()
+  };
+  const calc = calculateDemandScore(tempRegion);
+  const finalRegion = {
+    ...tempRegion,
+    demandScore: calc.score,
+    demandLevel: calc.level,
+    propertySalesCount: calc.propSales,
+    franchiseSalesCount: calc.franSales,
+    businessSalesCount: calc.busSales
+  };
+  demandRegionsDb = [finalRegion, ...demandRegionsDb];
+  notifyDataChanged();
+};
+
+export const updateDemandRegion = (id: string, updated: Partial<DemandRegion>) => {
+  demandRegionsDb = demandRegionsDb.map(r => {
+    if (r.id === id) {
+      const merged = { ...r, ...updated };
+      const calc = calculateDemandScore(merged);
+      return {
+        ...merged,
+        demandScore: calc.score,
+        demandLevel: calc.level,
+        propertySalesCount: calc.propSales,
+        franchiseSalesCount: calc.franSales,
+        businessSalesCount: calc.busSales,
+        lastUpdated: new Date().toLocaleDateString()
+      };
+    }
+    return r;
+  });
+  notifyDataChanged();
+};
+
+export const deleteDemandRegion = (id: string) => {
+  demandRegionsDb = demandRegionsDb.filter(r => r.id !== id);
   notifyDataChanged();
 };

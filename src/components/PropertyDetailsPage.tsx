@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { propertiesDb, dealersDb, franchiseDb, businessDb, enquiriesDb, notifyDataChanged } from '../db/marketplaceDb';
+import { propertiesDb, dealersDb, franchiseDb, businessDb, enquiriesDb, notifyDataChanged, demandRegionsDb, getDistance } from '../db/marketplaceDb';
 import type { Dealer } from '../db/marketplaceDb';
 import { 
   FaArrowLeft, FaHeart, FaRegHeart, FaShareAlt, 
@@ -488,9 +488,45 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
   const carpetArea = isPlot ? 'N/A' : `${Math.round(parseInt(superArea) * 0.85)} sqft`;
   const typeDisplay = isPlot ? 'Plots & Land' : (property.category === 'Villa' || property.category === 'House') ? 'House & Villa' : 'Flats & Apartments';
 
+  const demandBadge = useMemo(() => {
+    if (!property.latitude || !property.longitude) return null;
+    let closestRegion: any = null;
+    let minDistance = Infinity;
+
+    demandRegionsDb.forEach(r => {
+      const dist = getDistance(r.latitude, r.longitude, property.latitude, property.longitude);
+      if (dist <= r.radius && dist < minDistance) {
+        minDistance = dist;
+        closestRegion = r;
+      }
+    });
+
+    if (!closestRegion) return null;
+
+    const level = closestRegion.demandLevel;
+    const color = level === 'High' ? '#DCFCE7' : (level === 'Medium' ? '#FEF9C3' : '#FEE2E2');
+    const textColor = level === 'High' ? '#16A34A' : (level === 'Medium' ? '#CA8A04' : '#EF4444');
+    const icon = level === 'High' ? '🔥' : (level === 'Medium' ? '⭐' : '📍');
+    const label = level === 'High' ? 'High Demand Area' : (level === 'Medium' ? 'Moderate Demand Area' : 'Low Demand Area');
+    const desc = level === 'High' ? `Located in one of the most demanded regions within a ${closestRegion.radius} km radius.` : `Located in a ${level.toLowerCase()} demand zone within a ${closestRegion.radius} km radius.`;
+
+    return (
+      <div style={{ backgroundColor: color, color: textColor, padding: '12px 20px', borderRadius: '12px', border: `1px solid ${textColor}`, display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.9rem', fontWeight: 700, marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <span style={{ fontSize: '1.5rem' }}>{icon}</span>
+        <div>
+          <span style={{ display: 'block', fontWeight: 800 }}>{label}</span>
+          <span style={{ fontSize: '0.8rem', opacity: 0.85, fontWeight: 500 }}>{desc}</span>
+        </div>
+      </div>
+    );
+  }, [property]);
+
   return (
     <div className="prop-details-page animation-fade-in" style={{ padding: '115px 0 3rem', background: 'var(--bg-main)', minHeight: '100vh' }}>
       <div className="container" style={{ position: 'relative' }}>
+        
+        {/* Demand Region Badge */}
+        {demandBadge}
         
         {/* Back navigation */}
         <button className="circle-back-btn" onClick={onBack} title="Go Back" style={{ position: 'relative', left: '0', display: 'inline-flex', marginBottom: '1.5rem', zIndex: 10 }}>
@@ -532,6 +568,37 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
                   alt={`${property.title} - View ${activeImageIndex + 1}`} 
                   className="prop-gallery-img" 
                 />
+                {(property.approvalStatus === 'Sold' || property.listingStatus === 'Sold') && (
+                  <>
+                    <style>{`
+                      @keyframes soldBadgeFadeIn {
+                        from { opacity: 0; transform: scale(0.9) rotate(-10deg); }
+                        to { opacity: 1; transform: scale(1) rotate(-10deg); }
+                      }
+                    `}</style>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '20px',
+                        left: '20px',
+                        backgroundColor: '#E53935',
+                        color: '#FFFFFF',
+                        padding: '8px 18px',
+                        borderRadius: '9999px',
+                        fontSize: '14px',
+                        fontWeight: 900,
+                        letterSpacing: '0.05em',
+                        boxShadow: '0 4px 12px rgba(229, 57, 53, 0.5)',
+                        zIndex: 10,
+                        transform: 'rotate(-10deg)',
+                        animation: 'soldBadgeFadeIn 0.4s ease-out forwards',
+                        fontFamily: "'Outfit', 'Inter', sans-serif"
+                      }}
+                    >
+                      SOLD
+                    </div>
+                  </>
+                )}
                 <button className="gallery-arrow arrow-right" onClick={handleNextImage}>
                   <FaChevronRight />
                 </button>
@@ -765,13 +832,42 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
                 </div>
               )}
 
-              <button 
-                className="btn btn-gold w-100 mt-4" 
-                style={{ width: '100%', marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', backgroundColor: '#16A34A', borderColor: '#16A34A', color: '#FFFFFF' }}
-                onClick={handleOpenContactModal}
-              >
-                <FaPhone /> Contact Us
-              </button>
+              {(property.approvalStatus === 'Sold' || property.listingStatus === 'Sold') ? (
+                <>
+                  <button 
+                    className="btn w-100 mt-4" 
+                    style={{ width: '100%', marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', backgroundColor: '#DC2626', borderColor: '#DC2626', color: '#FFFFFF', cursor: 'not-allowed' }}
+                    disabled
+                  >
+                    Property Sold
+                  </button>
+                  <button 
+                    className="btn w-100 mt-2" 
+                    style={{ width: '100%', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', backgroundColor: '#94A3B8', borderColor: '#94A3B8', color: '#FFFFFF', cursor: 'not-allowed' }}
+                    disabled
+                    title="This property has been sold."
+                  >
+                    Book Visit
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button 
+                    className="btn btn-gold w-100 mt-4" 
+                    style={{ width: '100%', marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', backgroundColor: '#16A34A', borderColor: '#16A34A', color: '#FFFFFF' }}
+                    onClick={handleOpenContactModal}
+                  >
+                    <FaPhone /> Contact Us
+                  </button>
+                  <button 
+                    className="btn btn-outline w-100 mt-2" 
+                    style={{ width: '100%', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: '1px solid #CBD5E1', color: '#0F172A' }}
+                    onClick={handleOpenContactModal}
+                  >
+                    Book Visit
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Seller Contact Card */}

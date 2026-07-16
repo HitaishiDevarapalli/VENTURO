@@ -56,7 +56,12 @@ import {
   updateProperty,
   updateFranchise,
   updateDealer,
-  clearAllStaticData
+  clearAllStaticData,
+  demandRegionsDb,
+  addDemandRegion,
+  updateDemandRegion,
+  deleteDemandRegion,
+  recalculateAllDemandRegions
 } from '../db/marketplaceDb';
 import { BrokerManagementSystem } from './BrokerManagementSystem';
 import { Logo } from './Logo';
@@ -87,7 +92,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
   const [newTagInput, setNewTagInput] = useState('');
 
   // Main Category Tabs
-  const [activeTab, setActiveTab] = useState<'overview' | 'main_stats' | 'customization' | 'hero_cms' | 'properties' | 'franchises' | 'businesses' | 'brokers' | 'inquiries' | 'team'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'main_stats' | 'customization' | 'hero_cms' | 'properties' | 'franchises' | 'businesses' | 'demand_regions' | 'brokers' | 'inquiries' | 'team'>('overview');
   const [expandedMenu, setExpandedMenu] = useState<string | null>('brokers');
   const [analyticsDateRange, setAnalyticsDateRange] = useState<'This Week' | 'This Month' | 'Last 30 Days' | 'This Year'>('This Week');
   const [activeAnalyticsSlide, setActiveAnalyticsSlide] = useState<'property' | 'franchise' | 'business'>('property');
@@ -443,6 +448,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
             { id: 'properties', label: 'Property Management', icon: <FaBuilding />, hasArrow: true },
             { id: 'franchises', label: 'Franchise Management', icon: <FaStore />, hasArrow: true },
             { id: 'businesses', label: 'Business Management', icon: <FaBriefcase />, hasArrow: true },
+            { id: 'demand_regions', label: '📍 Demand Regions', icon: null },
             { id: 'inquiries', label: 'Lead & Enquiries', icon: <FaEnvelope /> },
             { id: 'orders', label: 'Orders & Bookings', icon: <FaListAlt /> },
           ].map((item) => {
@@ -731,8 +737,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
                 </button>
               </div>
 
-              {/* ROW 1: Top 5 Stat Cards with SVG Sparkline Graphs */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
+              {/* ROW 1: Top 6 Stat Cards with SVG Sparkline Graphs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px' }}>
                 
                 {/* Card 1: TOTAL PROPERTIES */}
                 <div style={{ backgroundColor: '#FFFFFF', padding: '18px 20px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '135px' }}>
@@ -826,6 +832,56 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
                   <svg width="60" height="22" viewBox="0 0 60 22" fill="none">
                     <path d={(dealersDb.length + teamMembersDb.length + enquiriesDb.length) === 0 ? "M2 18 L58 18" : "M2 18 C 14 18, 24 12, 36 15 C 48 18, 52 6, 58 10"} stroke="#0D9488" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
+                </div>
+              </div>
+
+              {/* Card 6: WEBSITE VISITORS */}
+              <div style={{ backgroundColor: '#FFFFFF', padding: '18px 20px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '135px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#EFF6FF', color: '#1E40AF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>
+                    <FaEye />
+                  </div>
+                  <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>WEBSITE VISITORS</span>
+                </div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0F172A', margin: '10px 0 6px 0', letterSpacing: '-0.03em', lineHeight: 1 }}>
+                  {(siteSettingsDb.analytics?.totalVisitors || 0).toLocaleString()}
+                </div>
+                <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newCount = prompt("Enter new visitor count:", String(siteSettingsDb.analytics?.totalVisitors || 0));
+                      if (newCount !== null && !isNaN(Number(newCount))) {
+                        updateSiteSettings({
+                          analytics: {
+                            ...(siteSettingsDb.analytics || {}),
+                            totalVisitors: Number(newCount)
+                          }
+                        });
+                        showNotification("Visitor count updated successfully!", "success");
+                      }
+                    }}
+                    style={{ flex: 1, padding: '5px 8px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#1E40AF', fontSize: '0.65rem', fontWeight: 700, borderRadius: '4px', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm("Are you sure you want to reset the visitor count to 0?")) {
+                        updateSiteSettings({
+                          analytics: {
+                            ...(siteSettingsDb.analytics || {}),
+                            totalVisitors: 0
+                          }
+                        });
+                        showNotification("Visitor count reset to 0.", "warning");
+                      }
+                    }}
+                    style={{ flex: 1, padding: '5px 8px', border: '1px solid #FCA5A5', backgroundColor: '#FEF2F2', color: '#EF4444', fontSize: '0.65rem', fontWeight: 700, borderRadius: '4px', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                  >
+                    Reset
+                  </button>
                 </div>
               </div>
             </div>
@@ -2121,6 +2177,185 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
         {/* ================= CATEGORY 4.2: BUSINESS MANAGEMENT ================= */}
         {activeTab === 'businesses' && (
           <FranchiseManagementSystem showNotification={showNotification} activeSubTab={businessSubTab} onSubTabChange={setBusinessSubTab} mode="business" />
+        )}
+
+        {/* ================= CATEGORY 4.3: DEMAND REGIONS ================= */}
+        {activeTab === 'demand_regions' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
+            
+            {/* Dashboard Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+              <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 8px -2px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.5rem', marginBottom: '8px' }}>🟢</div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>HIGH DEMAND REGIONS</div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>
+                  {demandRegionsDb.filter(r => r.demandLevel === 'High').length}
+                </div>
+              </div>
+              <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 8px -2px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.5rem', marginBottom: '8px' }}>🟡</div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>MEDIUM DEMAND REGIONS</div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>
+                  {demandRegionsDb.filter(r => r.demandLevel === 'Medium').length}
+                </div>
+              </div>
+              <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 8px -2px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.5rem', marginBottom: '8px' }}>🔴</div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>LOW DEMAND REGIONS</div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>
+                  {demandRegionsDb.filter(r => r.demandLevel === 'Low').length}
+                </div>
+              </div>
+              <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '16px', border: '1px solid #F1F5F9', boxShadow: '0 2px 8px -2px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.5rem', marginBottom: '8px' }}>📍</div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>TOTAL DEMAND ZONES</div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>
+                  {demandRegionsDb.length}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions Bar */}
+            <div style={{ backgroundColor: '#FFFFFF', padding: '16px 20px', borderRadius: '16px', border: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    recalculateAllDemandRegions();
+                    showNotification("AI calculations updated for all regions!", "success");
+                  }}
+                  style={{ padding: '10px 18px', backgroundColor: '#1E3A8A', color: '#FFFFFF', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                >
+                  🔄 AI Refresh Calculations
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const name = prompt("Enter Region Name (e.g. Jubilee Hills):");
+                  if (!name) return;
+                  const city = prompt("Enter City:");
+                  if (!city) return;
+                  const state = prompt("Enter State:");
+                  if (!state) return;
+                  const lat = prompt("Enter Latitude:", "17.43");
+                  if (!lat) return;
+                  const lng = prompt("Enter Longitude:", "78.40");
+                  if (!lng) return;
+                  const radius = prompt("Enter Radius (1, 2, 5, 10):", "5");
+                  if (!radius) return;
+                  
+                  addDemandRegion({
+                    name,
+                    city,
+                    state,
+                    latitude: Number(lat),
+                    longitude: Number(lng),
+                    radius: Number(radius),
+                    isAiEnabled: true
+                  });
+                  showNotification("New demand region added successfully!", "success");
+                }}
+                style={{ padding: '10px 18px', backgroundColor: '#16A34A', color: '#FFFFFF', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              >
+                ➕ Add New Region
+              </button>
+            </div>
+
+            {/* Demand Table */}
+            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <th style={{ padding: '14px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>REGION NAME</th>
+                    <th style={{ padding: '14px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>CITY / STATE</th>
+                    <th style={{ padding: '14px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>RADIUS</th>
+                    <th style={{ padding: '14px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>SALES (PROP / FRAN / BUS)</th>
+                    <th style={{ padding: '14px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>DEMAND SCORE</th>
+                    <th style={{ padding: '14px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>DEMAND LEVEL</th>
+                    <th style={{ padding: '14px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>AI CALC</th>
+                    <th style={{ padding: '14px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>LAST UPDATED</th>
+                    <th style={{ padding: '14px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {demandRegionsDb.map(region => (
+                    <tr key={region.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                      <td style={{ padding: '14px 16px', fontSize: '0.9rem', fontWeight: 700, color: '#0F172A' }}>{region.name}</td>
+                      <td style={{ padding: '14px 16px', fontSize: '0.85rem', color: '#475569' }}>{region.city}, {region.state}</td>
+                      <td style={{ padding: '14px 16px', fontSize: '0.85rem', fontWeight: 600, color: '#0F172A' }}>{region.radius} KM</td>
+                      <td style={{ padding: '14px 16px', fontSize: '0.85rem', color: '#475569' }}>
+                        🏡 {region.propertySalesCount} • 🏪 {region.franchiseSalesCount} • 💼 {region.businessSalesCount}
+                      </td>
+                      <td style={{ padding: '14px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#0F172A' }}>{region.demandScore}/100</td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{
+                          padding: '4px 10px', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 800,
+                          backgroundColor: region.demandLevel === 'High' ? '#DCFCE7' : region.demandLevel === 'Medium' ? '#FEF9C3' : '#FEE2E2',
+                          color: region.demandLevel === 'High' ? '#16A34A' : region.demandLevel === 'Medium' ? '#CA8A04' : '#EF4444'
+                        }}>
+                          {region.demandLevel.toUpperCase()} DEMAND
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: region.isAiEnabled ? '#16A34A' : '#DC2626' }}>
+                          {region.isAiEnabled ? 'ON' : 'OFF'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: '#64748B' }}>{region.lastUpdated}</td>
+                      <td style={{ padding: '14px 16px', display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newRadius = prompt("Enter new radius (1, 2, 5, 10 KM):", String(region.radius));
+                            if (newRadius) {
+                              updateDemandRegion(region.id, { radius: Number(newRadius) });
+                              showNotification("Radius updated successfully!", "success");
+                            }
+                          }}
+                          style={{ padding: '4px 8px', fontSize: '0.75rem', backgroundColor: '#EFF6FF', color: '#1E40AF', border: '1px solid #BFDBFE', borderRadius: '4px', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                        >
+                          Radius
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const override = confirm("Toggle AI calculation (Cancel = Disable AI & set manually)");
+                            if (override) {
+                              updateDemandRegion(region.id, { isAiEnabled: true, manualOverrideLevel: null });
+                              showNotification("AI Calculation enabled.", "success");
+                            } else {
+                              const manualLevel = prompt("Enter Level (High, Medium, Low):", region.demandLevel);
+                              if (manualLevel === 'High' || manualLevel === 'Medium' || manualLevel === 'Low') {
+                                updateDemandRegion(region.id, { isAiEnabled: false, manualOverrideLevel: manualLevel });
+                                showNotification("Manual override set to " + manualLevel, "success");
+                              }
+                            }
+                          }}
+                          style={{ padding: '4px 8px', fontSize: '0.75rem', backgroundColor: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0', borderRadius: '4px', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                        >
+                          Override
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm("Delete demand region?")) {
+                              deleteDemandRegion(region.id);
+                              showNotification("Demand region deleted.", "warning");
+                            }
+                          }}
+                          style={{ padding: '4px 8px', fontSize: '0.75rem', backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5', borderRadius: '4px', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
         )}
 
         {/* ================= CATEGORY 4.5: BROKER MANAGEMENT SYSTEM ================= */}

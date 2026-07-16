@@ -1563,15 +1563,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
           </div>
         )}
 
-        {/* ================= CATEGORY: HERO PAGE CMS CONTROL & MAIN STATS ================= */}
-        {(activeTab === 'hero_cms' || activeTab === 'main_stats') && (
+        {/* ================= CATEGORY: MAIN STATS ONLY ================= */}
+        {activeTab === 'main_stats' && (
           <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
             {/* Header banner */}
             <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '5px solid #1E40AF', padding: '28px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
               <div>
-                <span style={{ backgroundColor: '#EFF6FF', color: '#1E40AF', border: '1px solid #BFDBFE', padding: '5px 14px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" }}>Live CMS & Stats Control</span>
-                <h2 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", fontSize: '1.65rem', fontWeight: 700, color: '#0F172A', margin: '10px 0 6px 0', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Homepage Builder & Main Page Stats Control Center</h2>
-                <p style={{ color: '#64748B', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>Configure the live front-end Hero stats bar (18,500+ Properties, etc.), search tags, visual media display, and trust badges.</p>
+                <span style={{ backgroundColor: '#EFF6FF', color: '#1E40AF', border: '1px solid #BFDBFE', padding: '5px 14px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" }}>Live Stats Control</span>
+                <h2 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", fontSize: '1.65rem', fontWeight: 700, color: '#0F172A', margin: '10px 0 6px 0', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Main Page Stats & Trust Metrics</h2>
+                <p style={{ color: '#64748B', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>Configure the live front-end Hero stats bar (18,500+ Properties, etc.), trust badges and custom metrics.</p>
               </div>
               <button type="submit" style={{ padding: '14px 32px', backgroundColor: '#1E40AF', color: '#FFFFFF', border: 'none', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 <FaCheckCircle /> Save & Publish Live Stats
@@ -1807,6 +1807,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
               </div>
             </div>
 
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <button type="submit" style={{ padding: '16px 36px', backgroundColor: '#1E40AF', color: '#FFFFFF', border: 'none', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", letterSpacing: '0.08em' }}>
+                <FaCheckCircle /> SAVE & PUBLISH LIVE STATS
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* ================= CATEGORY: HOMEPAGE CMS BUILDER ONLY ================= */}
+        {activeTab === 'hero_cms' && (
+          <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            {/* Header banner */}
+            <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '5px solid #1E40AF', padding: '28px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+              <div>
+                <span style={{ backgroundColor: '#EFF6FF', color: '#1E40AF', border: '1px solid #BFDBFE', padding: '5px 14px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" }}>Homepage Builder</span>
+                <h2 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", fontSize: '1.65rem', fontWeight: 700, color: '#0F172A', margin: '10px 0 6px 0', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Homepage Builder Studio</h2>
+                <p style={{ color: '#64748B', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>Configure the Hero section backgrounds, headings, tags and promotional layouts.</p>
+              </div>
+              <button type="submit" style={{ padding: '14px 32px', backgroundColor: '#1E40AF', color: '#FFFFFF', border: 'none', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <FaCheckCircle /> Save & Apply Hero Customizations
+              </button>
+            </div>
+
             {/* 2. RIGHT SIDE VISUAL MEDIA SETUP */}
             <div style={{ backgroundColor: '#FFFFFF', padding: '32px', border: '1px solid #E2E8F0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px', borderBottom: '1px solid #E2E8F0', paddingBottom: '16px' }}>
@@ -1853,31 +1876,58 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
               </div>
 
               {settingsForm.heroMediaType !== 'video' ? (
-                <div style={{ backgroundColor: '#F8FAFC', padding: '24px', border: '1px solid #E2E8F0' }}>
-                  <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '8px', color: '#0F172A', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", letterSpacing: '0.05em' }}>HERO PHOTO URL OR FILE UPLOAD</label>
-                  <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ backgroundColor: '#F8FAFC', padding: '24px', border: '1px solid #E2E8F0', borderRadius: '12px' }}>
+                  <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '12px', color: '#0F172A', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", letterSpacing: '0.05em' }}>HERO BACKGROUND PHOTO</label>
+                  
+                  {settingsForm.heroBgUrl && (
+                    <div style={{ width: '100%', height: '180px', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#E2E8F0', position: 'relative', marginBottom: '16px' }}>
+                      <img src={settingsForm.heroBgUrl} alt="Hero Background" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        type="button"
+                        onClick={() => setSettingsForm({ ...settingsForm, heroBgUrl: '' })}
+                        style={{ position: 'absolute', top: '12px', right: '12px', backgroundColor: '#EF4444', color: '#FFFFFF', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          setSettingsForm({ ...settingsForm, heroBgUrl: ev.target?.result as string });
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    onClick={() => document.getElementById('hero-bg-file-input')?.click()}
+                    style={{
+                      border: '2px dashed #CBD5E1',
+                      borderRadius: '12px',
+                      padding: '24px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      backgroundColor: '#FFFFFF',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: '#475569',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div>Drag & Drop or Click to Upload Hero Photo</div>
+                    <div style={{ fontSize: '0.72rem', color: '#94A3B8', marginTop: '4px' }}>PNG, JPG, or WEBP</div>
                     <input
-                      type="text"
-                      value={settingsForm.heroBgUrl || ''}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, heroBgUrl: e.target.value })}
-                      placeholder="https://images.unsplash.com/..."
-                      style={{ flexGrow: 1, padding: '12px 16px', border: '1px solid #CBD5E1', fontSize: '0.95rem', backgroundColor: '#FFFFFF' }}
+                      id="hero-bg-file-input"
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => handleFileUpload(e, (list) => { if (list[0]) setSettingsForm({ ...settingsForm, heroBgUrl: list[0] }); })}
                     />
-                    <label style={{ padding: '12px 24px', backgroundColor: '#1E40AF', color: '#FFFFFF', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", letterSpacing: '0.06em' }}>
-                      <FaUpload /> UPLOAD IMAGE
-                      <input
-                        type="file"
-                        accept="image/*"
-                        style={{ display: 'none' }}
-                        onChange={(e) => handleFileUpload(e, (list) => { if (list[0]) setSettingsForm({ ...settingsForm, heroBgUrl: list[0] }); })}
-                      />
-                    </label>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748B', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" }}>QUICK PRESETS:</span>
-                    <button type="button" onClick={() => setSettingsForm({ ...settingsForm, heroBgUrl: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80" })} style={{ padding: '6px 12px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', color: '#1E40AF' }}>Modern Villa</button>
-                    <button type="button" onClick={() => setSettingsForm({ ...settingsForm, heroBgUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80" })} style={{ padding: '6px 12px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', color: '#1E40AF' }}>Luxury Apartment</button>
-                    <button type="button" onClick={() => setSettingsForm({ ...settingsForm, heroBgUrl: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80" })} style={{ padding: '6px 12px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', color: '#1E40AF' }}>Corporate Tower</button>
                   </div>
                 </div>
               ) : (

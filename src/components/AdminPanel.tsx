@@ -90,6 +90,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
   const [activeTab, setActiveTab] = useState<'overview' | 'main_stats' | 'customization' | 'hero_cms' | 'properties' | 'franchises' | 'businesses' | 'brokers' | 'inquiries' | 'team'>('overview');
   const [expandedMenu, setExpandedMenu] = useState<string | null>('brokers');
   const [analyticsDateRange, setAnalyticsDateRange] = useState<'This Week' | 'This Month' | 'Last 30 Days' | 'This Year'>('This Week');
+  const [activeAnalyticsSlide, setActiveAnalyticsSlide] = useState<'property' | 'franchise' | 'business'>('property');
   const [propertySubTab, setPropertySubTab] = useState<string>('listings');
   const [franchiseSubTab, setFranchiseSubTab] = useState<string>('listings');
   const [businessSubTab, setBusinessSubTab] = useState<string>('listings');
@@ -832,123 +833,188 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
             {/* ROW 2: 3 Columns Grid (Overview Analytics Line Chart, Recent Activity, Top Performing Locations Pie Chart) */}
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr)', gap: '20px', alignItems: 'stretch' }}>
               
-              {/* Col 1: Overview Analytics (Line Chart / Graph showing listings in selected date range) */}
-              <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', padding: '22px 24px', border: '1px solid #F1F5F9', boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>Overview Analytics</span>
-                  <select 
-                    value={analyticsDateRange} 
-                    onChange={(e) => setAnalyticsDateRange(e.target.value as any)}
-                    style={{ padding: '5px 12px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', fontWeight: 600, fontSize: '0.78rem', color: '#0F172A', cursor: 'pointer', outline: 'none' }}
-                  >
-                    <option value="This Week">This Week</option>
-                    <option value="This Month">This Month</option>
-                    <option value="Last 30 Days">Last 30 Days</option>
-                    <option value="This Year">This Year</option>
-                  </select>
+              {/* Col 1: Overview Analytics (Bar Graph showing listings by category with Slide navigation) */}
+              <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', padding: '22px 24px', border: '1px solid #F1F5F9', boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '340px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A', display: 'block' }}>Overview Analytics</span>
+                    <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>Active listings distribution (Bar Graph)</span>
+                  </div>
+                  
+                  {/* Slider Pagination Controls */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button 
+                      onClick={() => {
+                        if (activeAnalyticsSlide === 'business') setActiveAnalyticsSlide('franchise');
+                        else if (activeAnalyticsSlide === 'franchise') setActiveAnalyticsSlide('property');
+                      }}
+                      disabled={activeAnalyticsSlide === 'property'}
+                      style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', cursor: activeAnalyticsSlide === 'property' ? 'not-allowed' : 'pointer', opacity: activeAnalyticsSlide === 'property' ? 0.4 : 1, fontSize: '0.8rem', fontWeight: 'bold' }}
+                    >
+                      ←
+                    </button>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', minWidth: '50px', textAlign: 'center' }}>
+                      {activeAnalyticsSlide === 'property' ? '1 / 3' : activeAnalyticsSlide === 'franchise' ? '2 / 3' : '3 / 3'}
+                    </span>
+                    <button 
+                      onClick={() => {
+                        if (activeAnalyticsSlide === 'property') setActiveAnalyticsSlide('franchise');
+                        else if (activeAnalyticsSlide === 'franchise') setActiveAnalyticsSlide('business');
+                      }}
+                      disabled={activeAnalyticsSlide === 'business'}
+                      style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #E2E8F0', backgroundColor: '#FFFFFF', cursor: activeAnalyticsSlide === 'business' ? 'not-allowed' : 'pointer', opacity: activeAnalyticsSlide === 'business' ? 0.4 : 1, fontSize: '0.8rem', fontWeight: 'bold' }}
+                    >
+                      →
+                    </button>
+                  </div>
                 </div>
 
-                {/* Legend */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', marginBottom: '14px', fontSize: '0.72rem', fontWeight: 700 }}>
-                  <span style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '4px' }}>● <span style={{ color: '#64748B' }}>Properties</span></span>
-                  <span style={{ color: '#2563EB', display: 'flex', alignItems: 'center', gap: '4px' }}>● <span style={{ color: '#64748B' }}>Franchises</span></span>
-                  <span style={{ color: '#9333EA', display: 'flex', alignItems: 'center', gap: '4px' }}>● <span style={{ color: '#64748B' }}>Businesses</span></span>
-                  <span style={{ color: '#EA580C', display: 'flex', alignItems: 'center', gap: '4px' }}>● <span style={{ color: '#64748B' }}>Leads</span></span>
+                {/* Tabs Row for quick selection */}
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+                  {[
+                    { id: 'property', label: 'Properties', color: '#16A34A', bgClass: '#DCFCE7' },
+                    { id: 'franchise', label: 'Franchises', color: '#2563EB', bgClass: '#DBEAFE' },
+                    { id: 'business', label: 'Businesses', color: '#9333EA', bgClass: '#F3E8FF' }
+                  ].map(tab => {
+                    const active = activeAnalyticsSlide === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveAnalyticsSlide(tab.id as any)}
+                        style={{
+                          flex: 1,
+                          padding: '6px 10px',
+                          border: active ? `2px solid ${tab.color}` : '1px solid #E2E8F0',
+                          backgroundColor: active ? tab.bgClass : '#F8FAFC',
+                          color: active ? tab.color : '#475569',
+                          fontWeight: 700,
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          borderRadius: '8px',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                {/* Dynamic SVG Line Chart based on Date Range */}
-                <div style={{ position: 'relative', height: '190px', width: '100%' }}>
-                  <svg viewBox="0 0 400 180" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-                    {/* Y-Axis Grid Lines */}
-                    <line x1="30" y1="20" x2="380" y2="20" stroke="#F1F5F9" strokeWidth="1" />
-                    <line x1="30" y1="60" x2="380" y2="60" stroke="#F1F5F9" strokeWidth="1" />
-                    <line x1="30" y1="100" x2="380" y2="100" stroke="#F1F5F9" strokeWidth="1" />
-                    <line x1="30" y1="140" x2="380" y2="140" stroke="#F1F5F9" strokeWidth="1" />
-                    <line x1="30" y1="170" x2="380" y2="170" stroke="#E2E8F0" strokeWidth="1.5" />
+                {/* Dynamic SVG Bar Chart */}
+                <div style={{ position: 'relative', height: '200px', width: '100%', flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+                  {activeAnalyticsSlide === 'property' && (() => {
+                    const data = [
+                      { label: 'Flats', val: propertiesDb.filter(p => p.category?.toLowerCase() === 'apartment' || p.category?.toLowerCase() === 'flats').length },
+                      { label: 'Villas', val: propertiesDb.filter(p => p.category?.toLowerCase() === 'villa').length },
+                      { label: 'Houses', val: propertiesDb.filter(p => p.category?.toLowerCase() === 'house' || p.category?.toLowerCase() === 'independent house').length },
+                      { label: 'Plots', val: propertiesDb.filter(p => p.category?.toLowerCase() === 'plot' || p.category?.toLowerCase() === 'land').length },
+                      { label: 'Commercial', val: propertiesDb.filter(p => p.category?.toLowerCase() === 'commercial').length }
+                    ];
+                    const maxVal = Math.max(...data.map(d => d.val), 1);
+                    return (
+                      <svg viewBox="0 0 360 170" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                        {/* Grid lines */}
+                        <line x1="30" y1="20" x2="350" y2="20" stroke="#F1F5F9" strokeWidth="1" />
+                        <line x1="30" y1="65" x2="350" y2="65" stroke="#F1F5F9" strokeWidth="1" />
+                        <line x1="30" y1="110" x2="350" y2="110" stroke="#F1F5F9" strokeWidth="1" />
+                        <line x1="30" y1="140" x2="350" y2="140" stroke="#E2E8F0" strokeWidth="1.5" />
+                        
+                        {/* Y-axis values */}
+                        <text x="5" y="24" fontSize="8" fill="#94A3B8" fontWeight="600">{maxVal}</text>
+                        <text x="5" y="69" fontSize="8" fill="#94A3B8" fontWeight="600">{Math.round(maxVal * 0.6)}</text>
+                        <text x="5" y="114" fontSize="8" fill="#94A3B8" fontWeight="600">{Math.round(maxVal * 0.3)}</text>
+                        <text x="5" y="144" fontSize="8" fill="#94A3B8" fontWeight="600">0</text>
 
-                    {/* Y-Axis Labels */}
-                    <text x="5" y="24" fontSize="9" fill="#94A3B8" fontWeight="600">1K</text>
-                    <text x="5" y="64" fontSize="9" fill="#94A3B8" fontWeight="600">800</text>
-                    <text x="5" y="104" fontSize="9" fill="#94A3B8" fontWeight="600">600</text>
-                    <text x="5" y="144" fontSize="9" fill="#94A3B8" fontWeight="600">400</text>
-                    <text x="5" y="174" fontSize="9" fill="#94A3B8" fontWeight="600">0</text>
+                        {data.map((item, idx) => {
+                          const barWidth = 32;
+                          const x = 50 + idx * 60;
+                          const barHeight = (item.val / maxVal) * 110;
+                          const y = 140 - barHeight;
+                          return (
+                            <g key={idx}>
+                              <rect x={x} y={y} width={barWidth} height={barHeight} fill="#16A34A" rx="4" ry="4" style={{ transition: 'all 0.5s ease' }} />
+                              <text x={x + barWidth/2} y={y - 6} fontSize="8" fontWeight="700" fill="#16A34A" textAnchor="middle">{item.val}</text>
+                              <text x={x + barWidth/2} y="154" fontSize="8" fontWeight="600" fill="#475569" textAnchor="middle">{item.label}</text>
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    );
+                  })()}
 
-                    {/* Dynamic Line Paths based on range */}
-                    {analyticsDateRange === 'This Week' && (
-                      <>
-                        {/* Properties Line (Green) */}
-                        <path d={propertiesDb.length === 0 ? "M 40 170 L 370 170" : "M 40 100 Q 90 85, 150 70 T 260 55 T 370 30"} fill="none" stroke="#16A34A" strokeWidth="2.5" />
-                        <circle cx="40" cy={propertiesDb.length === 0 ? "170" : "100"} r="3.5" fill="#16A34A" />
-                        <circle cx="150" cy={propertiesDb.length === 0 ? "170" : "70"} r="3.5" fill="#16A34A" />
-                        <circle cx="260" cy={propertiesDb.length === 0 ? "170" : "55"} r="3.5" fill="#16A34A" />
-                        <circle cx="370" cy={propertiesDb.length === 0 ? "170" : "30"} r="3.5" fill="#16A34A" />
+                  {activeAnalyticsSlide === 'franchise' && (() => {
+                    const data = [
+                      { label: 'Food/Dining', val: franchiseDb.filter(f => f.type.toLowerCase().includes('food') || f.type.toLowerCase().includes('restaurant')).length },
+                      { label: 'Retail/Stores', val: franchiseDb.filter(f => f.type.toLowerCase().includes('retail') || f.type.toLowerCase().includes('store')).length },
+                      { label: 'Services', val: franchiseDb.filter(f => f.type.toLowerCase().includes('service')).length },
+                      { label: 'Education', val: franchiseDb.filter(f => f.type.toLowerCase().includes('education')).length }
+                    ];
+                    const maxVal = Math.max(...data.map(d => d.val), 1);
+                    return (
+                      <svg viewBox="0 0 360 170" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                        <line x1="30" y1="20" x2="350" y2="20" stroke="#F1F5F9" strokeWidth="1" />
+                        <line x1="30" y1="65" x2="350" y2="65" stroke="#F1F5F9" strokeWidth="1" />
+                        <line x1="30" y1="110" x2="350" y2="110" stroke="#F1F5F9" strokeWidth="1" />
+                        <line x1="30" y1="140" x2="350" y2="140" stroke="#E2E8F0" strokeWidth="1.5" />
+                        
+                        <text x="5" y="24" fontSize="8" fill="#94A3B8" fontWeight="600">{maxVal}</text>
+                        <text x="5" y="69" fontSize="8" fill="#94A3B8" fontWeight="600">{Math.round(maxVal * 0.6)}</text>
+                        <text x="5" y="114" fontSize="8" fill="#94A3B8" fontWeight="600">{Math.round(maxVal * 0.3)}</text>
+                        <text x="5" y="144" fontSize="8" fill="#94A3B8" fontWeight="600">0</text>
 
-                        {/* Franchises Line (Blue) */}
-                        <path d={franchiseDb.length === 0 ? "M 40 170 L 370 170" : "M 40 120 Q 90 105, 150 90 T 260 80 T 370 60"} fill="none" stroke="#2563EB" strokeWidth="2.5" />
-                        <circle cx="40" cy={franchiseDb.length === 0 ? "170" : "120"} r="3.5" fill="#2563EB" />
-                        <circle cx="150" cy={franchiseDb.length === 0 ? "170" : "90"} r="3.5" fill="#2563EB" />
-                        <circle cx="260" cy={franchiseDb.length === 0 ? "170" : "80"} r="3.5" fill="#2563EB" />
-                        <circle cx="370" cy={franchiseDb.length === 0 ? "170" : "60"} r="3.5" fill="#2563EB" />
+                        {data.map((item, idx) => {
+                          const barWidth = 36;
+                          const x = 55 + idx * 75;
+                          const barHeight = (item.val / maxVal) * 110;
+                          const y = 140 - barHeight;
+                          return (
+                            <g key={idx}>
+                              <rect x={x} y={y} width={barWidth} height={barHeight} fill="#2563EB" rx="4" ry="4" style={{ transition: 'all 0.5s ease' }} />
+                              <text x={x + barWidth/2} y={y - 6} fontSize="8" fontWeight="700" fill="#2563EB" textAnchor="middle">{item.val}</text>
+                              <text x={x + barWidth/2} y="154" fontSize="8" fontWeight="600" fill="#475569" textAnchor="middle">{item.label}</text>
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    );
+                  })()}
 
-                        {/* Businesses Line (Purple) */}
-                        <path d={businessDb.length === 0 ? "M 40 170 L 370 170" : "M 40 135 Q 90 130, 150 115 T 260 110 T 370 95"} fill="none" stroke="#9333EA" strokeWidth="2.5" />
-                        <circle cx="40" cy={businessDb.length === 0 ? "170" : "135"} r="3.5" fill="#9333EA" />
-                        <circle cx="150" cy={businessDb.length === 0 ? "170" : "115"} r="3.5" fill="#9333EA" />
-                        <circle cx="260" cy={businessDb.length === 0 ? "170" : "110"} r="3.5" fill="#9333EA" />
-                        <circle cx="370" cy={businessDb.length === 0 ? "170" : "95"} r="3.5" fill="#9333EA" />
+                  {activeAnalyticsSlide === 'business' && (() => {
+                    const data = [
+                      { label: 'Food/Dining', val: businessDb.filter(b => b.industry.toLowerCase().includes('food')).length },
+                      { label: 'Healthcare', val: businessDb.filter(b => b.industry.toLowerCase().includes('health')).length },
+                      { label: 'Retail Stores', val: businessDb.filter(b => b.industry.toLowerCase().includes('retail') || b.industry.toLowerCase().includes('store')).length },
+                      { label: 'Services', val: businessDb.filter(b => b.industry.toLowerCase().includes('service')).length },
+                    ];
+                    const maxVal = Math.max(...data.map(d => d.val), 1);
+                    return (
+                      <svg viewBox="0 0 360 170" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                        <line x1="30" y1="20" x2="350" y2="20" stroke="#F1F5F9" strokeWidth="1" />
+                        <line x1="30" y1="65" x2="350" y2="65" stroke="#F1F5F9" strokeWidth="1" />
+                        <line x1="30" y1="110" x2="350" y2="110" stroke="#F1F5F9" strokeWidth="1" />
+                        <line x1="30" y1="140" x2="350" y2="140" stroke="#E2E8F0" strokeWidth="1.5" />
+                        
+                        <text x="5" y="24" fontSize="8" fill="#94A3B8" fontWeight="600">{maxVal}</text>
+                        <text x="5" y="69" fontSize="8" fill="#94A3B8" fontWeight="600">{Math.round(maxVal * 0.6)}</text>
+                        <text x="5" y="114" fontSize="8" fill="#94A3B8" fontWeight="600">{Math.round(maxVal * 0.3)}</text>
+                        <text x="5" y="144" fontSize="8" fill="#94A3B8" fontWeight="600">0</text>
 
-                        {/* Leads Line (Orange) */}
-                        <path d={enquiriesDb.length === 0 ? "M 40 170 L 370 170" : "M 40 155 Q 90 150, 150 140 T 260 135 T 370 120"} fill="none" stroke="#EA580C" strokeWidth="2.5" />
-                        <circle cx="40" cy={enquiriesDb.length === 0 ? "170" : "155"} r="3.5" fill="#EA580C" />
-                        <circle cx="150" cy={enquiriesDb.length === 0 ? "170" : "140"} r="3.5" fill="#EA580C" />
-                        <circle cx="260" cy={enquiriesDb.length === 0 ? "170" : "135"} r="3.5" fill="#EA580C" />
-                        <circle cx="370" cy={enquiriesDb.length === 0 ? "170" : "120"} r="3.5" fill="#EA580C" />
-                      </>
-                    )}
-
-                    {analyticsDateRange !== 'This Week' && (
-                      <>
-                        {/* Scaled Lines for other ranges */}
-                        <path d={propertiesDb.length === 0 ? "M 40 170 L 370 170" : "M 40 130 Q 100 90, 180 60 T 280 40 T 370 20"} fill="none" stroke="#16A34A" strokeWidth="2.5" />
-                        <circle cx="40" cy={propertiesDb.length === 0 ? "170" : "130"} r="3.5" fill="#16A34A" />
-                        <circle cx="180" cy={propertiesDb.length === 0 ? "170" : "60"} r="3.5" fill="#16A34A" />
-                        <circle cx="280" cy={propertiesDb.length === 0 ? "170" : "40"} r="3.5" fill="#16A34A" />
-                        <circle cx="370" cy={propertiesDb.length === 0 ? "170" : "20"} r="3.5" fill="#16A34A" />
-
-                        <path d={franchiseDb.length === 0 ? "M 40 170 L 370 170" : "M 40 145 Q 100 120, 180 95 T 280 75 T 370 50"} fill="none" stroke="#2563EB" strokeWidth="2.5" />
-                        <circle cx="40" cy={franchiseDb.length === 0 ? "170" : "145"} r="3.5" fill="#2563EB" />
-                        <circle cx="180" cy={franchiseDb.length === 0 ? "170" : "95"} r="3.5" fill="#2563EB" />
-                        <circle cx="280" cy={franchiseDb.length === 0 ? "170" : "75"} r="3.5" fill="#2563EB" />
-                        <circle cx="370" cy={franchiseDb.length === 0 ? "170" : "50"} r="3.5" fill="#2563EB" />
-
-                        <path d={businessDb.length === 0 ? "M 40 170 L 370 170" : "M 40 155 Q 100 140, 180 120 T 280 100 T 370 80"} fill="none" stroke="#9333EA" strokeWidth="2.5" />
-                        <circle cx="40" cy={businessDb.length === 0 ? "170" : "155"} r="3.5" fill="#9333EA" />
-                        <circle cx="180" cy={businessDb.length === 0 ? "170" : "120"} r="3.5" fill="#9333EA" />
-                        <circle cx="280" cy={businessDb.length === 0 ? "170" : "100"} r="3.5" fill="#9333EA" />
-                        <circle cx="370" cy={businessDb.length === 0 ? "170" : "80"} r="3.5" fill="#9333EA" />
-                      </>
-                    )}
-
-                    {/* X-Axis Labels */}
-                    {analyticsDateRange === 'This Week' ? (
-                      <>
-                        <text x="35" y="185" fontSize="9" fill="#64748B" fontWeight="600">May 29</text>
-                        <text x="88" y="185" fontSize="9" fill="#64748B" fontWeight="600">May 30</text>
-                        <text x="142" y="185" fontSize="9" fill="#64748B" fontWeight="600">May 31</text>
-                        <text x="198" y="185" fontSize="9" fill="#64748B" fontWeight="600">Jun 01</text>
-                        <text x="252" y="185" fontSize="9" fill="#64748B" fontWeight="600">Jun 02</text>
-                        <text x="308" y="185" fontSize="9" fill="#64748B" fontWeight="600">Jun 03</text>
-                        <text x="360" y="185" fontSize="9" fill="#64748B" fontWeight="600">Jun 04</text>
-                      </>
-                    ) : (
-                      <>
-                        <text x="40" y="185" fontSize="9" fill="#64748B" fontWeight="600">Period 1</text>
-                        <text x="140" y="185" fontSize="9" fill="#64748B" fontWeight="600">Period 2</text>
-                        <text x="240" y="185" fontSize="9" fill="#64748B" fontWeight="600">Period 3</text>
-                        <text x="340" y="185" fontSize="9" fill="#64748B" fontWeight="600">Period 4</text>
-                      </>
-                    )}
-                  </svg>
+                        {data.map((item, idx) => {
+                          const barWidth = 36;
+                          const x = 55 + idx * 75;
+                          const barHeight = (item.val / maxVal) * 110;
+                          const y = 140 - barHeight;
+                          return (
+                            <g key={idx}>
+                              <rect x={x} y={y} width={barWidth} height={barHeight} fill="#9333EA" rx="4" ry="4" style={{ transition: 'all 0.5s ease' }} />
+                              <text x={x + barWidth/2} y={y - 6} fontSize="8" fontWeight="700" fill="#9333EA" textAnchor="middle">{item.val}</text>
+                              <text x={x + barWidth/2} y="154" fontSize="8" fontWeight="600" fill="#475569" textAnchor="middle">{item.label}</text>
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1041,18 +1107,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexGrow: 1, margin: '8px 0' }}>
                   {/* Donut SVG Graphic */}
                   <div style={{ width: '130px', height: '130px', flexShrink: 0, position: 'relative' }}>
-                    <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-                      {propertiesDb.length === 0 && franchiseDb.length === 0 ? (
-                        <circle cx="50" cy="50" r="36" fill="transparent" stroke="#E2E8F0" strokeWidth="20" />
-                      ) : (
-                        <>
-                          <circle cx="50" cy="50" r="36" fill="transparent" stroke="#0D9488" strokeWidth="20" strokeDasharray="79 226" strokeDashoffset="0" />
-                          <circle cx="50" cy="50" r="36" fill="transparent" stroke="#10B981" strokeWidth="20" strokeDasharray="45 226" strokeDashoffset="-79" />
-                          <circle cx="50" cy="50" r="36" fill="transparent" stroke="#8B5CF6" strokeWidth="20" strokeDasharray="40 226" strokeDashoffset="-124" />
-                          <circle cx="50" cy="50" r="36" fill="transparent" stroke="#F97316" strokeWidth="20" strokeDasharray="27 226" strokeDashoffset="-164" />
-                        </>
-                      )}
-                    </svg>
+                    {(() => {
+                      const countHyd = propertiesDb.filter(p => p.city === 'Hyderabad').length;
+                      const countVij = propertiesDb.filter(p => p.city === 'Vijayawada').length;
+                      const countGun = propertiesDb.filter(p => p.city === 'Guntur').length;
+                      const countBen = propertiesDb.filter(p => p.city === 'Bengaluru').length;
+                      const totalLocUnits = countHyd + countVij + countGun + countBen;
+
+                      const totalCirc = 226;
+                      const pctHyd = totalLocUnits > 0 ? countHyd / totalLocUnits : 0;
+                      const pctVij = totalLocUnits > 0 ? countVij / totalLocUnits : 0;
+                      const pctGun = totalLocUnits > 0 ? countGun / totalLocUnits : 0;
+                      const pctBen = totalLocUnits > 0 ? countBen / totalLocUnits : 0;
+
+                      const dashHyd = Math.round(pctHyd * totalCirc);
+                      const dashVij = Math.round(pctVij * totalCirc);
+                      const dashGun = Math.round(pctGun * totalCirc);
+                      const dashBen = Math.round(pctBen * totalCirc);
+
+                      return (
+                        <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+                          {totalLocUnits === 0 ? (
+                            <circle cx="50" cy="50" r="36" fill="transparent" stroke="#E2E8F0" strokeWidth="20" />
+                          ) : (
+                            <>
+                              {dashHyd > 0 && <circle cx="50" cy="50" r="36" fill="transparent" stroke="#0D9488" strokeWidth="20" strokeDasharray={`${dashHyd} ${totalCirc}`} strokeDashoffset={0} />}
+                              {dashVij > 0 && <circle cx="50" cy="50" r="36" fill="transparent" stroke="#10B981" strokeWidth="20" strokeDasharray={`${dashVij} ${totalCirc}`} strokeDashoffset={-dashHyd} />}
+                              {dashGun > 0 && <circle cx="50" cy="50" r="36" fill="transparent" stroke="#8B5CF6" strokeWidth="20" strokeDasharray={`${dashGun} ${totalCirc}`} strokeDashoffset={-(dashHyd + dashVij)} />}
+                              {dashBen > 0 && <circle cx="50" cy="50" r="36" fill="transparent" stroke="#F97316" strokeWidth="20" strokeDasharray={`${dashBen} ${totalCirc}`} strokeDashoffset={-(dashHyd + dashVij + dashGun)} />}
+                            </>
+                          )}
+                        </svg>
+                      );
+                    })()}
                   </div>
 
                   {/* Locations List */}

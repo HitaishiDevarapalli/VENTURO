@@ -895,11 +895,11 @@ export const parseIndiaLocation = (query: string, defaultLat = 16.3067, defaultL
     lng = q.includes('vaddeswaram') || q.includes('kl') ? 80.6226 : (q.includes('srm') ? 80.5080 : (q.includes('vit') || q.includes('amaravati') ? 80.4980 : 80.5600));
   }
   // Andhra Pradesh - Guntur City & Surrounding
-  else if (q.includes('guntur') || q.includes('brodipet') || q.includes('arundhatipet') || q.includes('svn colony') || q.includes('lakshmipuram') || q.includes('vidya nagar') || q.includes('brindavan') || q.includes('syamala nagar') || q.includes('koritepad') || q.includes('pattabhipuram') || q.includes('rvr') || q.includes('vignan') || q.includes('bapatla') || q.includes('narasaraopet') || q.includes('chilakaluripet')) {
+  else if (q.includes('guntur') || q.includes('brodipet') || q.includes('arundhatipet') || q.includes('svn colony') || q.includes('lakshmipuram') || q.includes('vidya nagar') || q.includes('brindavan') || q.includes('syamala nagar') || q.includes('koritepad') || q.includes('pattabhipuram') || q.includes('rvr') || q.includes('vignan') || q.includes('bapatla') || q.includes('narasaraopet') || q.includes('chilakaluripet') || q.includes('nalanda') || q.includes('nethaji')) {
     state = 'Andhra Pradesh';
     district = 'Guntur';
     city = 'Guntur';
-    postal_code = q.includes('svn colony') || q.includes('brindavan') || q.includes('syamala') || q.includes('pattabhipuram') ? '522006' : (q.includes('lakshmipuram') || q.includes('vidya nagar') || q.includes('koritepad') ? '522007' : (q.includes('bapatla') ? '522101' : '522002'));
+    postal_code = q.includes('svn colony') || q.includes('brindavan') || q.includes('syamala') || q.includes('pattabhipuram') || q.includes('nalanda') || q.includes('nethaji') ? '522006' : (q.includes('lakshmipuram') || q.includes('vidya nagar') || q.includes('koritepad') ? '522007' : (q.includes('bapatla') ? '522101' : '522002'));
     lat = 16.3067;
     lng = 80.4365;
   }
@@ -1142,7 +1142,12 @@ export const searchLivePlaces = async (query: string): Promise<LocationIntellige
           const district = addr.state_district || addr.county || addr.district || addr.city || 'Guntur';
           const city = addr.city || addr.town || addr.municipality || addr.suburb || addr.village || district || 'Guntur';
           const area = addr.suburb || addr.neighbourhood || addr.road || addr.residential || addr.village || addr.amenity || query.split(',')[0] || city;
-          const postal_code = addr.postcode || '522002';
+          let postal_code = addr.postcode || '522002';
+          if (item.display_name.toLowerCase().includes('guntur') || query.toLowerCase().includes('guntur')) {
+            if (item.display_name.toLowerCase().includes('svn colony') || item.display_name.toLowerCase().includes('brindavan') || item.display_name.toLowerCase().includes('syamala') || item.display_name.toLowerCase().includes('pattabhipuram') || item.display_name.toLowerCase().includes('nalanda') || item.display_name.toLowerCase().includes('nethaji') || query.toLowerCase().includes('nalanda') || query.toLowerCase().includes('nethaji') || query.toLowerCase().includes('svn colony') || query.toLowerCase().includes('pattabhipuram')) {
+              postal_code = '522006';
+            }
+          }
           const lat = parseFloat(item.lat) || 16.3067;
           const lng = parseFloat(item.lon) || 80.4365;
 
@@ -1191,7 +1196,12 @@ export const geocodeLocationOnline = async (query: string): Promise<LocationInte
         const district = addr.state_district || addr.county || addr.district || addr.city || 'Guntur';
         const city = addr.city || addr.town || addr.municipality || addr.suburb || addr.village || district || 'Guntur';
         const area = addr.suburb || addr.neighbourhood || addr.road || addr.residential || addr.village || addr.amenity || query.split(',')[0] || city;
-        const postal_code = addr.postcode || '522002';
+        let postal_code = addr.postcode || '522002';
+        if (item.display_name.toLowerCase().includes('guntur') || query.toLowerCase().includes('guntur')) {
+          if (item.display_name.toLowerCase().includes('svn colony') || item.display_name.toLowerCase().includes('brindavan') || item.display_name.toLowerCase().includes('syamala') || item.display_name.toLowerCase().includes('pattabhipuram') || item.display_name.toLowerCase().includes('nalanda') || item.display_name.toLowerCase().includes('nethaji') || query.toLowerCase().includes('nalanda') || query.toLowerCase().includes('nethaji') || query.toLowerCase().includes('svn colony') || query.toLowerCase().includes('pattabhipuram')) {
+            postal_code = '522006';
+          }
+        }
         const lat = parseFloat(item.lat) || 16.3067;
         const lng = parseFloat(item.lon) || 80.4365;
 

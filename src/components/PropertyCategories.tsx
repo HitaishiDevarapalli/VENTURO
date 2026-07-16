@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { propertiesDb } from '../db/marketplaceDb';
+import { propertiesDb, selectedCity, dealersDb } from '../db/marketplaceDb';
 import {
   FaSearch,
   FaMapMarkerAlt,
@@ -53,10 +53,14 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
 }) => {
   // Top Search Card State
   const [activeTab, setActiveTab] = useState<'Buy' | 'Rent' | 'Commercial' | 'Plots' | 'New Projects'>('Buy');
-  const [locationText, setLocationText] = useState('Hyderabad, Telangana');
+  const [locationText, setLocationText] = useState(selectedCity || '');
   const [propertyType, setPropertyType] = useState('All Types');
   const [budget, setBudget] = useState('₹ 1K - 1Cr+');
   const [bhkFilter, setBhkFilter] = useState('Any BHK');
+
+  useEffect(() => {
+    setLocationText(selectedCity || '');
+  }, [selectedCity]);
 
   // Left Sidebar Filters State
   const [budgetOpen, setBudgetOpen] = useState(true);
@@ -67,6 +71,44 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
   const [selectedBhks, setSelectedBhks] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedMoreFilters, setSelectedMoreFilters] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!_initialCategory) {
+      setSelectedTypes([]);
+      setPropertyType('All Types');
+      return;
+    }
+    
+    if (_initialCategory === 'BuyApartment') {
+      setSelectedTypes(['Apartment']);
+      setPropertyType('Apartment');
+      setActiveTab('Buy');
+    } else if (_initialCategory === 'BuyHouse') {
+      setSelectedTypes(['Independent House']);
+      setPropertyType('Independent House');
+      setActiveTab('Buy');
+    } else if (_initialCategory === 'BuyVilla') {
+      setSelectedTypes(['Villa']);
+      setPropertyType('Villa');
+      setActiveTab('Buy');
+    } else if (_initialCategory === 'BuyLand') {
+      setSelectedTypes(['Plot / Land']);
+      setPropertyType('Plot / Land');
+      setActiveTab('Plots');
+    } else if (_initialCategory === 'Commercial') {
+      setSelectedTypes(['Commercial Property']);
+      setPropertyType('Commercial Property');
+      setActiveTab('Commercial');
+    } else if (_initialCategory === 'Industrial') {
+      setSelectedTypes(['Industrial Property']);
+      setPropertyType('Industrial Property');
+      setActiveTab('Commercial');
+    } else if (_initialCategory === 'FarmLand') {
+      setSelectedTypes(['Farm Land']);
+      setPropertyType('Farm Land');
+      setActiveTab('Plots');
+    }
+  }, [_initialCategory]);
 
   // Centralized numeric budget limits (in Lakhs: 0.01 to 100)
   const [minBudget, setMinBudget] = useState(0.01);
@@ -191,9 +233,16 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
   };
 
   const toggleType = (val: string) => {
-    setSelectedTypes((prev) =>
-      prev.includes(val) ? prev.filter((item) => item !== val) : [...prev, val]
-    );
+    setSelectedTypes((prev) => {
+      const next = prev.includes(val) ? prev.filter((item) => item !== val) : [...prev, val];
+      // Sync the top dropdown with sidebar checkboxes
+      if (next.length === 1) {
+        setPropertyType(next[0]);
+      } else {
+        setPropertyType('All Types');
+      }
+      return next;
+    });
   };
 
   const toggleMoreFilter = (val: string) => {
@@ -206,42 +255,50 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
     setSelectedBhks([]);
     setSelectedTypes([]);
     setSelectedMoreFilters([]);
-    setMinBudget(10);
-    setMaxBudget(500);
+    setMinBudget(0.01);
+    setMaxBudget(isRent ? 10 : 100);
     setActiveQuickFilter(null);
     setPropertyType('All Types');
-    setBudget('₹ 10L - 5Cr+');
+    setBudget(isRent ? '₹ 1K - 10L+' : '₹ 1K - 1Cr+');
     setBhkFilter('Any BHK');
     if (onClearSearch) onClearSearch();
   };
 
   // Rich screenshot-matching properties list
   const displayProperties = useMemo(() => {
-    const baseList = propertiesDb.map((p) => ({
-      id: p.id,
-      title: p.title || `${p.bedrooms || 3} BHK ${p.category}`,
-      location: `${p.area ? p.area + ', ' : ''}${p.city || ''}`,
-      badge: p.verified ? 'Verified' : (p.premium ? 'Premium' : 'New'),
-      badgeType: p.verified ? 'verified' : (p.premium ? 'premium' : 'new'),
-      image: p.image || p.imageUrl || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&auto=format&fit=crop&q=80',
-      area: p.sqft ? `${p.sqft} sq ft` : (p.builtUpArea ? `${p.builtUpArea} sq ft` : '1500 sq ft'),
-      bhk: String(p.bedrooms || 3),
-      bath: String(p.bathrooms || 3),
-      parking: String(p.parking || 1),
-      price: p.priceDisplay || (`₹ ${p.price || 1} L`),
-      dist: '1.2 KM away',
-      brokerName: p.agentName || 'RealtyPlus Advisors',
-      brokerRating: p.agentRating ? `${p.agentRating} (${p.reviewCount || 10})` : '4.8 (24)',
-      brokerImg: p.agentImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80',
-      type: p.category || 'Apartment',
-      latitude: p.latitude,
-      longitude: p.longitude,
-      city: p.city,
-      rawPrice: (p.price && p.price < 10) ? p.price * 100 : (p.price || 0),
-      status: p.status || 'Buy',
-      availabilityCount: p.availabilityCount || 0,
-      trending: p.trending || false,
-    }));
+    const activeListings = propertiesDb.filter(p => p.approvalStatus !== 'Sold' && p.listingStatus !== 'Sold');
+    const baseList = activeListings.map((p) => {
+      const assignedBroker = dealersDb.find(d => d.id === p.dealerId || (p.assignedBrokerIds && p.assignedBrokerIds.includes(d.id)));
+      const brokerName = assignedBroker?.companyName || assignedBroker?.fullName || p.agentName || 'RealtyPlus Advisors';
+      const brokerRating = assignedBroker?.rating ? `${assignedBroker.rating} (${assignedBroker.reviewCount || 10})` : (p.agentRating ? `${p.agentRating} (${p.reviewCount || 10})` : '4.8 (24)');
+      const brokerImg = assignedBroker?.photo || assignedBroker?.logo || p.agentImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80';
+      return {
+        id: p.id,
+        title: p.title || `${p.bedrooms || 3} BHK ${p.category}`,
+        location: `${p.area ? p.area + ', ' : ''}${p.city || ''}`,
+        badge: p.verified ? 'Verified' : (p.premium ? 'Premium' : 'New'),
+        badgeType: p.verified ? 'verified' : (p.premium ? 'premium' : 'new'),
+        image: p.image || p.imageUrl || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&auto=format&fit=crop&q=80',
+        area: p.sqft ? `${p.sqft} sq ft` : (p.builtUpArea ? `${p.builtUpArea} sq ft` : '1500 sq ft'),
+        bhk: String(p.bedrooms || 3),
+        bath: String(p.bathrooms || 3),
+        parking: String(p.parking || 1),
+        price: p.priceDisplay || (`₹ ${p.price || 1} L`),
+        dist: '1.2 KM away',
+        brokerName,
+        brokerRating,
+        brokerImg,
+        dealerId: assignedBroker?.id || p.dealerId,
+        type: p.category || 'Apartment',
+        latitude: p.latitude,
+        longitude: p.longitude,
+        city: p.city,
+        rawPrice: (p.price && p.price < 10) ? p.price * 100 : (p.price || 0),
+        status: p.status || 'Buy',
+        availabilityCount: p.availabilityCount || 0,
+        trending: p.trending || false,
+      };
+    });
 
     return baseList.filter((item) => {
       // 1. Search Query
@@ -257,16 +314,20 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
       // 2. City / Location Input Text
       if (locationText && locationText.trim() !== '') {
         const loc = locationText.toLowerCase();
-        const matchLoc = item.location.toLowerCase().includes(loc) || (item.city && item.city.toLowerCase().includes(loc));
-        if (!matchLoc) return false;
+        if (!loc.includes('current location') && !loc.includes('gps')) {
+          const matchLoc = item.location.toLowerCase().includes(loc) || (item.city && item.city.toLowerCase().includes(loc));
+          if (!matchLoc) return false;
+        }
       }
 
-      // 3. Tab Categorization
-      if (activeTab === 'Buy' && item.status.toLowerCase() !== 'buy' && item.status.toLowerCase() !== 'sell') return false;
-      if (activeTab === 'Rent' && item.status.toLowerCase() !== 'rent') return false;
-      if (activeTab === 'Commercial' && item.type.toLowerCase() !== 'commercial' && item.type.toLowerCase() !== 'commercial property') return false;
-      if (activeTab === 'Plots' && item.type.toLowerCase() !== 'plot' && item.type.toLowerCase() !== 'plot / land') return false;
-      if (activeTab === 'New Projects' && !item.trending && item.badgeType !== 'new') return false;
+      // 3. Tab Categorization — skip tab filter when a specific property type is already selected
+      if (selectedTypes.length === 0) {
+        if (activeTab === 'Buy' && item.status.toLowerCase() !== 'buy' && item.status.toLowerCase() !== 'sell') return false;
+        if (activeTab === 'Rent' && item.status.toLowerCase() !== 'rent') return false;
+        if (activeTab === 'Commercial' && item.type.toLowerCase() !== 'commercial' && item.type.toLowerCase() !== 'commercial property') return false;
+        if (activeTab === 'Plots' && item.type.toLowerCase() !== 'plot' && item.type.toLowerCase() !== 'plot / land' && item.type.toLowerCase() !== 'land') return false;
+        if (activeTab === 'New Projects' && !item.trending && item.badgeType !== 'new') return false;
+      }
 
       // 4. BHK Multi-select (OR within category)
       if (selectedBhks.length > 0) {
@@ -280,16 +341,17 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
 
       // 5. Property Type Multi-select (OR within category)
       if (selectedTypes.length > 0) {
-        // Map labels to db category name formats
         const typeMatch = selectedTypes.some((selectedLabel) => {
           const normLabel = selectedLabel.toLowerCase();
           const normItemType = item.type.toLowerCase();
-          if (normLabel.includes('apartment') && normItemType.includes('apartment')) return true;
-          if (normLabel.includes('house') && (normItemType.includes('house') || normItemType.includes('villa'))) return true;
+          if (normLabel.includes('apartment') && (normItemType.includes('apartment') || normItemType.includes('flat'))) return true;
           if (normLabel.includes('villa') && normItemType.includes('villa')) return true;
+          if (normLabel.includes('house') && !normLabel.includes('villa') && (normItemType.includes('house') || normItemType.includes('independent'))) return true;
           if (normLabel.includes('plot') && (normItemType.includes('plot') || normItemType.includes('land'))) return true;
           if (normLabel.includes('commercial') && normItemType.includes('commercial')) return true;
-          return normItemType.includes(normLabel);
+          if (normLabel.includes('farm') && (normItemType.includes('farm') || normItemType.includes('agricultural'))) return true;
+          if (normLabel.includes('industrial') && normItemType.includes('industrial')) return true;
+          return normItemType === normLabel;
         });
         if (!typeMatch) return false;
       }
@@ -764,30 +826,32 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
               {budgetOpen && (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '10px' }}>
-                    <span>₹ 10 Lac</span>
-                    <span>₹ 5 Cr+</span>
+                    <span>{isRent ? '₹ 1K' : '₹ 1K'}</span>
+                    <span>{isRent ? '₹ 10 Lac+' : '₹ 1 Cr+'}</span>
                   </div>
                   {/* Range Bar Graphic */}
                   <div
                     id="budget-slider-track"
                     style={{ position: 'relative', height: '6px', backgroundColor: '#E2E8F0', borderRadius: '3px', margin: '14px 6px' }}
                   >
+                    {/* Active green range fill */}
                     <div
                       style={{
                         position: 'absolute',
-                        left: `${((minBudget - 10) / 490) * 100}%`,
-                        right: `${100 - ((maxBudget - 10) / 490) * 100}%`,
+                        left: `${((minBudget - sliderMin) / (sliderMax - sliderMin)) * 100}%`,
+                        right: `${100 - ((maxBudget - sliderMin) / (sliderMax - sliderMin)) * 100}%`,
                         top: 0,
                         bottom: 0,
                         backgroundColor: '#16A34A',
                         borderRadius: '3px',
                       }}
                     />
+                    {/* Min thumb */}
                     <div
                       onMouseDown={() => setDragging('min')}
                       style={{
                         position: 'absolute',
-                        left: `calc(${((minBudget - 10) / 490) * 100}% - 9px)`,
+                        left: `calc(${((minBudget - sliderMin) / (sliderMax - sliderMin)) * 100}% - 9px)`,
                         top: '-6px',
                         width: '18px',
                         height: '18px',
@@ -799,11 +863,12 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
                         zIndex: 2,
                       }}
                     />
+                    {/* Max thumb */}
                     <div
                       onMouseDown={() => setDragging('max')}
                       style={{
                         position: 'absolute',
-                        left: `calc(${((maxBudget - 10) / 490) * 100}% - 9px)`,
+                        left: `calc(${((maxBudget - sliderMin) / (sliderMax - sliderMin)) * 100}% - 9px)`,
                         top: '-6px',
                         width: '18px',
                         height: '18px',
@@ -817,7 +882,7 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
                     />
                   </div>
                   <div style={{ fontSize: '11px', color: '#16A34A', fontWeight: 800, marginTop: '8px', textAlign: 'center' }}>
-                    Selected: ₹ {minBudget >= 100 ? `${(minBudget/100).toFixed(1)} Cr` : `${minBudget} Lac`} - {maxBudget >= 500 ? '5 Cr+' : maxBudget >= 100 ? `${(maxBudget/100).toFixed(1)} Cr` : `${maxBudget} Lac`}
+                    Selected: {minBudget < 1 ? `₹ ${Math.round(minBudget * 1000)}` : minBudget >= 100 ? `₹ ${(minBudget / 100).toFixed(1)} Cr` : `₹ ${minBudget.toFixed(1)} Lac`} - {maxBudget >= sliderMax ? (isRent ? '₹ 10 Lac+' : '₹ 1 Cr+') : maxBudget >= 100 ? `₹ ${(maxBudget / 100).toFixed(1)} Cr` : maxBudget < 1 ? `₹ ${Math.round(maxBudget * 1000)}` : `₹ ${maxBudget.toFixed(1)} Lac`}
                   </div>
                 </div>
               )}
@@ -1228,15 +1293,16 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
 
                       {/* Broker Footer */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F1F5F9', paddingTop: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <img
                             src={prop.brokerImg}
                             alt={prop.brokerName}
-                            style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
+                            style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'contain', border: '2px solid #1E40AF', backgroundColor: '#EFF6FF' }}
                           />
                           <div>
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>{prop.brokerName}</div>
-                            <div style={{ fontSize: '10px', fontWeight: 700, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                            <div style={{ fontSize: '10px', fontWeight: 600, color: '#64748B' }}>Posted by:</div>
+                            <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', wordBreak: 'break-word' }}>{prop.brokerName}</div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '1px' }}>
                               <FaStar /> {prop.brokerRating}
                             </div>
                           </div>

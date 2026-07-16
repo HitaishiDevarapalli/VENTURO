@@ -90,6 +90,9 @@ export interface PropertyListing {
   image: string;
   image2?: string;
   image3?: string;
+  image4?: string;
+  image5?: string;
+  image6?: string;
   images?: string[];
   state: string;
   district: string;
@@ -265,6 +268,10 @@ export interface FranchiseListing {
   district?: string;
   area?: string;
   pincode?: string;
+  postal_code?: string;
+  formatted_address?: string;
+  fullAddress?: string;
+  service_radius?: number;
   businessAddress?: string;
   googleMapsUrl?: string;
 

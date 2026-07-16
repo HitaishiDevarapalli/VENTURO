@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { propertiesDb } from '../db/marketplaceDb';
+import { propertiesDb, dealersDb } from '../db/marketplaceDb';
 import { LiveLocationMap } from './LiveLocationMap';
 import {
   FaBuilding,
@@ -43,7 +43,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick 
 
   const categories = [
     { title: 'Apartments', icon: FaBuilding, bg: '#DCFCE7', color: '#16A34A', page: 'flatsPage' },
-    { title: 'Villas', icon: FaHome, bg: '#DBEAFE', color: '#2563EB', page: 'housesPage' },
+    { title: 'Villas', icon: FaHome, bg: '#DBEAFE', color: '#2563EB', page: 'villasPage' },
     { title: 'Independent Houses', icon: FaHome, bg: '#E0E7FF', color: '#4F46E5', page: 'housesPage' },
     { title: 'Plots / Land', icon: FaMapMarkerAlt, bg: '#DCFCE7', color: '#16A34A', page: 'landPage' },
     { title: 'Commercial', icon: FaBuilding, bg: '#FFEDD5', color: '#EA580C', page: 'propertiesPage' },
@@ -53,23 +53,32 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick 
     { title: 'Businesses', icon: FaBriefcase, bg: '#E0F2FE', color: '#0284C7', page: 'businessPage' },
   ];
 
-  const featuredProperties = propertiesDb.slice(0, 4).map((p) => ({
-    id: p.id,
-    title: p.title || `${p.bedrooms || 3} BHK ${p.category}`,
-    price: p.priceDisplay || (`₹${p.price || 1} L`),
-    badge: p.verified ? 'Verified' : (p.premium ? 'Premium' : 'New Launch'),
-    badgeColor: p.verified ? '#DCFCE7' : (p.premium ? '#FEF08A' : '#E0E7FF'),
-    badgeText: p.verified ? '#16A34A' : (p.premium ? '#854D0E' : '#4F46E5'),
-    badgeIcon: p.verified ? FaCheckCircle : (p.premium ? FaCrown : FaStar),
-    image: p.image || p.imageUrl || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&auto=format&fit=crop&q=80',
-    location: `${p.area ? p.area + ', ' : ''}${p.city || ''}`,
-    bhk: `${p.bedrooms || 3} BHK`,
-    area: p.sqft ? `${p.sqft} Sq.ft` : (p.builtUpArea ? `${p.builtUpArea} Sq.ft` : '1500 Sq.ft'),
-    dist: '1.2 KM Away',
-    brokerName: p.agentName || 'RealtyPlus Advisors',
-    brokerRating: p.agentRating ? `${p.agentRating} (${p.reviewCount || 10})` : '4.8 (24)',
-    brokerImg: p.agentImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80',
-  }));
+  const featuredProperties = propertiesDb
+    .filter(p => p.approvalStatus !== 'Sold' && p.listingStatus !== 'Sold')
+    .slice(0, 4)
+    .map((p) => {
+      const assignedBroker = dealersDb.find(d => d.id === p.dealerId || (p.assignedBrokerIds && p.assignedBrokerIds.includes(d.id)));
+      const brokerName = assignedBroker?.companyName || assignedBroker?.fullName || p.agentName || 'RealtyPlus Advisors';
+      const brokerRating = assignedBroker?.rating ? `${assignedBroker.rating} (${assignedBroker.reviewCount || 10})` : (p.agentRating ? `${p.agentRating} (${p.reviewCount || 10})` : '4.8 (24)');
+      const brokerImg = assignedBroker?.photo || assignedBroker?.logo || p.agentImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80';
+      return {
+        id: p.id,
+        title: p.title || `${p.bedrooms || 3} BHK ${p.category}`,
+        price: p.priceDisplay || (`₹${p.price || 1} L`),
+        badge: p.verified ? 'Verified' : (p.premium ? 'Premium' : 'New Launch'),
+        badgeColor: p.verified ? '#DCFCE7' : (p.premium ? '#FEF08A' : '#E0E7FF'),
+        badgeText: p.verified ? '#16A34A' : (p.premium ? '#854D0E' : '#4F46E5'),
+        badgeIcon: p.verified ? FaCheckCircle : (p.premium ? FaCrown : FaStar),
+        image: p.image || p.imageUrl || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&auto=format&fit=crop&q=80',
+        location: `${p.area ? p.area + ', ' : ''}${p.city || ''}`,
+        bhk: `${p.bedrooms || 3} BHK`,
+        area: p.sqft ? `${p.sqft} Sq.ft` : (p.builtUpArea ? `${p.builtUpArea} Sq.ft` : '1500 Sq.ft'),
+        dist: '1.2 KM Away',
+        brokerName,
+        brokerRating,
+        brokerImg,
+      };
+    });
 
   const quickTools = [
     { title: 'Home Loan', subtitle: 'Calculate EMI & Apply Now', icon: FaMoneyCheckAlt, bg: '#DCFCE7', color: '#16A34A', page: 'loansPage' },
@@ -249,8 +258,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick 
                         {/* Broker Footer */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F1F5F9', paddingTop: '10px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <img src={prop.brokerImg} alt={prop.brokerName} style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }} />
-                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>{prop.brokerName}</span>
+                            <img src={prop.brokerImg} alt={prop.brokerName} style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'contain', border: '2px solid #1E40AF', backgroundColor: '#EFF6FF' }} />
+                            <div>
+                              <div style={{ fontSize: '10px', fontWeight: 600, color: '#64748B' }}>Posted by:</div>
+                              <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', wordBreak: 'break-word' }}>{prop.brokerName}</div>
+                            </div>
                           </div>
                           <span style={{ fontSize: '11px', fontWeight: 700, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <FaStar /> {prop.brokerRating}
@@ -301,7 +313,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick 
                   }}
                 >
                   <LiveLocationMap
-                    items={propertiesDb}
+                    items={propertiesDb.filter(p => p.approvalStatus !== 'Sold' && p.listingStatus !== 'Sold')}
                     type="property"
                     height="220px"
                     onSelectItem={onPropertyClick}

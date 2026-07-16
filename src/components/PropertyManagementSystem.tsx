@@ -8,6 +8,7 @@ import {
 } from '../db/marketplaceDb';
 import type { PropertyListing } from '../db/marketplaceDb';
 import { COMPREHENSIVE_INDIA_PLACES_DB, searchLivePlaces, geocodeLocationOnline } from '../utils/locationIntelligence';
+import { LocationPickerMap } from './LocationPickerMap';
 import { 
   FaBuilding, FaSearch, FaPlus, FaEdit, FaTrash, 
   FaCrown, FaMapMarkerAlt, FaFileExport, FaCopy, 
@@ -68,6 +69,7 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
   const [mapMarkerPos, setMapMarkerPos] = useState<{ lat: number; lng: number }>({ lat: 17.4326, lng: 78.4071 });
   const [liveSuggestions, setLiveSuggestions] = useState<typeof GOOGLE_PLACES_SUGGESTIONS>(GOOGLE_PLACES_SUGGESTIONS);
   const [isSearchingLive, setIsSearchingLive] = useState(false);
+  const [priceUnit, setPriceUnit] = useState<'Thousands' | 'Lakhs' | 'Crores'>('Lakhs');
 
   useEffect(() => {
     if (!addressSearchQuery || addressSearchQuery.trim().length < 2) {
@@ -152,8 +154,8 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
     propertySubtype: 'Villas',
     propertyPurpose: 'Sale',
     status: 'Buy',
-    price: 150,
-    priceDisplay: '₹1.50 Crore',
+    price: 0,
+    priceDisplay: '',
     areaSqFt: '2,500 Sq.Ft.',
     superBuiltUpArea: '2,500 Sq.Ft.',
     carpetArea: '2,100 Sq.Ft.',
@@ -169,25 +171,30 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
     parkingSlots: 2,
     ownershipType: 'Freehold',
     negotiable: true,
-    state: 'Telangana',
-    district: 'Hyderabad',
-    city: 'Hyderabad',
-    area: 'Jubilee Hills',
-    locality: 'Road No 36',
-    landmark: 'Near Metro Station',
-    pincode: '500033',
-    fullAddress: 'Road No 36, Jubilee Hills, Hyderabad, Telangana 500033',
-    latitude: 17.4326,
-    longitude: 78.4071,
+    state: '',
+    district: '',
+    city: '',
+    area: '',
+    locality: '',
+    landmark: '',
+    pincode: '',
+    postal_code: '',
+    fullAddress: '',
+    formatted_address: '',
+    google_place_id: '',
+    latitude: 0,
+    longitude: 0,
     description: 'An exquisitely designed property featuring premium architectural fittings, high ceilings, natural ventilation, and superior connectivity.',
-    amenities: ['Lift', 'Parking', 'Security', 'CCTV', 'Power Backup'],
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80'
-    ],
+    amenities: [],
+    image: '',
+    image2: '',
+    image3: '',
+    image4: '',
+    image5: '',
+    image6: '',
+    images: [],
     dealerId: dealersDb[0]?.id || 'D1',
-    assignedBrokerIds: [dealersDb[0]?.id || 'D1'],
+    assignedBrokerIds: [],
     approvalStatus: 'Published',
     listingStatus: 'Published',
     featured: false,
@@ -252,16 +259,16 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
     return { total, published, pending, sold, reserved, featuredCount, sponsoredCount, totalValue: totalValue.toFixed(2), avgPrice };
   }, [propertiesDb]);
 
-  // Open Modal Helpers
   const openAddModal = () => {
+    setPriceUnit('Lakhs');
     setFormData({
       title: '',
       category: 'Villa',
       propertySubtype: 'Villas',
       propertyPurpose: 'Sale',
       status: 'Buy',
-      price: 150,
-      priceDisplay: '₹1.50 Crore',
+      price: 0,
+      priceDisplay: '',
       areaSqFt: '2,500 Sq.Ft.',
       superBuiltUpArea: '2,500 Sq.Ft.',
       carpetArea: '2,100 Sq.Ft.',
@@ -277,27 +284,32 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
       parkingSlots: 2,
       ownershipType: 'Freehold',
       negotiable: true,
-      state: 'Telangana',
-      district: 'Hyderabad',
-      city: 'Hyderabad',
-      area: 'Jubilee Hills',
-      locality: 'Road No 36',
-      landmark: 'Near Metro Station',
-      pincode: '500033',
-      postal_code: '500033',
+      state: '',
+      district: '',
+      city: '',
+      area: '',
+      locality: '',
+      landmark: '',
+      pincode: '',
+      postal_code: '',
       country: 'India',
-      fullAddress: 'Plot 45, HITEC City Phase 2, Hyderabad, Telangana 500081',
-      formatted_address: 'Plot 45, HITEC City Phase 2, Hyderabad, Telangana 500081, India',
-      google_place_id: 'ChIJ_hitec_hyd_7',
+      fullAddress: '',
+      formatted_address: '',
+      google_place_id: '',
       service_radius: 10,
-      latitude: 17.4474,
-      longitude: 78.3762,
+      latitude: 0,
+      longitude: 0,
       description: 'Brand new luxury residence designed with modern ventilation, private landscaping, and premium security systems.',
-      amenities: ['Lift', 'Parking', 'Security', 'CCTV', 'Power Backup', 'Water Supply'],
-      image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
-      images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80'],
-      dealerId: dealersDb[0]?.id || 'D1',
-      assignedBrokerIds: [dealersDb[0]?.id || 'D1'],
+      amenities: [],
+      image: '',
+      image2: '',
+      image3: '',
+      image4: '',
+      image5: '',
+      image6: '',
+      images: [],
+      dealerId: '',
+      assignedBrokerIds: [],
       approvalStatus: 'Published',
       listingStatus: 'Published',
       featured: false,
@@ -357,12 +369,16 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
     const finalBrokerId = (formData.assignedBrokerIds && formData.assignedBrokerIds.length > 0)
       ? formData.assignedBrokerIds[0]
       : formData.dealerId || dealersDb[0]?.id || 'D1';
+    const assignedBroker = dealersDb.find(d => d.id === finalBrokerId);
 
     const preparedProperty: PropertyListing = {
       ...formData as PropertyListing,
       id: formData.id || `P-${Date.now()}`,
       dealerId: finalBrokerId,
       assignedBrokerIds: formData.assignedBrokerIds || [finalBrokerId],
+      agentName: assignedBroker?.companyName || assignedBroker?.fullName || formData.agentName || 'RealtyPlus Advisors',
+      agentRating: assignedBroker?.rating || formData.agentRating || 4.8,
+      agentImage: assignedBroker?.photo || assignedBroker?.logo || formData.agentImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80',
       createdDate: formData.createdDate || new Date().toISOString().split('T')[0],
       urlSlug: formData.urlSlug || formData.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || '',
       google_place_id: formData.google_place_id || `ChIJ_verified_${Date.now()}`,
@@ -390,6 +406,11 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
       showNotification?.("Please provide a valid property title.", "error");
       return;
     }
+    if (!formData.assignedBrokerIds || formData.assignedBrokerIds.length === 0) {
+      showNotification?.("Broker assignment is mandatory. Please select at least one broker partner.", "error");
+      setModalSubTab('review');
+      return;
+    }
     if (!formData.latitude || !formData.longitude || !(formData.formatted_address || formData.fullAddress)) {
       showNotification?.("Admin Validation Error: Please select a verified Google Location from the Autocomplete search box or drag the map pin.", "error");
       setModalSubTab('location');
@@ -399,12 +420,16 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
     const finalBrokerId = (formData.assignedBrokerIds && formData.assignedBrokerIds.length > 0)
       ? formData.assignedBrokerIds[0]
       : formData.dealerId || dealersDb[0]?.id || 'D1';
+    const assignedBroker = dealersDb.find(d => d.id === finalBrokerId);
 
     const preparedProperty: PropertyListing = {
       ...formData as PropertyListing,
       id: formData.id || `P-${Date.now()}`,
       dealerId: finalBrokerId,
       assignedBrokerIds: formData.assignedBrokerIds || [finalBrokerId],
+      agentName: assignedBroker?.companyName || assignedBroker?.fullName || formData.agentName || 'RealtyPlus Advisors',
+      agentRating: assignedBroker?.rating || formData.agentRating || 4.8,
+      agentImage: assignedBroker?.photo || assignedBroker?.logo || formData.agentImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80',
       createdDate: formData.createdDate || new Date().toISOString().split('T')[0],
       urlSlug: formData.urlSlug || formData.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || '',
       google_place_id: formData.google_place_id || `ChIJ_verified_${Date.now()}`,
@@ -762,15 +787,17 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                             backgroundColor: 
                               (prop.approvalStatus === 'Published' || prop.listingStatus === 'Published') ? '#DCFCE7' :
                               (prop.approvalStatus === 'Pending Approval') ? '#DBEAFE' :
-                              (prop.approvalStatus === 'Sold') ? '#F1F5F9' : '#FEF3C7',
+                              (prop.approvalStatus === 'Sold' || prop.listingStatus === 'Sold') ? '#FEE2E2' : 
+                              (prop.approvalStatus === 'Reserved' || prop.listingStatus === 'Reserved') ? '#FEF3C7' : '#F1F5F9',
                             color:
                               (prop.approvalStatus === 'Published' || prop.listingStatus === 'Published') ? '#166534' :
                               (prop.approvalStatus === 'Pending Approval') ? '#1E40AF' :
-                              (prop.approvalStatus === 'Sold') ? '#475569' : '#92400E'
+                              (prop.approvalStatus === 'Sold' || prop.listingStatus === 'Sold') ? '#EF4444' : 
+                              (prop.approvalStatus === 'Reserved' || prop.listingStatus === 'Reserved') ? '#D97706' : '#475569'
                           }}>
                             {prop.approvalStatus || prop.listingStatus || 'Published'}
                           </span>
-                          <div style={{ fontSize: '0.7rem', color: '#94A3B8', marginTop: '4px' }}>2 days ago</div>
+                          <div style={{ fontSize: '0.7rem', color: '#94A3B8', marginTop: '4px' }}>Recently updated</div>
                         </td>
                         <td style={{ padding: '16px', textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
@@ -1105,7 +1132,7 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                 { id: 'specs', num: 3, label: 'Specifications', sub: 'Property features' },
                 { id: 'pricing', num: 4, label: 'Pricing', sub: 'Price & availability' },
                 { id: 'media', num: 5, label: 'Media', sub: 'Photos & videos' },
-                { id: 'review', num: 6, label: 'Review', sub: 'Review & publish' }
+                { id: 'review', num: 6, label: 'Assign Broker', sub: 'Assign broker CRM' }
               ].map((step, idx, arr) => {
                 const isActive = modalSubTab === step.id;
                 const isCompleted = arr.findIndex(x => x.id === modalSubTab) > idx;
@@ -1341,32 +1368,24 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                         </div>
 
                         {/* Interactive Map Preview Box */}
-                        <div style={{ marginTop: '20px', borderRadius: '16px', overflow: 'hidden', border: '1px solid #E2E8F0', height: '380px', position: 'relative', backgroundColor: '#F1F5F9', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundImage: 'radial-gradient(#CBD5E1 1.5px, transparent 1.5px)', backgroundSize: '24px 24px' }}>
-                          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.15, background: 'linear-gradient(45deg, #3B82F6 25%, transparent 25%), linear-gradient(-45deg, #3B82F6 25%, transparent 25%)', backgroundSize: '60px 60px' }} />
-                          
-                          {/* Radius Circle Overlay */}
-                          <div style={{ position: 'absolute', width: `${Math.min((formData.service_radius || 10) * 14, 320)}px`, height: `${Math.min((formData.service_radius || 10) * 14, 320)}px`, borderRadius: '50%', backgroundColor: 'rgba(59, 130, 246, 0.15)', border: '2px dashed #3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }}>
-                            <span style={{ fontSize: '0.75rem', color: '#1D4ED8', fontWeight: 700, backgroundColor: 'rgba(255,255,255,0.9)', padding: '4px 10px', borderRadius: '12px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
-                              {formData.city || 'Hyderabad'} ({formData.service_radius || 10} KM Radius)
-                            </span>
-                          </div>
-
-                          {/* Draggable Marker Pin */}
-                          <div style={{ zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'grab', transform: 'translateY(-15px)' }}>
-                            <div style={{ backgroundColor: '#2563EB', color: '#FFF', padding: '6px 14px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 700, boxShadow: '0 6px 16px rgba(37, 99, 235, 0.4)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                              <FaMapMarkerAlt /> {formData.area || 'Jubilee Hills'} ({mapMarkerPos.lat.toFixed(3)}, {mapMarkerPos.lng.toFixed(3)})
-                            </div>
-                            <div style={{ width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: '10px solid #2563EB' }} />
-                          </div>
+                        <div style={{ marginTop: '20px', position: 'relative', height: '380px', borderRadius: '16px', overflow: 'hidden' }}>
+                          <LocationPickerMap
+                            latitude={mapMarkerPos.lat}
+                            longitude={mapMarkerPos.lng}
+                            onChange={handleMarkerDrag}
+                            radius={formData.service_radius}
+                            city={formData.city}
+                            height="380px"
+                          />
 
                           {/* Map Controls & Nudge Buttons */}
-                          <div style={{ position: 'absolute', bottom: '14px', left: '14px', right: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.95)', padding: '8px 14px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #E2E8F0' }}>
+                          <div style={{ position: 'absolute', bottom: '14px', left: '14px', right: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.95)', padding: '8px 14px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid #E2E8F0', zIndex: 1000 }}>
                             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Fine-tune Marker GPS:</span>
                             <div style={{ display: 'flex', gap: '6px' }}>
-                              <button type="button" onClick={() => handleMarkerDrag(mapMarkerPos.lat + 0.002, mapMarkerPos.lng)} style={{ padding: '6px 12px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#1E293B' }}>↑ N</button>
-                              <button type="button" onClick={() => handleMarkerDrag(mapMarkerPos.lat - 0.002, mapMarkerPos.lng)} style={{ padding: '6px 12px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#1E293B' }}>↓ S</button>
-                              <button type="button" onClick={() => handleMarkerDrag(mapMarkerPos.lat, mapMarkerPos.lng - 0.002)} style={{ padding: '6px 12px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#1E293B' }}>← W</button>
-                              <button type="button" onClick={() => handleMarkerDrag(mapMarkerPos.lat, mapMarkerPos.lng + 0.002)} style={{ padding: '6px 12px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#1E293B' }}>→ E</button>
+                              <button type="button" onClick={() => handleMarkerDrag(mapMarkerPos.lat + 0.0002, mapMarkerPos.lng)} style={{ padding: '6px 12px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#1E293B' }}>↑ N</button>
+                              <button type="button" onClick={() => handleMarkerDrag(mapMarkerPos.lat - 0.0002, mapMarkerPos.lng)} style={{ padding: '6px 12px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#1E293B' }}>↓ S</button>
+                              <button type="button" onClick={() => handleMarkerDrag(mapMarkerPos.lat, mapMarkerPos.lng - 0.0002)} style={{ padding: '6px 12px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#1E293B' }}>← W</button>
+                              <button type="button" onClick={() => handleMarkerDrag(mapMarkerPos.lat, mapMarkerPos.lng + 0.0002)} style={{ padding: '6px 12px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#1E293B' }}>→ E</button>
                             </div>
                           </div>
                         </div>
@@ -1556,13 +1575,56 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                   
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
                     <div>
-                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PRICE NUMERIC (IN LAKHS ₹) *</label>
-                      <input type="number" step="0.01" value={formData.price} onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} placeholder="150" style={{ width: '100%', padding: '14px', border: '1.5px solid #2563EB', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 800, color: '#1E40AF' }} required />
-                      <span style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px', display: 'block' }}>Enter the numerical Lakh value (e.g. 150 for ₹1.5 Crore, 85 for ₹85 Lakhs, 0.01 for ₹1,000)</span>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PRICE VALUE *</label>
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <input
+                          type="number"
+                          step="any"
+                          value={formData.price || ''}
+                          onChange={e => {
+                            const val = parseFloat(e.target.value) || 0;
+                            let label = '';
+                            if (priceUnit === 'Crores') {
+                              label = `₹${val.toFixed(2)} Crore`;
+                            } else if (priceUnit === 'Lakhs') {
+                              label = `₹${val.toFixed(2)} Lakh`;
+                            } else {
+                              label = `₹${val.toLocaleString('en-IN')}`;
+                            }
+                            setFormData({ ...formData, price: val, priceDisplay: label });
+                          }}
+                          placeholder="e.g. 75"
+                          style={{ flexGrow: 1, padding: '14px', border: '1.5px solid #2563EB', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 800, color: '#1E40AF', outline: 'none' }}
+                          required
+                        />
+                        <select
+                          value={priceUnit}
+                          onChange={e => {
+                            const unit = e.target.value as any;
+                            setPriceUnit(unit);
+                            const val = formData.price || 0;
+                            let label = '';
+                            if (unit === 'Crores') {
+                              label = `₹${val.toFixed(2)} Crore`;
+                            } else if (unit === 'Lakhs') {
+                              label = `₹${val.toFixed(2)} Lakh`;
+                            } else {
+                              label = `₹${val.toLocaleString('en-IN')}`;
+                            }
+                            setFormData({ ...formData, priceDisplay: label });
+                          }}
+                          style={{ padding: '14px', border: '1.5px solid #2563EB', borderRadius: '12px', fontSize: '1.05rem', fontWeight: 700, backgroundColor: '#FFFFFF', cursor: 'pointer', outline: 'none' }}
+                        >
+                          <option value="Thousands">Thousands (₹)</option>
+                          <option value="Lakhs">Lakhs (₹)</option>
+                          <option value="Crores">Crores (₹)</option>
+                        </select>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px', display: 'block' }}>Enter numerical value and select the currency unit (Thousands, Lakhs, Crores)</span>
                     </div>
                     <div>
                       <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PRICE DISPLAY LABEL</label>
-                      <input type="text" value={formData.priceDisplay} onChange={e => setFormData({ ...formData, priceDisplay: e.target.value })} placeholder="e.g. ₹1.50 Crore (Negotiable)" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }} />
+                      <input type="text" value={formData.priceDisplay || ''} onChange={e => setFormData({ ...formData, priceDisplay: e.target.value })} placeholder="e.g. ₹75.00 Lakh" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }} />
                       <span style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px', display: 'block' }}>Formatted price string shown to users on listing cards</span>
                     </div>
                   </div>
@@ -1587,7 +1649,7 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                         <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 0 0' }}>Drag & drop or upload showcase images for your property listing (Optional)</p>
                       </div>
                       <span style={{ padding: '6px 14px', backgroundColor: '#EFF6FF', color: '#2563EB', borderRadius: '20px', fontWeight: 700, fontSize: '0.8rem' }}>
-                        {((formData.image ? 1 : 0) + (formData.image2 ? 1 : 0) + (formData.image3 ? 1 : 0))} / 3 Photos Uploaded
+                        {((formData.image ? 1 : 0) + (formData.image2 ? 1 : 0) + (formData.image3 ? 1 : 0) + (formData.image4 ? 1 : 0) + (formData.image5 ? 1 : 0) + (formData.image6 ? 1 : 0))} / 6 Photos Uploaded
                       </span>
                     </div>
 
@@ -1603,7 +1665,10 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                             const base64 = ev.target?.result as string;
                             if (!formData.image) setFormData({ ...formData, image: base64 });
                             else if (!formData.image2) setFormData({ ...formData, image2: base64 });
-                            else setFormData({ ...formData, image3: base64 });
+                            else if (!formData.image3) setFormData({ ...formData, image3: base64 });
+                            else if (!formData.image4) setFormData({ ...formData, image4: base64 });
+                            else if (!formData.image5) setFormData({ ...formData, image5: base64 });
+                            else if (!formData.image6) setFormData({ ...formData, image6: base64 });
                           };
                           reader.readAsDataURL(file);
                         }
@@ -1612,6 +1677,9 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                         if (!formData.image) document.getElementById('optional-file-input-0')?.click();
                         else if (!formData.image2) document.getElementById('optional-file-input-1')?.click();
                         else if (!formData.image3) document.getElementById('optional-file-input-2')?.click();
+                        else if (!formData.image4) document.getElementById('optional-file-input-3')?.click();
+                        else if (!formData.image5) document.getElementById('optional-file-input-4')?.click();
+                        else if (!formData.image6) document.getElementById('optional-file-input-5')?.click();
                       }}
                       style={{
                         border: '2.5px dashed #3B82F6',
@@ -1627,7 +1695,7 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                     >
                       <FaCamera style={{ fontSize: '2.5rem', color: '#3B82F6', marginBottom: '12px' }} />
                       <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1E3A8A' }}>Drag & Drop or Click to Upload Image</div>
-                      <div style={{ fontSize: '0.82rem', color: '#64748B', marginTop: '6px' }}>PNG, JPG, or WEBP (Max 3 showcase images)</div>
+                      <div style={{ fontSize: '0.82rem', color: '#64748B', marginTop: '6px' }}>PNG, JPG, or WEBP (Max 6 showcase images)</div>
                       <div style={{ display: 'none' }}>
                         <input id="optional-file-input-0" type="file" accept="image/*" onChange={(e) => {
                           const file = e.target.files?.[0];
@@ -1653,16 +1721,43 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                             reader.readAsDataURL(file);
                           }
                         }} />
+                        <input id="optional-file-input-3" type="file" accept="image/*" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setFormData({ ...formData, image4: ev.target?.result as string });
+                            reader.readAsDataURL(file);
+                          }
+                        }} />
+                        <input id="optional-file-input-4" type="file" accept="image/*" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setFormData({ ...formData, image5: ev.target?.result as string });
+                            reader.readAsDataURL(file);
+                          }
+                        }} />
+                        <input id="optional-file-input-5" type="file" accept="image/*" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setFormData({ ...formData, image6: ev.target?.result as string });
+                            reader.readAsDataURL(file);
+                          }
+                        }} />
                       </div>
                     </div>
 
                     {/* Previews of Uploaded Images */}
-                    {(formData.image || formData.image2 || formData.image3) ? (
+                    {(formData.image || formData.image2 || formData.image3 || formData.image4 || formData.image5 || formData.image6) ? (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
                         {[
                           { key: 'image', val: formData.image, label: '★ COVER HERO IMAGE' },
                           { key: 'image2', val: formData.image2, label: 'SHOWCASE SLIDE #2' },
-                          { key: 'image3', val: formData.image3, label: 'SHOWCASE SLIDE #3' }
+                          { key: 'image3', val: formData.image3, label: 'SHOWCASE SLIDE #3' },
+                          { key: 'image4', val: formData.image4, label: 'SHOWCASE SLIDE #4' },
+                          { key: 'image5', val: formData.image5, label: 'SHOWCASE SLIDE #5' },
+                          { key: 'image6', val: formData.image6, label: 'SHOWCASE SLIDE #6' }
                         ].map((item, idx) => {
                           if (!item.val) return null;
                           return (
@@ -1674,9 +1769,7 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    if (item.key === 'image') setFormData({ ...formData, image: '' });
-                                    else if (item.key === 'image2') setFormData({ ...formData, image2: '' });
-                                    else setFormData({ ...formData, image3: '' });
+                                    setFormData({ ...formData, [item.key]: '' });
                                   }}
                                   style={{ background: '#FEE2E2', border: 'none', color: '#EF4444', borderRadius: '6px', padding: '4px 8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
                                 >
@@ -1692,7 +1785,7 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                       </div>
                     ) : (
                       <div style={{ textAlign: 'center', padding: '24px', color: '#94A3B8', fontStyle: 'italic', fontSize: '0.9rem' }}>
-                        No images uploaded yet. This listing will use default showcase placeholders if published without images.
+                        No images uploaded yet.
                       </div>
                     )}
                   </div>
@@ -1756,28 +1849,6 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                           </div>
                         );
                       })}
-                    </div>
-                  </div>
-
-                  {/* SEO & Summary Section */}
-                  <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>SEO Meta Data & Final Summary</h4>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-                      <div>
-                        <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>SEO TITLE TAG</label>
-                        <input type="text" value={formData.seoTitle || ''} onChange={e => setFormData({ ...formData, seoTitle: e.target.value })} placeholder="Buy 4BHK Sky Villa Jubilee Hills Hyderabad" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600 }} />
-                      </div>
-                    </div>
-
-                    <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <FaCheckCircle style={{ fontSize: '2rem', color: '#16A34A', flexShrink: 0 }} />
-                      <div>
-                        <div style={{ fontWeight: 800, color: '#065F46', fontSize: '1.05rem' }}>Ready to Publish!</div>
-                        <div style={{ color: '#047857', fontSize: '0.88rem', marginTop: '4px' }}>
-                          Your listing "{formData.title || 'New Property'}" in {formData.area || 'Jubilee Hills'}, {formData.city || 'Hyderabad'} is verified and ready to go live on the enterprise marketplace.
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>

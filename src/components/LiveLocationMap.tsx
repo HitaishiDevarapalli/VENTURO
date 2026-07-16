@@ -206,6 +206,26 @@ export const LiveLocationMap: React.FC<LiveLocationMapProps> = ({
     );
   };
 
+  const nearbyCount = useMemo(() => {
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371; // km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+    return items.filter(item => {
+      const lat = item.latitude;
+      const lng = item.longitude;
+      if (!lat || !lng) return false;
+      const dist = calculateDistance(mapCenter.lat, mapCenter.lng, lat, lng);
+      return dist <= 15;
+    }).length;
+  }, [items, mapCenter]);
+
   const handleResetView = () => {
     if (mapInstanceRef.current) {
       mapInstanceRef.current.flyTo([mapCenter.lat, mapCenter.lng], 13, { duration: 1 });
@@ -313,7 +333,7 @@ export const LiveLocationMap: React.FC<LiveLocationMapProps> = ({
       <div style={{ position: 'absolute', bottom: '16px', left: '16px', right: '16px', zIndex: 1000, display: 'flex', justifyContent: 'space-between', alignItems: 'center', pointerEvents: 'none' }}>
         <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', color: '#FFFFFF', padding: '8px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, boxShadow: '0 4px 16px rgba(0,0,0,0.2)', pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22C55E', display: 'inline-block', animation: 'pulse 1.5s infinite' }}></span>
-          <span>Showing {items.length} nearby listings on Live OpenStreetMap</span>
+          <span>Showing {nearbyCount} listings within 15 km of {mapCenter.label}</span>
         </div>
       </div>
     </div>

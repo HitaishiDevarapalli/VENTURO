@@ -1,11 +1,61 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { propertiesDb, dealersDb, franchiseDb, businessDb } from '../db/marketplaceDb';
+import { propertiesDb, dealersDb, franchiseDb, businessDb, enquiriesDb, notifyDataChanged } from '../db/marketplaceDb';
+import type { Dealer } from '../db/marketplaceDb';
 import { 
   FaArrowLeft, FaHeart, FaRegHeart, FaShareAlt, 
   FaMapMarkerAlt, FaShoppingCart, FaPhone, 
   FaChevronLeft, FaChevronRight 
 } from 'react-icons/fa';
 import { useWishlist } from '../context/WishlistContext';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+const PropertyLocationMap: React.FC<{ latitude: number; longitude: number; title: string; area: string; price: string }> = ({ latitude, longitude, title, area, price }) => {
+  const mapContainerRef = React.useRef<HTMLDivElement>(null);
+  
+  React.useEffect(() => {
+    if (!mapContainerRef.current) return;
+    
+    const defaultLat = latitude || 16.3067;
+    const defaultLng = longitude || 80.4365;
+    
+    const map = L.map(mapContainerRef.current, {
+      center: [defaultLat, defaultLng],
+      zoom: 15,
+      zoomControl: true
+    });
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    
+    const customIcon = L.divIcon({
+      className: 'custom-property-details-pin',
+      html: `
+        <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translateY(-12px);">
+          <div style="background-color: #EF4444; color: #FFFFFF; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; box-shadow: 0 4px 14px rgba(239,68,68,0.4); border: 2px solid #FFFFFF; white-space: nowrap; display: flex; align-items: center; gap: 4px;">
+            🏠 ${title} (${price})
+          </div>
+          <div style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid #EF4444; margin-top: -1px;"></div>
+        </div>
+      `,
+      iconSize: [120, 38],
+      iconAnchor: [60, 38]
+    });
+    
+    L.marker([defaultLat, defaultLng], { icon: customIcon }).addTo(map);
+    
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 300);
+    
+    return () => {
+      map.remove();
+    };
+  }, [latitude, longitude, title, area, price]);
+  
+  return <div ref={mapContainerRef} style={{ width: '100%', height: '100%', borderRadius: '16px', zIndex: 1 }} />;
+};
 
 const getNearbyAmenities = (category: string, area: string, city: string) => {
   const baseDist = Math.floor(Math.random() * 8) / 10 + 0.4;
@@ -76,30 +126,72 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
   const [showSellerPortfolio, setShowSellerPortfolio] = useState(false);
   const [nearbyRadiusFilter, setNearbyRadiusFilter] = useState<number>(5); // Default 5 km
   const [activeAmenityTab, setActiveAmenityTab] = useState<string>('schools');
+  const [amenityCache, setAmenityCache] = useState<Record<string, any[]>>({});
+  const [loadingAmenities, setLoadingAmenities] = useState(false);
 
-  // Reset all state and scroll to top when propertyId changes
-  useEffect(() => {
-    setActiveImageIndex(0);
-    setShowPhone(false);
-    setMessage('');
-    setShowSellerPortfolio(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [propertyId]);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactPrice, setContactPrice] = useState('');
+  const [contactSubmitted, setContactSubmitted] = useState(false);
 
-  useEffect(() => {
-    const lenis = (window as any).lenis;
-    if (showSellerPortfolio) {
-      lenis?.stop();
-      document.body.classList.add('modal-open');
-    } else {
-      lenis?.start();
-      document.body.classList.remove('modal-open');
+  const handleOpenContactModal = () => {
+    setContactName('');
+    setContactPhone('');
+    setContactPrice(property ? property.priceDisplay : '');
+    setContactSubmitted(false);
+    setShowContactModal(true);
+  };
+
+  const handleContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactName.trim() || !contactPhone.trim()) {
+      alert('Please fill in your Name and Phone Number.');
+      return;
     }
-    return () => {
-      lenis?.start();
-      document.body.classList.remove('modal-open');
+    
+    const newEnquiry = {
+      id: `ENQ-${Date.now()}`,
+      customerName: contactName,
+      phone: contactPhone,
+      email: '',
+      listingTitle: property ? property.title : 'Unknown Property',
+      brokerName: dealer ? (dealer.fullName || dealer.companyName) : 'Not Assigned',
+      status: 'New' as const,
+      priority: 'High' as const,
+      source: 'Property Details Page',
+      date: new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      }),
+      name: contactName,
+      interest: `Offered Price: ${contactPrice}`
     };
-  }, [showSellerPortfolio]);
+
+    enquiriesDb.push(newEnquiry);
+    notifyDataChanged();
+    
+    setContactSubmitted(true);
+    setTimeout(() => {
+      setShowContactModal(false);
+    }, 2000);
+  };
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
+    const R = 6371; // Earth radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
 
   // Fetch current property or franchise or business
   const property = useMemo(() => {
@@ -169,51 +261,146 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
     return null;
   }, [propertyId]);
 
+  // Reset all state and scroll to top when propertyId changes
+  useEffect(() => {
+    setActiveImageIndex(0);
+    setShowPhone(false);
+    setMessage('');
+    setShowSellerPortfolio(false);
+    setAmenityCache({});
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [propertyId]);
+
+  useEffect(() => {
+    if (!property || !property.latitude || !property.longitude) return;
+    const category = activeAmenityTab;
+    if (amenityCache[category]) return; // Already cached
+
+    const queryMap: Record<string, string> = {
+      schools: 'school',
+      hospitals: 'hospital',
+      transit: 'bus_station',
+      shopping: 'supermarket',
+      banks: 'bank',
+      fuel: 'fuel'
+    };
+
+    const queryType = queryMap[category] || 'amenity';
+    setLoadingAmenities(true);
+
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${queryType}&lat=${property.latitude}&lon=${property.longitude}&limit=6`;
+
+    fetch(url, {
+      headers: {
+        'Accept-Language': 'en'
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const list = data.map(item => {
+            const itemLat = parseFloat(item.lat);
+            const itemLng = parseFloat(item.lon);
+            const dist = calculateDistance(property.latitude, property.longitude, itemLat, itemLng);
+            const name = item.name || item.display_name.split(',')[0];
+            
+            let typeLabel = '';
+            if (category === 'schools') typeLabel = 'Education Facility';
+            else if (category === 'hospitals') typeLabel = 'Healthcare Provider';
+            else if (category === 'transit') typeLabel = 'Transit Node';
+            else if (category === 'shopping') typeLabel = 'Shopping / Dining';
+            else if (category === 'banks') typeLabel = 'Financial Service';
+            else typeLabel = 'Fuel Station';
+
+            const timeVal = Math.round(dist * 2.5 + 2);
+
+            return {
+              name,
+              type: typeLabel,
+              dist: dist.toFixed(1),
+              time: `${timeVal} mins drive`
+            };
+          });
+          setAmenityCache(prev => ({ ...prev, [category]: list }));
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching real nearby amenities:", err);
+      })
+      .finally(() => {
+        setLoadingAmenities(false);
+      });
+  }, [activeAmenityTab, property, amenityCache]);
+
+  useEffect(() => {
+    const lenis = (window as any).lenis;
+    if (showSellerPortfolio) {
+      lenis?.stop();
+      document.body.classList.add('modal-open');
+    } else {
+      lenis?.start();
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      lenis?.start();
+      document.body.classList.remove('modal-open');
+    };
+  }, [showSellerPortfolio]);
+
+
+
   // Fetch dealer
   const dealer = useMemo(() => {
     if (!property) return null;
-    return dealersDb.find(d => d.id === property.dealerId) || null;
+    let found = dealersDb.find(d => d.id === property.dealerId);
+    if (!found && property.assignedBrokerIds && property.assignedBrokerIds.length > 0) {
+      found = dealersDb.find(d => property.assignedBrokerIds.includes(d.id));
+    }
+    if (!found && property.agentName) {
+      found = dealersDb.find(d => d.companyName?.toLowerCase() === property.agentName.toLowerCase() || d.fullName?.toLowerCase() === property.agentName.toLowerCase());
+    }
+    if (!found && (property.agentName || property.dealerId)) {
+      return {
+        id: property.dealerId || 'temp-dealer',
+        fullName: property.agentName || 'Verified Advisor',
+        companyName: property.agentName || 'RealtyPlus Advisors',
+        photo: property.agentImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80',
+        logo: property.agentImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80',
+        rating: property.agentRating || 4.8,
+        reviewCount: property.reviewCount || 10,
+        verified: true,
+        premiumPartner: false,
+        bestSeller: false,
+        yearsExperience: 5,
+        responseTime: '10 mins',
+        inventoryCount: 1,
+        coverage: {},
+        latitude: property.latitude || 16.3067,
+        longitude: property.longitude || 80.4365,
+        phone: '1234567890',
+        email: 'agent@nexopp.com'
+      } as Dealer;
+    }
+    return found || null;
   }, [property]);
 
   // Generate dynamic gallery images based on category
   const galleryImages = useMemo(() => {
     if (!property) return [];
-    const mainImage = property.image;
-    const defaults = {
-      Apartment: [
-        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&q=80&w=800',
-      ],
-      Villa: [
-        'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=800',
-      ],
-      House: [
-        'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=800',
-      ],
-      Plot: [
-        'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=800',
-      ],
-      Commercial: [
-        'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800',
-      ]
-    };
-    const key = (property.category === 'Villa' || property.category === 'House') ? property.category : 'Apartment';
-    const list = defaults[key as keyof typeof defaults] || defaults.Apartment;
-    return [mainImage, ...list];
+    const imagesList = [
+      property.image,
+      property.image2,
+      property.image3,
+      property.image4,
+      property.image5,
+      property.image6
+    ].filter(Boolean) as string[];
+    
+    // Fallback if absolutely no photos were uploaded
+    if (imagesList.length === 0) {
+      return ['https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80'];
+    }
+    return imagesList;
   }, [property]);
 
   // Fetch other properties of the same dealer
@@ -222,20 +409,7 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
     return propertiesDb.filter(p => p.dealerId === property.dealerId && p.id !== property.id);
   }, [property]);
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
-    const R = 6371; // Earth radius in km
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
+
 
   const nearbyPropertiesWithDistance = useMemo(() => {
     if (!property) return [];
@@ -319,7 +493,7 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
       <div className="container" style={{ position: 'relative' }}>
         
         {/* Back navigation */}
-        <button className="circle-back-btn" onClick={onBack} title="Go Back" style={{ marginBottom: '1.5rem' }}>
+        <button className="circle-back-btn" onClick={onBack} title="Go Back" style={{ position: 'relative', left: '0', display: 'inline-flex', marginBottom: '1.5rem', zIndex: 10 }}>
           <FaArrowLeft />
         </button>
 
@@ -506,7 +680,7 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
                   <h3 className="section-block-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#0F172A' }}>
-                    🗺️ Google Maps Location & Nearby Amenities
+                    🗺️ Google Maps Location
                   </h3>
                   <span style={{ fontSize: '0.85rem', color: '#64748B' }}>
                     {property.formatted_address || `${property.area}, ${property.city}, ${property.state}`}
@@ -520,26 +694,18 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
               </div>
 
               {/* Interactive Map Grid Container */}
-              <div style={{ width: '100%', height: '340px', backgroundColor: '#0F172A', borderRadius: '16px', position: 'relative', overflow: 'hidden', border: '2px solid #334155', marginBottom: '24px', backgroundImage: 'radial-gradient(#475569 1.5px, transparent 1.5px)', backgroundSize: '30px 30px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.2), transparent 70%)' }} />
-                
-                {/* Property Pin */}
-                <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ backgroundColor: '#EF4444', color: '#FFFFFF', padding: '8px 16px', borderRadius: '24px', fontWeight: 800, fontSize: '0.9rem', boxShadow: '0 10px 25px rgba(239, 68, 68, 0.5)', border: '3px solid #FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <FaMapMarkerAlt /> {property.title}
-                  </div>
-                  <div style={{ width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: '10px solid #EF4444' }} />
-                  <div style={{ width: '24px', height: '12px', background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, transparent 80%)', marginTop: '2px' }} />
-                </div>
-
-                {/* Simulated Surrounding Roads & Landmarks */}
-                <div style={{ position: 'absolute', top: '20%', left: '15%', backgroundColor: 'rgba(30, 41, 59, 0.8)', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#94A3B8', border: '1px solid #475569' }}>🎓 Oakridge School (1.2 km)</div>
-                <div style={{ position: 'absolute', bottom: '25%', right: '15%', backgroundColor: 'rgba(30, 41, 59, 0.8)', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#94A3B8', border: '1px solid #475569' }}>🏥 Apollo Hospital (2.4 km)</div>
-                <div style={{ position: 'absolute', top: '30%', right: '25%', backgroundColor: 'rgba(30, 41, 59, 0.8)', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#94A3B8', border: '1px solid #475569' }}>🚆 Metro Station (0.8 km)</div>
-                <div style={{ position: 'absolute', bottom: '20%', left: '25%', backgroundColor: 'rgba(30, 41, 59, 0.8)', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#94A3B8', border: '1px solid #475569' }}>🛍️ Inorbit Mall (3.1 km)</div>
+              {/* Interactive Map Grid Container */}
+              <div style={{ width: '100%', height: '340px', borderRadius: '16px', position: 'relative', overflow: 'hidden', border: '2px solid #E2E8F0', marginBottom: '24px' }}>
+                <PropertyLocationMap
+                  latitude={property.latitude}
+                  longitude={property.longitude}
+                  title={property.title}
+                  area={property.area}
+                  price={property.priceDisplay}
+                />
 
                 {/* Map Bottom Bar */}
-                <div style={{ position: 'absolute', bottom: '12px', left: '12px', right: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 20 }}>
+                <div style={{ position: 'absolute', bottom: '12px', left: '12px', right: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1000 }}>
                   <span style={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', color: '#FFFFFF', padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #334155' }}>
                     GPS: {(property.latitude || 17.4326).toFixed(4)}° N, {(property.longitude || 78.4071).toFixed(4)}° E
                   </span>
@@ -551,60 +717,6 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
                   >
                     📍 Get Google Maps Navigation →
                   </a>
-                </div>
-              </div>
-
-              {/* Nearby Places Amenity Discovery Tabs */}
-              <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '20px' }}>
-                <h4 style={{ margin: '0 0 14px 0', fontSize: '1rem', color: '#0F172A', fontWeight: 800 }}>
-                  Explore What's Nearby (Calculated via Haversine Distance)
-                </h4>
-                
-                {/* Amenity Tabs */}
-                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '16px' }}>
-                  {[
-                    { id: 'schools', label: '🎓 Schools & Colleges' },
-                    { id: 'hospitals', label: '🏥 Hospitals & Clinics' },
-                    { id: 'transit', label: '🚆 Metro & Transit' },
-                    { id: 'shopping', label: '🛍️ Shopping & Dining' },
-                    { id: 'banks', label: '🏦 Banks & ATMs' },
-                    { id: 'fuel', label: '⛽ Petrol Pumps' }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setActiveAmenityTab(tab.id)}
-                      style={{
-                        padding: '8px 16px',
-                        borderRadius: '12px',
-                        border: activeAmenityTab === tab.id ? '2px solid #1E40AF' : '1px solid #E2E8F0',
-                        backgroundColor: activeAmenityTab === tab.id ? '#EFF6FF' : '#F8FAFC',
-                        color: activeAmenityTab === tab.id ? '#1D4ED8' : '#475569',
-                        fontWeight: 700,
-                        fontSize: '0.85rem',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Amenity List Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-                  {getNearbyAmenities(activeAmenityTab, property.area, property.city).map((item: any, idx: number) => (
-                    <div key={idx} style={{ padding: '12px 16px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0F172A', marginBottom: '2px' }}>{item.name}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{item.type} • {item.time}</div>
-                      </div>
-                      <span style={{ backgroundColor: '#DCFCE7', color: '#15803D', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, border: '1px solid #BBF7D0', whiteSpace: 'nowrap' }}>
-                        📍 {item.dist} km
-                      </span>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>
@@ -640,156 +752,50 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
                 <span className="price-date">Posted: {property.createdDate}</span>
               </div>
 
+              {dealer && (
+                <div style={{ marginTop: '1rem', borderTop: '1px solid #E2E8F0', paddingTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
+                  <span style={{ color: '#64748B' }}>Posted by:</span>
+                  <button 
+                    onClick={() => setShowSellerPortfolio(true)} 
+                    style={{ background: 'none', border: 'none', padding: 0, color: '#1E40AF', fontWeight: 800, cursor: 'pointer', textDecoration: 'underline', fontSize: '0.85rem' }}
+                    title="View Broker Profile"
+                  >
+                    {dealer.fullName || dealer.companyName}
+                  </button>
+                </div>
+              )}
+
               <button 
                 className="btn btn-gold w-100 mt-4" 
-                style={{ width: '100%', marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                onClick={() => onBuyProperty?.(property.id)}
+                style={{ width: '100%', marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', backgroundColor: '#16A34A', borderColor: '#16A34A', color: '#FFFFFF' }}
+                onClick={handleOpenContactModal}
               >
-                <FaShoppingCart /> Buy Now
+                <FaPhone /> Contact Us
               </button>
             </div>
 
             {/* Seller Contact Card */}
             {dealer && (
-              <div className="prop-right-box prop-seller-card">
-                <div 
-                  className="seller-card-header" 
-                  style={{ cursor: 'pointer' }} 
-                  onClick={() => setShowSellerPortfolio(true)}
-                  title="View Seller Portfolio"
-                >
-                  <img src={dealer.photo || dealer.logo} alt={dealer.companyName} className="seller-card-avatar" />
-                  <div className="seller-card-meta">
-                    <span className="posted-label">Posted By</span>
-                    <h4 className="seller-name">{dealer.companyName}</h4>
-                    {dealer.fullName && <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '2px' }}>{dealer.fullName}</div>}
-                    <span className="seller-since">{dealer.premiumPartner ? '👑 Premium Partner' : '✔ Verified Partner'}</span>
-                  </div>
-                </div>
-                
-                <div className="seller-card-stats">
-                  <div className="stat-box">
-                    <span className="stat-num">{dealer.inventoryCount}</span>
-                    <span className="stat-lbl">Items listed</span>
-                  </div>
-                  <div className="stat-box">
-                    <span className="stat-num">⭐ {dealer.rating}</span>
-                    <span className="stat-lbl">Rating</span>
-                  </div>
-                </div>
-
-                <form onSubmit={handleSendMessage} className="seller-message-form">
-                  <textarea 
-                    className="inquiry-textarea" 
-                    placeholder="Chat with seller..." 
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    style={{ width: '100%', height: '80px', padding: '0.75rem', borderRadius: '6px', background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', resize: 'none', fontSize: '0.95rem' }}
-                  />
-                  <button type="submit" className="chat-seller-btn w-100 mt-2">
-                    Chat with seller
-                  </button>
-                </form>
-
-                <div className="seller-phone-reveal">
-                  <FaPhone />
-                  {showPhone ? (
-                    <span className="phone-number" style={{ color: 'var(--gold)', fontWeight: 'bold' }}>+91 99890 87654</span>
-                  ) : (
-                    <>
-                      <span className="phone-placeholder">** *** ****</span>
-                      <button className="show-number-btn" onClick={() => setShowPhone(true)}>Show number</button>
-                    </>
-                  )}
-                </div>
-
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: '1rem', textAlign: 'center' }}>
-                  <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.95rem' }}>
-                    📸 View Instagram Profile
-                  </a>
+              <div 
+                className="prop-right-box prop-seller-card" 
+                style={{ padding: '1.2rem', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '12px', cursor: 'pointer', marginTop: '1rem' }}
+                onClick={() => setShowSellerPortfolio(true)}
+                title="View Broker Profile"
+              >
+                <img src={dealer.photo || dealer.logo} alt={dealer.fullName || dealer.companyName} style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'contain', border: '2px solid #E2E8F0', backgroundColor: '#EFF6FF' }} />
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: '#64748B', display: 'block', fontWeight: 600 }}>Assigned Broker</span>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>{dealer.fullName || dealer.companyName}</h4>
                 </div>
               </div>
             )}
 
             {/* Posted In Section */}
-            <div className="prop-right-box prop-posted-in">
+            <div className="prop-right-box prop-posted-in" style={{ marginTop: '1rem' }}>
               <h4 className="posted-in-title">Posted in</h4>
               <p className="posted-in-text"><FaMapMarkerAlt /> {property.area}, {property.city}, {property.state}</p>
             </div>
-
-            {/* Map Card */}
-            <div className="prop-right-box prop-map-card" style={{ padding: '1rem', backgroundColor: '#0F172A', color: '#FFFFFF', border: '1px solid #334155', borderRadius: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#38BDF8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <FaMapMarkerAlt /> Google Location
-                </span>
-                {property.postal_code && (
-                  <span style={{ backgroundColor: '#1E293B', color: '#94A3B8', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem' }}>
-                    PIN: {property.postal_code}
-                  </span>
-                )}
-              </div>
-              <div className="map-embed-wrapper" style={{ position: 'relative', width: '100%', height: '200px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#1E293B', backgroundImage: 'radial-gradient(#475569 1.5px, transparent 1.5px)', backgroundSize: '20px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', border: '1px solid #475569' }}>
-                <div style={{ backgroundColor: '#EF4444', color: '#FFFFFF', padding: '6px 12px', borderRadius: '20px', fontWeight: 800, fontSize: '0.8rem', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.5)', zIndex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <FaMapMarkerAlt /> {property.area}
-                </div>
-                <div style={{ width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '8px solid #EF4444', zIndex: 2 }} />
-                <div style={{ position: 'absolute', bottom: '8px', left: '8px', right: '8px', background: 'rgba(15, 23, 42, 0.9)', padding: '6px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#E2E8F0', border: '1px solid #334155' }}>
-                  <div style={{ fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {property.formatted_address || `${property.area}, ${property.city}`}
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: '#94A3B8', marginTop: '2px' }}>
-                    Lat: {(property.latitude || 17.4326).toFixed(4)}, Lng: {(property.longitude || 78.4071).toFixed(4)}
-                  </div>
-                </div>
-              </div>
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(property.formatted_address || (property.area + ', ' + property.city))}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', marginTop: '12px', padding: '10px', backgroundColor: '#2563EB', color: '#FFFFFF', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', textDecoration: 'none', transition: 'background 0.2s' }}
-              >
-                📍 Open in Google Maps App →
-              </a>
-            </div>
-
-            {/* Interactive Mortgage & EMI Calculator */}
-            <div className="prop-right-box" style={{ padding: '1.5rem', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
-              <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                🧮 Interactive Mortgage Calculator
-              </h4>
-              <div style={{ padding: '12px', backgroundColor: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center', border: '1px solid #BFDBFE' }}>
-                <div style={{ fontSize: '0.8rem', color: '#1E40AF', fontWeight: 600 }}>ESTIMATED MONTHLY EMI</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1E3A8A' }}>₹{calculatedEmi.toLocaleString('en-IN')} <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>/ month</span></div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-main)', fontWeight: 600 }}>
-                    <span>Loan Amount</span>
-                    <span>₹{loanAmountLakhs} Lakhs</span>
-                  </div>
-                  <input type="range" min="10" max="1000" step="5" value={loanAmountLakhs} onChange={e => setLoanAmountLakhs(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-main)', fontWeight: 600 }}>
-                    <span>Interest Rate (p.a)</span>
-                    <span>{interestRate}%</span>
-                  </div>
-                  <input type="range" min="5" max="15" step="0.1" value={interestRate} onChange={e => setInterestRate(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-main)', fontWeight: 600 }}>
-                    <span>Loan Tenure</span>
-                    <span>{loanTenureYears} Years</span>
-                  </div>
-                  <input type="range" min="5" max="30" step="1" value={loanTenureYears} onChange={e => setLoanTenureYears(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                </div>
-              </div>
-            </div>
-
+ 
           </div>
         </div>
 
@@ -933,6 +939,7 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
                 src={dealer.photo || dealer.logo} 
                 alt={dealer.companyName} 
                 className="portfolio-seller-img" 
+                style={{ objectFit: 'contain', backgroundColor: '#EFF6FF' }}
               />
               <div className="portfolio-header-text">
                 <span className="section-tag">Exclusive Portfolio</span>
@@ -953,6 +960,7 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
                     src={dealer.photo || dealer.logo} 
                     alt={dealer.companyName} 
                     className="seller-details-avatar" 
+                    style={{ objectFit: 'contain', backgroundColor: '#EFF6FF' }}
                   />
                   <h3 className="seller-details-name">{dealer.companyName}</h3>
                   <div className="seller-details-badges" style={{ marginTop: '0.5rem' }}>
@@ -1082,6 +1090,74 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+      {/* Contact Enquiry Modal */}
+      {showContactModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11000 }}>
+          <div style={{ backgroundColor: '#FFFFFF', padding: '32px', borderRadius: '24px', width: '90%', maxWidth: '460px', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: '1px solid #E2E8F0', margin: 'auto', textAlign: 'left' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>📬 Send Enquiry Details</h3>
+              <button 
+                onClick={() => setShowContactModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.5rem', fontWeight: 'bold', color: '#64748B', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {contactSubmitted ? (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <span style={{ fontSize: '3rem' }}>✅</span>
+                <h4 style={{ color: '#16A34A', fontSize: '1.2rem', fontWeight: 800, marginTop: '12px' }}>Inquiry Sent Successfully!</h4>
+                <p style={{ color: '#64748B', fontSize: '0.85rem', marginTop: '6px' }}>The broker will reach out to you shortly.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleContactSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Your Name *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={contactName} 
+                    onChange={e => setContactName(e.target.value)} 
+                    placeholder="Enter your full name" 
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '0.9rem' }} 
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Phone Number *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={contactPhone} 
+                    onChange={e => setContactPhone(e.target.value)} 
+                    placeholder="Enter 10-digit number" 
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '0.9rem' }} 
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Offered Price (Lakhs/Crores)</label>
+                  <input 
+                    type="text" 
+                    value={contactPrice} 
+                    onChange={e => setContactPrice(e.target.value)} 
+                    placeholder="e.g. ₹ 75 Lakh" 
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '0.9rem' }} 
+                  />
+                </div>
+
+                <button 
+                  type="submit" 
+                  style={{ width: '100%', padding: '14px', backgroundColor: '#1E40AF', color: '#FFFFFF', border: 'none', borderRadius: '12px', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', marginTop: '8px', boxShadow: '0 4px 12px rgba(30, 64, 175, 0.3)' }}
+                >
+                  ✉ Submit Details to Broker
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}

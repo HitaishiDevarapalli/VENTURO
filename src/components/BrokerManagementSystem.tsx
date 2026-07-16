@@ -4,7 +4,8 @@ import {
   addDealer, 
   updateDealer, 
   deleteDealer, 
-  propertiesDb 
+  propertiesDb,
+  franchiseDb 
 } from '../db/marketplaceDb';
 import type { Dealer } from '../db/marketplaceDb';
 import { 
@@ -55,8 +56,8 @@ export const BrokerManagementSystem: React.FC<BrokerManagementSystemProps> = ({ 
     email: '',
     dob: '1985-06-15',
     gender: 'Male',
-    photo: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80',
-    logo: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=200&q=80',
+    photo: '',
+    logo: '',
     yearsExperience: 5,
     reraNumber: '',
     languages: 'English, Telugu, Hindi',
@@ -113,8 +114,8 @@ export const BrokerManagementSystem: React.FC<BrokerManagementSystemProps> = ({ 
       email: '',
       dob: '1988-04-12',
       gender: 'Male',
-      photo: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80',
-      logo: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=200&q=80',
+      photo: '',
+      logo: '',
       yearsExperience: 5,
       reraNumber: '',
       languages: 'English, Telugu',
@@ -377,14 +378,20 @@ export const BrokerManagementSystem: React.FC<BrokerManagementSystemProps> = ({ 
 
                   {/* Body Profile Info */}
                   <div style={{ padding: '20px', display: 'flex', gap: '16px', alignItems: 'flex-start', flexGrow: 1 }}>
-                    <img src={broker.photo || broker.logo} alt={broker.companyName} style={{ width: '75px', height: '75px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #1E40AF', flexShrink: 0 }} />
-                    <div style={{ flexGrow: 1 }}>
-                      <h4 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", fontSize: '1.15rem', fontWeight: 700, color: '#0F172A', margin: '0 0 2px 0' }}>{broker.companyName}</h4>
-                      <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1E40AF', margin: '0 0 6px 0' }}>{broker.fullName || 'Authorized Partner'}</p>
+                    {broker.photo ? (
+                      <div style={{ width: '80px', height: '80px', borderRadius: '50%', border: '3px solid #1E40AF', flexShrink: 0, overflow: 'hidden', backgroundColor: '#EFF6FF' }}>
+                        <img src={broker.photo} alt={broker.companyName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      </div>
+                    ) : (
+                      <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#1E40AF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1.5rem', fontWeight: 800, color: '#FFFFFF', border: '3px solid #1E40AF' }}>
+                        {(broker.fullName || broker.companyName || 'B').substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div style={{ flexGrow: 1, minWidth: 0 }}>
+                      <h4 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0', wordBreak: 'break-word' }}>{broker.companyName || 'N/A'}</h4>
+                      <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1E40AF', margin: '0 0 8px 0', wordBreak: 'break-word' }}>{broker.fullName || 'Authorized Partner'}</p>
                       
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8rem', color: '#475569', marginBottom: '8px' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#F59E0B', fontWeight: 700 }}><FaStar /> {broker.rating}</span>
-                        <span>•</span>
                         <span>Exp: <strong>{broker.yearsExperience} Yrs</strong></span>
                       </div>
 
@@ -402,20 +409,28 @@ export const BrokerManagementSystem: React.FC<BrokerManagementSystemProps> = ({ 
                   </div>
 
                   {/* Performance Metrics Bar */}
-                  <div style={{ padding: '12px 20px', backgroundColor: '#F8FAFC', borderTop: '1px solid #F1F5F9', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', textAlign: 'center', gap: '8px' }}>
-                    <div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>PROPERTIES</div>
-                      <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>{broker.totalPropertiesSold || 15} Sold</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>FRANCHISES</div>
-                      <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>{broker.totalFranchiseDealsClosed || 5} Deals</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>REVENUE</div>
-                      <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1E40AF' }}>₹{broker.revenueGenerated || 10.5} Cr</div>
-                    </div>
-                  </div>
+                  {(() => {
+                    const brokerProperties = propertiesDb.filter(p => p.dealerId === broker.id || (p.assignedBrokerIds && p.assignedBrokerIds.includes(broker.id)));
+                    const brokerPropertyListed = brokerProperties.filter(p => p.approvalStatus !== 'Sold' && p.listingStatus !== 'Sold').length;
+                    const brokerPropertySold = brokerProperties.filter(p => p.approvalStatus === 'Sold' || p.listingStatus === 'Sold').length;
+                    const brokerFranchiseCount = franchiseDb.filter(f => (f as any).dealerId === broker.id).length;
+                    return (
+                      <div style={{ padding: '12px 20px', backgroundColor: '#F8FAFC', borderTop: '1px solid #F1F5F9', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', textAlign: 'center', gap: '8px' }}>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>PROPERTIES</div>
+                          <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>{brokerPropertyListed} Listed</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>SOLD</div>
+                          <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#16A34A' }}>{brokerPropertySold} Sold</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>FRANCHISES</div>
+                          <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>{brokerFranchiseCount} Listed</div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Action Buttons */}
                   <div style={{ padding: '14px 20px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
@@ -950,7 +965,7 @@ export const BrokerManagementSystem: React.FC<BrokerManagementSystemProps> = ({ 
                   </div>
                   <div>
                     <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '6px' }}>Email Address</label>
-                    <input type="email" value={formData.email || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="broker@thenexoop.in" style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', borderRadius: '6px' }} />
+                    <input type="text" value={formData.email || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="broker@thenexoop.in" style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', borderRadius: '6px' }} />
                   </div>
                   <div>
                     <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '6px' }}>Gender</label>
@@ -961,12 +976,60 @@ export const BrokerManagementSystem: React.FC<BrokerManagementSystemProps> = ({ 
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '6px' }}>Profile Photo URL</label>
-                    <input type="text" value={formData.photo || ''} onChange={e => setFormData({ ...formData, photo: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', borderRadius: '6px' }} />
+                    <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '6px' }}>Profile Photo</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      {formData.photo && (
+                        <img src={formData.photo} alt="Profile" style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #CBD5E1' }} />
+                      )}
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 18px', backgroundColor: '#1E40AF', color: '#FFF', borderRadius: '8px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', transition: 'background 0.2s' }}>
+                        📷 Upload Photo
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              setFormData({ ...formData, photo: ev.target?.result as string });
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                      {formData.photo && (
+                        <button onClick={() => setFormData({ ...formData, photo: '' })} style={{ background: 'none', border: 'none', color: '#EF4444', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>Remove</button>
+                      )}
+                    </div>
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '6px' }}>Company Logo URL</label>
-                    <input type="text" value={formData.logo || ''} onChange={e => setFormData({ ...formData, logo: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', borderRadius: '6px' }} />
+                    <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '6px' }}>Company Logo</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      {formData.logo && (
+                        <img src={formData.logo} alt="Logo" style={{ width: '52px', height: '52px', borderRadius: '8px', objectFit: 'cover', border: '2px solid #CBD5E1' }} />
+                      )}
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 18px', backgroundColor: '#0F172A', color: '#FFF', borderRadius: '8px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', transition: 'background 0.2s' }}>
+                        🏢 Upload Logo
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              setFormData({ ...formData, logo: ev.target?.result as string });
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                      {formData.logo && (
+                        <button onClick={() => setFormData({ ...formData, logo: '' })} style={{ background: 'none', border: 'none', color: '#EF4444', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>Remove</button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1133,7 +1196,23 @@ export const BrokerManagementSystem: React.FC<BrokerManagementSystemProps> = ({ 
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
                 <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: '12px 24px', backgroundColor: '#F1F5F9', color: '#475569', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>CANCEL</button>
-                <button type="submit" style={{ padding: '12px 30px', backgroundColor: '#1E40AF', color: '#FFFFFF', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>SAVE BROKER PROFILE</button>
+                {modalTab !== 'performance' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (modalTab === 'personal') setModalTab('professional');
+                      else if (modalTab === 'professional') setModalTab('categories');
+                      else if (modalTab === 'categories') setModalTab('service_areas');
+                      else if (modalTab === 'service_areas') setModalTab('contact');
+                      else if (modalTab === 'contact') setModalTab('performance');
+                    }}
+                    style={{ padding: '12px 30px', backgroundColor: '#1E40AF', color: '#FFFFFF', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    NEXT &rarr;
+                  </button>
+                ) : (
+                  <button type="submit" style={{ padding: '12px 30px', backgroundColor: '#10B981', color: '#FFFFFF', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>SAVE BROKER PROFILE</button>
+                )}
               </div>
             </form>
           </div>

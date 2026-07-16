@@ -27,7 +27,7 @@ import { useAuth } from './context/AuthContext';
 import { LoginPage } from './components/LoginPage';
 import { LoginModal } from './components/LoginModal';
 
-type PageType = 'home' | 'propertiesPage' | 'flatsPage' | 'housesPage' | 'landPage' | 'franchisePage' | 'businessPage' | 'financePage' | 'loansPage' | 'financeServicePage' | 'insurancePage' | 'franchiseResales' | 'wishlist' | 'franchiseDetails' | 'newFranchise' | 'businessListings' | 'propertyDetails' | 'closeDeal' | 'adminPortal' | 'aboutUsPage';
+type PageType = 'home' | 'propertiesPage' | 'flatsPage' | 'villasPage' | 'housesPage' | 'landPage' | 'franchisePage' | 'businessPage' | 'financePage' | 'loansPage' | 'financeServicePage' | 'insurancePage' | 'franchiseResales' | 'wishlist' | 'franchiseDetails' | 'newFranchise' | 'businessListings' | 'propertyDetails' | 'closeDeal' | 'adminPortal' | 'aboutUsPage';
 
 // Subpage header with back button
 const SubpageHeader = ({ title, leftTitle, onBack }: { title: string; leftTitle?: string; onBack: () => void }) => (
@@ -48,6 +48,7 @@ const routeMap: Record<string, PageType> = {
   '/': 'home',
   '/properties': 'propertiesPage',
   '/properties/flats': 'flatsPage',
+  '/properties/villas': 'villasPage',
   '/properties/houses': 'housesPage',
   '/properties/lands': 'landPage',
   '/franchise': 'franchisePage',
@@ -319,24 +320,28 @@ export const App: React.FC = () => {
           }}
           onCategorySelect={(cat) => {
             if (cat === 'BuyApartment') navigateTo('flatsPage');
+            else if (cat === 'BuyVilla') navigateTo('villasPage');
             else if (cat === 'BuyHouse') navigateTo('housesPage');
             else if (cat === 'BuyLand') navigateTo('landPage');
           }}
         />
 
-      ) : (currentPage === 'flatsPage' || currentPage === 'housesPage' || currentPage === 'landPage') ? (
+      ) : (currentPage === 'flatsPage' || currentPage === 'villasPage' || currentPage === 'housesPage' || currentPage === 'landPage') ? (
         <PropertyCategories 
           title={
             currentPage === 'flatsPage' ? 'Flats & Apartments' :
+            currentPage === 'villasPage' ? 'Villas' :
             currentPage === 'housesPage' ? 'Individual Houses' : 'Lands & Plots'
           }
           subtitle={
             currentPage === 'flatsPage' ? 'Explore 1, 2, 3 & 4+ BHK luxury apartments and gated societies' :
+            currentPage === 'villasPage' ? 'Discover premium luxury villas and row houses' :
             currentPage === 'housesPage' ? 'Discover independent houses, villas and bungalows for sale & rent' : 'Verified residential plots, commercial lands and agricultural layouts'
           }
           onBack={navigateBack}
           initialCategory={
             currentPage === 'flatsPage' ? 'BuyApartment' :
+            currentPage === 'villasPage' ? 'BuyVilla' :
             currentPage === 'housesPage' ? 'BuyHouse' : 'BuyLand'
           }
           searchQuery={globalSearchQuery}
@@ -351,6 +356,7 @@ export const App: React.FC = () => {
           }}
           onCategorySelect={(cat) => {
             if (cat === 'BuyApartment') navigateTo('flatsPage');
+            else if (cat === 'BuyVilla') navigateTo('villasPage');
             else if (cat === 'BuyHouse') navigateTo('housesPage');
             else if (cat === 'BuyLand') navigateTo('landPage');
           }}
@@ -445,7 +451,9 @@ export const App: React.FC = () => {
               if (cat === 'property' || (cat === 'all categories' && (q.includes('property') || q.includes('apartment') || q.includes('flat') || q.includes('house') || q.includes('villa') || q.includes('land') || q.includes('plot') || q.includes('bhk') || q.includes('commercial')))) {
                 if (q.includes('flat') || q.includes('apartment')) {
                   navigateTo('flatsPage');
-                } else if (q.includes('house') || q.includes('villa')) {
+                } else if (q.includes('villa')) {
+                  navigateTo('villasPage');
+                } else if (q.includes('house')) {
                   navigateTo('housesPage');
                 } else if (q.includes('land') || q.includes('plot')) {
                   navigateTo('landPage');

@@ -1427,8 +1427,8 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
                     <div>
-                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PROPERTY ID (AUTO)</label>
-                      <input type="text" value={formData.id} readOnly style={{ width: '100%', padding: '14px', backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '12px', fontWeight: 700, color: '#64748B' }} />
+                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PROPERTY ID *</label>
+                      <input type="text" value={formData.id || ''} onChange={e => setFormData({ ...formData, id: e.target.value })} style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 700, color: '#0F172A' }} required />
                     </div>
                     <div>
                       <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PROPERTY TITLE *</label>
@@ -1556,13 +1556,13 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                   
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
                     <div>
-                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PRICE NUMERIC (IN CRORES ₹) *</label>
-                      <input type="number" step="0.01" value={formData.price} onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} placeholder="3.50" style={{ width: '100%', padding: '14px', border: '1.5px solid #2563EB', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 800, color: '#1E40AF' }} required />
-                      <span style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px', display: 'block' }}>Enter the numerical crore value (e.g., 3.50 for ₹3.5 Crore)</span>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PRICE NUMERIC (IN LAKHS ₹) *</label>
+                      <input type="number" step="0.01" value={formData.price} onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} placeholder="150" style={{ width: '100%', padding: '14px', border: '1.5px solid #2563EB', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 800, color: '#1E40AF' }} required />
+                      <span style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px', display: 'block' }}>Enter the numerical Lakh value (e.g. 150 for ₹1.5 Crore, 85 for ₹85 Lakhs, 0.01 for ₹1,000)</span>
                     </div>
                     <div>
                       <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>PRICE DISPLAY LABEL</label>
-                      <input type="text" value={formData.priceDisplay} onChange={e => setFormData({ ...formData, priceDisplay: e.target.value })} placeholder="e.g. ₹3.50 Crore (Negotiable)" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }} />
+                      <input type="text" value={formData.priceDisplay} onChange={e => setFormData({ ...formData, priceDisplay: e.target.value })} placeholder="e.g. ₹1.50 Crore (Negotiable)" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }} />
                       <span style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px', display: 'block' }}>Formatted price string shown to users on listing cards</span>
                     </div>
                   </div>
@@ -1577,60 +1577,124 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                 </div>
               )}
 
-              {/* STEP 5: MEDIA & PHOTOS (EXACTLY 3 PICTURES + VIRTUAL TOUR) */}
+              {/* STEP 5: MEDIA & PHOTOS */}
               {modalSubTab === 'media' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', paddingBottom: '16px', marginBottom: '24px' }}>
                       <div>
-                        <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>5. Media Gallery (Exactly 3 Showcase Pictures)</h4>
-                        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 0 0' }}>Standardized 3-picture layout for clean, professional presentation</p>
+                        <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>5. Media Gallery</h4>
+                        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 0 0' }}>Drag & drop or upload showcase images for your property listing (Optional)</p>
                       </div>
-                      <span style={{ padding: '6px 14px', backgroundColor: '#EFF6FF', color: '#2563EB', borderRadius: '20px', fontWeight: 700, fontSize: '0.8rem' }}>3 / 3 Photos Active</span>
+                      <span style={{ padding: '6px 14px', backgroundColor: '#EFF6FF', color: '#2563EB', borderRadius: '20px', fontWeight: 700, fontSize: '0.8rem' }}>
+                        {((formData.image ? 1 : 0) + (formData.image2 ? 1 : 0) + (formData.image3 ? 1 : 0))} / 3 Photos Uploaded
+                      </span>
                     </div>
 
-                    {/* 3 Picture Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-                      {[0, 1, 2].map(idx => {
-                        const imgUrl = idx === 0 ? formData.image : idx === 1 ? formData.image2 : formData.image3;
-                        const defaultImg = idx === 0 
-                          ? 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80'
-                          : idx === 1 
-                          ? 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'
-                          : 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80';
-                        const currentVal = imgUrl || defaultImg;
-
-                        return (
-                          <div key={idx} style={{ backgroundColor: '#F8FAFC', border: '1.5px solid #CBD5E1', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: idx === 0 ? '#2563EB' : '#334155' }}>
-                                {idx === 0 ? '★ COVER HERO IMAGE' : `SHOWCASE SLIDE #${idx + 1}`}
-                              </span>
-                              <FaCamera style={{ color: '#64748B' }} />
-                            </div>
-
-                            <div style={{ width: '100%', height: '180px', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#E2E8F0', position: 'relative' }}>
-                              <img src={currentVal} alt={`Slide ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            </div>
-
-                            <div>
-                              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B', display: 'block', marginBottom: '4px' }}>IMAGE URL / FILE</label>
-                              <input
-                                type="text"
-                                value={currentVal}
-                                onChange={e => {
-                                  if (idx === 0) setFormData({ ...formData, image: e.target.value });
-                                  else if (idx === 1) setFormData({ ...formData, image2: e.target.value });
-                                  else setFormData({ ...formData, image3: e.target.value });
-                                }}
-                                placeholder="https://..."
-                                style={{ width: '100%', padding: '10px', border: '1px solid #CBD5E1', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 600 }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
+                    {/* Single Optional Drag & Drop Zone */}
+                    <div
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            const base64 = ev.target?.result as string;
+                            if (!formData.image) setFormData({ ...formData, image: base64 });
+                            else if (!formData.image2) setFormData({ ...formData, image2: base64 });
+                            else setFormData({ ...formData, image3: base64 });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      onClick={() => {
+                        if (!formData.image) document.getElementById('optional-file-input-0')?.click();
+                        else if (!formData.image2) document.getElementById('optional-file-input-1')?.click();
+                        else if (!formData.image3) document.getElementById('optional-file-input-2')?.click();
+                      }}
+                      style={{
+                        border: '2.5px dashed #3B82F6',
+                        borderRadius: '20px',
+                        padding: '40px',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        backgroundColor: '#F8FAFC',
+                        transition: 'all 0.2s',
+                        marginBottom: '24px',
+                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                      }}
+                    >
+                      <FaCamera style={{ fontSize: '2.5rem', color: '#3B82F6', marginBottom: '12px' }} />
+                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1E3A8A' }}>Drag & Drop or Click to Upload Image</div>
+                      <div style={{ fontSize: '0.82rem', color: '#64748B', marginTop: '6px' }}>PNG, JPG, or WEBP (Max 3 showcase images)</div>
+                      <div style={{ display: 'none' }}>
+                        <input id="optional-file-input-0" type="file" accept="image/*" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setFormData({ ...formData, image: ev.target?.result as string });
+                            reader.readAsDataURL(file);
+                          }
+                        }} />
+                        <input id="optional-file-input-1" type="file" accept="image/*" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setFormData({ ...formData, image2: ev.target?.result as string });
+                            reader.readAsDataURL(file);
+                          }
+                        }} />
+                        <input id="optional-file-input-2" type="file" accept="image/*" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setFormData({ ...formData, image3: ev.target?.result as string });
+                            reader.readAsDataURL(file);
+                          }
+                        }} />
+                      </div>
                     </div>
+
+                    {/* Previews of Uploaded Images */}
+                    {(formData.image || formData.image2 || formData.image3) ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                        {[
+                          { key: 'image', val: formData.image, label: '★ COVER HERO IMAGE' },
+                          { key: 'image2', val: formData.image2, label: 'SHOWCASE SLIDE #2' },
+                          { key: 'image3', val: formData.image3, label: 'SHOWCASE SLIDE #3' }
+                        ].map((item, idx) => {
+                          if (!item.val) return null;
+                          return (
+                            <div key={idx} style={{ backgroundColor: '#FFFFFF', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.01)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: idx === 0 ? '#2563EB' : '#334155' }}>
+                                  {item.label}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (item.key === 'image') setFormData({ ...formData, image: '' });
+                                    else if (item.key === 'image2') setFormData({ ...formData, image2: '' });
+                                    else setFormData({ ...formData, image3: '' });
+                                  }}
+                                  style={{ background: '#FEE2E2', border: 'none', color: '#EF4444', borderRadius: '6px', padding: '4px 8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                              <div style={{ width: '100%', height: '180px', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#E2E8F0' }}>
+                                <img src={item.val} alt={item.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: '24px', color: '#94A3B8', fontStyle: 'italic', fontSize: '0.9rem' }}>
+                        No images uploaded yet. This listing will use default showcase placeholders if published without images.
+                      </div>
+                    )}
                   </div>
 
                   {/* 360 Virtual Tour Box */}
@@ -1699,14 +1763,10 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                   <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>SEO Meta Data & Final Summary</h4>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
                       <div>
                         <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>SEO TITLE TAG</label>
                         <input type="text" value={formData.seoTitle || ''} onChange={e => setFormData({ ...formData, seoTitle: e.target.value })} placeholder="Buy 4BHK Sky Villa Jubilee Hills Hyderabad" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600 }} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>URL SLUG</label>
-                        <input type="text" value={formData.urlSlug || ''} onChange={e => setFormData({ ...formData, urlSlug: e.target.value })} placeholder="ultra-luxury-sky-villa-jubilee-hills" style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600 }} />
                       </div>
                     </div>
 

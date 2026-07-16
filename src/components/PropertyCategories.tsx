@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { propertiesDb } from '../db/marketplaceDb';
 import {
   FaSearch,
@@ -55,7 +55,7 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
   const [activeTab, setActiveTab] = useState<'Buy' | 'Rent' | 'Commercial' | 'Plots' | 'New Projects'>('Buy');
   const [locationText, setLocationText] = useState('Hyderabad, Telangana');
   const [propertyType, setPropertyType] = useState('All Types');
-  const [budget, setBudget] = useState('₹ 10L - 5Cr+');
+  const [budget, setBudget] = useState('₹ 1K - 1Cr+');
   const [bhkFilter, setBhkFilter] = useState('Any BHK');
 
   // Left Sidebar Filters State
@@ -66,6 +66,110 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
 
   const [selectedBhks, setSelectedBhks] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedMoreFilters, setSelectedMoreFilters] = useState<string[]>([]);
+
+  // Centralized numeric budget limits (in Lakhs: 0.01 to 100)
+  const [minBudget, setMinBudget] = useState(0.01);
+  const [maxBudget, setMaxBudget] = useState(100);
+  const [dragging, setDragging] = useState<'min' | 'max' | null>(null);
+
+  const isRent = activeTab === 'Rent';
+  const sliderMin = 0.01;
+  const sliderMax = isRent ? 10 : 100;
+
+  // Synchronize dropdown selects and sidebar multiselect states
+  const handleBudgetSelectChange = (val: string) => {
+    setBudget(val);
+    const isRentTab = activeTab === 'Rent';
+    if (isRentTab) {
+      if (val === '₹ 1K - 10L+') {
+        setMinBudget(0.01);
+        setMaxBudget(10);
+      } else if (val === 'Under ₹ 15K') {
+        setMinBudget(0.01);
+        setMaxBudget(0.15);
+      } else if (val === '₹ 15K - ₹ 35K') {
+        setMinBudget(0.15);
+        setMaxBudget(0.35);
+      } else if (val === '₹ 35K - ₹ 75K') {
+        setMinBudget(0.35);
+        setMaxBudget(0.75);
+      } else if (val === '₹ 75K+') {
+        setMinBudget(0.75);
+        setMaxBudget(10);
+      }
+    } else {
+      if (val === '₹ 1K - 1Cr+') {
+        setMinBudget(0.01);
+        setMaxBudget(100);
+      } else if (val === 'Under ₹ 5L') {
+        setMinBudget(0.01);
+        setMaxBudget(5);
+      } else if (val === '₹ 5L - ₹ 25L') {
+        setMinBudget(5);
+        setMaxBudget(25);
+      } else if (val === '₹ 25L - ₹ 75L') {
+        setMinBudget(25);
+        setMaxBudget(75);
+      } else if (val === '₹ 75L - ₹ 1Cr') {
+        setMinBudget(75);
+        setMaxBudget(100);
+      }
+    }
+  };
+
+  const handleBhkSelectChange = (val: string) => {
+    setBhkFilter(val);
+    if (val === 'Any BHK') {
+      setSelectedBhks([]);
+    } else {
+      setSelectedBhks([val]);
+    }
+  };
+
+  const handleTypeSelectChange = (val: string) => {
+    setPropertyType(val);
+    if (val === 'All Types') {
+      setSelectedTypes([]);
+    } else {
+      setSelectedTypes([val]);
+    }
+  };
+
+  // Synchronize budget bounds when activeTab changes
+  useEffect(() => {
+    const isRentTab = activeTab === 'Rent';
+    setMinBudget(0.01);
+    setMaxBudget(isRentTab ? 10 : 100);
+    setBudget(isRentTab ? '₹ 1K - 10L+' : '₹ 1K - 1Cr+');
+  }, [activeTab]);
+
+  // Draggable logic for double budget range slider
+  useEffect(() => {
+    if (!dragging) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const slider = document.getElementById('budget-slider-track');
+      if (!slider) return;
+      const rect = slider.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const rawVal = sliderMin + pct * (sliderMax - sliderMin);
+      const val = parseFloat(rawVal.toFixed(2));
+      if (dragging === 'min') {
+        setMinBudget(Math.min(val, maxBudget - 0.01));
+      } else {
+        setMaxBudget(Math.max(val, minBudget + 0.01));
+      }
+    };
+    const handleMouseUp = () => {
+      setDragging(null);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [dragging, minBudget, maxBudget, sliderMin, sliderMax]);
 
   // Right Results State
   const [viewMode, setViewMode] = useState<'list' | 'map' | 'split'>('list');
@@ -92,9 +196,18 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
     );
   };
 
+  const toggleMoreFilter = (val: string) => {
+    setSelectedMoreFilters((prev) =>
+      prev.includes(val) ? prev.filter((item) => item !== val) : [...prev, val]
+    );
+  };
+
   const clearAllFilters = () => {
     setSelectedBhks([]);
     setSelectedTypes([]);
+    setSelectedMoreFilters([]);
+    setMinBudget(10);
+    setMaxBudget(500);
     setActiveQuickFilter(null);
     setPropertyType('All Types');
     setBudget('₹ 10L - 5Cr+');
@@ -124,9 +237,14 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
       latitude: p.latitude,
       longitude: p.longitude,
       city: p.city,
+      rawPrice: (p.price && p.price < 10) ? p.price * 100 : (p.price || 0),
+      status: p.status || 'Buy',
+      availabilityCount: p.availabilityCount || 0,
+      trending: p.trending || false,
     }));
 
     return baseList.filter((item) => {
+      // 1. Search Query
       if (searchQuery && searchQuery.trim() !== '') {
         const q = searchQuery.toLowerCase();
         const match =
@@ -135,6 +253,22 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
           item.type.toLowerCase().includes(q);
         if (!match) return false;
       }
+
+      // 2. City / Location Input Text
+      if (locationText && locationText.trim() !== '') {
+        const loc = locationText.toLowerCase();
+        const matchLoc = item.location.toLowerCase().includes(loc) || (item.city && item.city.toLowerCase().includes(loc));
+        if (!matchLoc) return false;
+      }
+
+      // 3. Tab Categorization
+      if (activeTab === 'Buy' && item.status.toLowerCase() !== 'buy' && item.status.toLowerCase() !== 'sell') return false;
+      if (activeTab === 'Rent' && item.status.toLowerCase() !== 'rent') return false;
+      if (activeTab === 'Commercial' && item.type.toLowerCase() !== 'commercial' && item.type.toLowerCase() !== 'commercial property') return false;
+      if (activeTab === 'Plots' && item.type.toLowerCase() !== 'plot' && item.type.toLowerCase() !== 'plot / land') return false;
+      if (activeTab === 'New Projects' && !item.trending && item.badgeType !== 'new') return false;
+
+      // 4. BHK Multi-select (OR within category)
       if (selectedBhks.length > 0) {
         const bhkStr = `${item.bhk} BHK`;
         const matchBhk = selectedBhks.some((val) => {
@@ -143,18 +277,47 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
         });
         if (!matchBhk) return false;
       }
+
+      // 5. Property Type Multi-select (OR within category)
       if (selectedTypes.length > 0) {
-        if (!selectedTypes.includes(item.type)) return false;
+        // Map labels to db category name formats
+        const typeMatch = selectedTypes.some((selectedLabel) => {
+          const normLabel = selectedLabel.toLowerCase();
+          const normItemType = item.type.toLowerCase();
+          if (normLabel.includes('apartment') && normItemType.includes('apartment')) return true;
+          if (normLabel.includes('house') && (normItemType.includes('house') || normItemType.includes('villa'))) return true;
+          if (normLabel.includes('villa') && normItemType.includes('villa')) return true;
+          if (normLabel.includes('plot') && (normItemType.includes('plot') || normItemType.includes('land'))) return true;
+          if (normLabel.includes('commercial') && normItemType.includes('commercial')) return true;
+          return normItemType.includes(normLabel);
+        });
+        if (!typeMatch) return false;
       }
+
+      // 6. Budget Slider Min / Max
+      if (item.rawPrice < minBudget || item.rawPrice > maxBudget) {
+        return false;
+      }
+
+      // 7. More Filters (AND logic)
+      if (selectedMoreFilters.length > 0) {
+        if (selectedMoreFilters.includes('Verified Only') && item.badgeType !== 'verified') return false;
+        if (selectedMoreFilters.includes('Ready to Move') && item.availabilityCount === 0) return false;
+        if (selectedMoreFilters.includes('Parking Available') && parseInt(item.parking) === 0) return false;
+      }
+
+      // 8. Quick Filters (AND logic)
       if (activeQuickFilter) {
         if (activeQuickFilter === 'Verified Properties' && item.badgeType !== 'verified') return false;
-        if (activeQuickFilter === 'Ready to Move' && item.badgeType !== 'ready') return false;
+        if (activeQuickFilter === 'Ready to Move' && item.availabilityCount === 0) return false;
         if (activeQuickFilter === 'New Launch' && item.badgeType !== 'new') return false;
         if (activeQuickFilter === 'Premium' && item.badgeType !== 'premium') return false;
+        if (activeQuickFilter === 'Top Brokers' && parseFloat(item.brokerRating) < 4.5) return false;
       }
+
       return true;
     });
-  }, [propertiesDb, searchQuery, selectedBhks, selectedTypes, activeQuickFilter]);
+  }, [propertiesDb, searchQuery, locationText, activeTab, selectedBhks, selectedTypes, selectedMoreFilters, minBudget, maxBudget, activeQuickFilter]);
 
   const totalPages = Math.ceil(displayProperties.length / itemsPerPage);
   const validPage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
@@ -385,7 +548,7 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
                   <FaBuilding style={{ color: '#64748B', fontSize: '14px' }} />
                   <select
                     value={propertyType}
-                    onChange={(e) => setPropertyType(e.target.value)}
+                    onChange={(e) => handleTypeSelectChange(e.target.value)}
                     style={{
                       border: 'none',
                       background: 'transparent',
@@ -428,7 +591,7 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
                   <span style={{ fontWeight: 800, color: '#64748B', fontSize: '14px' }}>₹</span>
                   <select
                     value={budget}
-                    onChange={(e) => setBudget(e.target.value)}
+                    onChange={(e) => handleBudgetSelectChange(e.target.value)}
                     style={{
                       border: 'none',
                       background: 'transparent',
@@ -440,11 +603,23 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
                       width: '100%',
                     }}
                   >
-                    <option value="₹ 10L - 5Cr+">₹ 10L - 5Cr+</option>
-                    <option value="Under ₹ 50L">Under ₹ 50L</option>
-                    <option value="₹ 50L - ₹ 1Cr">₹ 50L - ₹ 1Cr</option>
-                    <option value="₹ 1Cr - ₹ 3Cr">₹ 1Cr - ₹ 3Cr</option>
-                    <option value="₹ 3Cr+">₹ 3Cr+</option>
+                    {activeTab === 'Rent' ? (
+                      <>
+                        <option value="₹ 5K - 10L+">₹ 5K - 10L+</option>
+                        <option value="Under ₹ 15K">Under ₹ 15K</option>
+                        <option value="₹ 15K - ₹ 35K">₹ 15K - ₹ 35K</option>
+                        <option value="₹ 35K - ₹ 75K">₹ 35K - ₹ 75K</option>
+                        <option value="₹ 75K+">₹ 75K+</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="₹ 1K - 1Cr+">₹ 1K - 1Cr+</option>
+                        <option value="Under ₹ 5L">Under ₹ 5L</option>
+                        <option value="₹ 5L - ₹ 25L">₹ 5L - ₹ 25L</option>
+                        <option value="₹ 25L - ₹ 75L">₹ 25L - ₹ 75L</option>
+                        <option value="₹ 75L - ₹ 1Cr">₹ 75L - ₹ 1Cr</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
@@ -468,7 +643,7 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
               >
                 <select
                   value={bhkFilter}
-                  onChange={(e) => setBhkFilter(e.target.value)}
+                  onChange={(e) => handleBhkSelectChange(e.target.value)}
                   style={{
                     border: 'none',
                     background: 'transparent',
@@ -593,10 +768,56 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
                     <span>₹ 5 Cr+</span>
                   </div>
                   {/* Range Bar Graphic */}
-                  <div style={{ position: 'relative', height: '6px', backgroundColor: '#E2E8F0', borderRadius: '3px', margin: '14px 6px' }}>
-                    <div style={{ position: 'absolute', left: '10%', right: '15%', top: 0, bottom: 0, backgroundColor: '#16A34A', borderRadius: '3px' }} />
-                    <div style={{ position: 'absolute', left: '10%', top: '-6px', width: '18px', height: '18px', borderRadius: '50%', backgroundColor: '#FFFFFF', border: '3px solid #16A34A', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', cursor: 'pointer' }} />
-                    <div style={{ position: 'absolute', right: '15%', top: '-6px', width: '18px', height: '18px', borderRadius: '50%', backgroundColor: '#FFFFFF', border: '3px solid #16A34A', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', cursor: 'pointer' }} />
+                  <div
+                    id="budget-slider-track"
+                    style={{ position: 'relative', height: '6px', backgroundColor: '#E2E8F0', borderRadius: '3px', margin: '14px 6px' }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${((minBudget - 10) / 490) * 100}%`,
+                        right: `${100 - ((maxBudget - 10) / 490) * 100}%`,
+                        top: 0,
+                        bottom: 0,
+                        backgroundColor: '#16A34A',
+                        borderRadius: '3px',
+                      }}
+                    />
+                    <div
+                      onMouseDown={() => setDragging('min')}
+                      style={{
+                        position: 'absolute',
+                        left: `calc(${((minBudget - 10) / 490) * 100}% - 9px)`,
+                        top: '-6px',
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        backgroundColor: '#FFFFFF',
+                        border: '3px solid #16A34A',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                        cursor: 'ew-resize',
+                        zIndex: 2,
+                      }}
+                    />
+                    <div
+                      onMouseDown={() => setDragging('max')}
+                      style={{
+                        position: 'absolute',
+                        left: `calc(${((maxBudget - 10) / 490) * 100}% - 9px)`,
+                        top: '-6px',
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        backgroundColor: '#FFFFFF',
+                        border: '3px solid #16A34A',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                        cursor: 'ew-resize',
+                        zIndex: 2,
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#16A34A', fontWeight: 800, marginTop: '8px', textAlign: 'center' }}>
+                    Selected: ₹ {minBudget >= 100 ? `${(minBudget/100).toFixed(1)} Cr` : `${minBudget} Lac`} - {maxBudget >= 500 ? '5 Cr+' : maxBudget >= 100 ? `${(maxBudget/100).toFixed(1)} Cr` : `${maxBudget} Lac`}
                   </div>
                 </div>
               )}
@@ -619,7 +840,6 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
                     return (
                       <label
                         key={val}
-                        onClick={() => toggleBhk(val)}
                         style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: checked ? 700 : 500, color: checked ? '#0F172A' : '#475569', cursor: 'pointer' }}
                       >
                         <input
@@ -660,7 +880,6 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
                     return (
                       <label
                         key={typeItem.label}
-                        onClick={() => toggleType(typeItem.label)}
                         style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', fontWeight: checked ? 700 : 500, color: checked ? '#0F172A' : '#475569', cursor: 'pointer' }}
                       >
                         <input
@@ -690,12 +909,20 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
 
               {moreOpen && (
                 <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {['Verified Only', 'Ready to Move', 'Owner Listed', 'Parking Available', 'Park Facing', 'Corner Property'].map((mf) => (
-                    <label key={mf} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#475569', cursor: 'pointer' }}>
-                      <input type="checkbox" style={{ accentColor: '#16A34A' }} />
-                      <span>{mf}</span>
-                    </label>
-                  ))}
+                  {['Verified Only', 'Ready to Move', 'Owner Listed', 'Parking Available', 'Park Facing', 'Corner Property'].map((mf) => {
+                    const checked = selectedMoreFilters.includes(mf);
+                    return (
+                      <label key={mf} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: checked ? 700 : 500, color: checked ? '#0F172A' : '#475569', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleMoreFilter(mf)}
+                          style={{ accentColor: '#16A34A', cursor: 'pointer' }}
+                        />
+                        <span>{mf}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               )}
             </div>

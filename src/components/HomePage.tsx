@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { propertiesDb } from '../db/marketplaceDb';
+import { LiveLocationMap } from './LiveLocationMap';
 import {
   FaBuilding,
   FaHome,
@@ -288,34 +289,23 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick 
               </div>
 
               <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', marginBottom: '16px' }}>
-                {/* Simulated Map Graphic */}
+                {/* Real Live Map component */}
                 <div
                   style={{
                     flex: 1,
-                    backgroundColor: '#E2E8F0',
                     borderRadius: '16px',
                     position: 'relative',
                     overflow: 'hidden',
                     minHeight: '220px',
-                    backgroundImage: 'radial-gradient(#CBD5E1 1.5px, transparent 1.5px)',
-                    backgroundSize: '16px 16px',
+                    border: '1px solid #E2E8F0',
                   }}
                 >
-                  {/* Map Roads & Rivers Simulation */}
-                  <div style={{ position: 'absolute', top: '30%', left: 0, right: 0, height: '18px', backgroundColor: '#FFFFFF', opacity: 0.6, transform: 'rotate(-12deg)' }} />
-                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: '45%', width: '14px', backgroundColor: '#FFFFFF', opacity: 0.6, transform: 'rotate(25deg)' }} />
-                  <div style={{ position: 'absolute', top: '60%', left: 0, right: 0, height: '24px', backgroundColor: '#BAE6FD', opacity: 0.5, transform: 'rotate(8deg)' }} />
-
-                  {/* Map Pins */}
-                  <div style={{ position: 'absolute', top: '25%', left: '35%', backgroundColor: '#16A34A', color: '#FFF', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 800, boxShadow: '0 4px 10px rgba(22,163,74,0.4)', border: '2px solid #FFF' }}>23</div>
-                  <div style={{ position: 'absolute', top: '55%', left: '20%', backgroundColor: '#2563EB', color: '#FFF', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800, boxShadow: '0 4px 10px rgba(37,99,235,0.4)', border: '2px solid #FFF' }}>12</div>
-                  <div style={{ position: 'absolute', top: '40%', right: '25%', backgroundColor: '#16A34A', color: '#FFF', width: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800, boxShadow: '0 4px 10px rgba(22,163,74,0.4)', border: '2px solid #FFF' }}>7</div>
-                  <div style={{ position: 'absolute', top: '70%', right: '35%', backgroundColor: '#38BDF8', color: '#FFF', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800, boxShadow: '0 4px 10px rgba(56,189,248,0.4)', border: '2px solid #FFF' }}>3</div>
-                  <div style={{ position: 'absolute', top: '20%', right: '15%', backgroundColor: '#EF4444', color: '#FFF', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800, boxShadow: '0 4px 10px rgba(239,68,68,0.4)', border: '2px solid #FFF' }}>1</div>
-
-                  <div style={{ position: 'absolute', bottom: '10px', left: '10px', backgroundColor: 'rgba(255,255,255,0.9)', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, color: '#334155' }}>
-                    📍 Hyderabad / Guntur
-                  </div>
+                  <LiveLocationMap
+                    items={propertiesDb}
+                    type="property"
+                    height="220px"
+                    onSelectItem={onPropertyClick}
+                  />
                 </div>
 
                 {/* Search Radius Options */}
@@ -326,7 +316,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick 
                     return (
                       <label
                         key={rad}
-                        onClick={() => setSelectedRadius(rad)}
                         style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: isSel ? 700 : 500, color: isSel ? '#16A34A' : '#475569', cursor: 'pointer', padding: '4px 0' }}
                       >
                         <input

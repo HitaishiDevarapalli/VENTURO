@@ -23,6 +23,8 @@ import CloseDealPage from './components/CloseDealPage';
 import AdminPanel from './components/AdminPanel';
 import { FaArrowLeft } from 'react-icons/fa';
 import { siteSettingsDb, propertiesDb, franchiseDb, businessDb } from './db/marketplaceDb';
+import { useAuth } from './context/AuthContext';
+import { LoginPage } from './components/LoginPage';
 import { LoginModal } from './components/LoginModal';
 
 type PageType = 'home' | 'propertiesPage' | 'flatsPage' | 'housesPage' | 'landPage' | 'franchisePage' | 'businessPage' | 'financePage' | 'loansPage' | 'financeServicePage' | 'insurancePage' | 'franchiseResales' | 'wishlist' | 'franchiseDetails' | 'newFranchise' | 'businessListings' | 'propertyDetails' | 'closeDeal' | 'adminPortal' | 'aboutUsPage';
@@ -90,6 +92,7 @@ const parseUrl = (path: string) => {
 };
 
 export const App: React.FC = () => {
+  const { user } = useAuth();
   const [heroBgIndex, setHeroBgIndex] = useState(0);
   
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -159,6 +162,11 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    if (currentPage === 'adminPortal') {
+      // Do not run Lenis smooth scroll on the admin page to allow native layout scrolling
+      return;
+    }
+
     // Initialize Lenis Smooth Scroll
     const lenis = new Lenis({
       duration: 1.2,
@@ -172,32 +180,23 @@ export const App: React.FC = () => {
     
     (window as any).lenis = lenis;
 
-    if (currentPage === 'adminPortal') {
-      lenis.stop();
-    }
-
+    let rafId: number;
     function raf(time: number) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      rafId = requestAnimationFrame(raf);
     }
-    requestAnimationFrame(raf);
+    rafId = requestAnimationFrame(raf);
 
     return () => {
+      cancelAnimationFrame(rafId);
       lenis.destroy();
       (window as any).lenis = null;
     };
-  }, []);
-
-  useEffect(() => {
-    const lenis = (window as any).lenis;
-    if (!lenis) return;
-    if (currentPage === 'adminPortal') {
-      lenis.stop();
-    } else {
-      lenis.start();
-    }
   }, [currentPage]);
 
+  if (!user) {
+    return <LoginPage />;
+  }
 
   return (
     <div className="app-container">

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { parseIndiaLocation } from '../utils/locationIntelligence';
@@ -45,7 +45,9 @@ export const LiveLocationMap: React.FC<LiveLocationMapProps> = ({
   }, [centerCity]);
 
   const cityGeo = parseIndiaLocation(centerCity);
-  const mapCenter = userGps || { lat: cityGeo.latitude, lng: cityGeo.longitude, label: `${centerCity}` };
+  const mapCenter = useMemo(() => {
+    return userGps || { lat: cityGeo.latitude, lng: cityGeo.longitude, label: `${centerCity}` };
+  }, [userGps, cityGeo.latitude, cityGeo.longitude, centerCity]);
 
   // Initialize Map
   useEffect(() => {
@@ -79,9 +81,6 @@ export const LiveLocationMap: React.FC<LiveLocationMapProps> = ({
     const layer = markersLayerRef.current;
     if (!map || !layer) return;
 
-    // Smoothly fly to current center
-    map.flyTo([mapCenter.lat, mapCenter.lng], map.getZoom() < 12 ? 13 : map.getZoom(), { duration: 1.2 });
-
     // Clear old markers
     layer.clearLayers();
 
@@ -102,6 +101,8 @@ export const LiveLocationMap: React.FC<LiveLocationMapProps> = ({
     });
     L.marker([mapCenter.lat, mapCenter.lng], { icon: centerIcon, zIndexOffset: 1000 }).addTo(layer);
 
+    const boundsPoints: L.LatLng[] = [L.latLng(mapCenter.lat, mapCenter.lng)];
+
     // 2. Add property / business / franchise markers
     items.forEach((item, idx) => {
       let lat = item.latitude;
@@ -117,6 +118,8 @@ export const LiveLocationMap: React.FC<LiveLocationMapProps> = ({
         lat = mapCenter.lat + offsetLat;
         lng = mapCenter.lng + offsetLng;
       }
+
+      boundsPoints.push(L.latLng(lat, lng));
 
       const displayPrice = item.priceDisplay || item.investmentDisplay || (item.price ? `₹${item.price}` : 'View Price');
       const title = item.title || item.name || item.brand || 'Property';
@@ -173,6 +176,14 @@ export const LiveLocationMap: React.FC<LiveLocationMapProps> = ({
         }, 50);
       });
     });
+
+    // Auto-fit to visible markers (including center pin)
+    if (boundsPoints.length > 1) {
+      const bounds = L.latLngBounds(boundsPoints);
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    } else {
+      map.flyTo([mapCenter.lat, mapCenter.lng], 13, { duration: 1.2 });
+    }
   }, [items, mapCenter, centerCity, type, onSelectItem]);
 
   const handleDetectLiveGps = () => {

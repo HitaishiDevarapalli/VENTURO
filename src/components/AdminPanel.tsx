@@ -387,7 +387,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
 
   // ================= MAIN ULTRA-MODERN SAAS DASHBOARD EXACTLY MATCHING USER SCREENSHOT =================
   return (
-    <div style={{ backgroundColor: '#F8FAFC', height: '100vh', width: '100%', overflow: 'hidden', fontFamily: "'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: '#0F172A', display: 'flex' }}>
+    <div data-lenis-prevent="true" style={{ backgroundColor: '#F8FAFC', height: '100vh', width: '100%', overflow: 'hidden', fontFamily: "'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: '#0F172A', display: 'flex' }}>
       
       {/* Sidebar Navigation matching user screenshot exactly */}
       <div style={{ width: '265px', height: '100%', backgroundColor: '#FFFFFF', borderRight: '1px solid #F1F5F9', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10 }}>
@@ -704,7 +704,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange, onRefresh 
         </div>
 
         {/* Scrollable Content Area */}
-        <div style={{ padding: '32px 36px', overflowY: 'auto', flexGrow: 1, backgroundColor: '#F8FAFC' }}>
+        <div data-lenis-prevent="true" style={{ padding: '32px 36px', overflowY: 'auto', flexGrow: 1, backgroundColor: '#F8FAFC' }}>
           
           {/* ================= CATEGORY 0: GRAND OVERVIEW ================= */}
           {activeTab === 'overview' && (

@@ -23,13 +23,16 @@ import {
   FaFileExcel,
   FaFileCsv,
   FaFilePdf,
-  FaCopy
+  FaCopy,
+  FaBuilding,
+  FaCheck
 } from 'react-icons/fa';
 
 interface FranchiseManagementSystemProps {
   showNotification: (msg: string, type?: string) => void;
   activeSubTab?: string;
   onSubTabChange?: (tab: string) => void;
+  mode?: 'franchise' | 'business';
 }
 
 const DEFAULT_CATEGORIES = [
@@ -48,7 +51,7 @@ const DEFAULT_CATEGORIES = [
   'Other Business Opportunities'
 ];
 
-export const FranchiseManagementSystem: React.FC<FranchiseManagementSystemProps> = ({ showNotification, activeSubTab, onSubTabChange: _onSubTabChange }) => {
+export const FranchiseManagementSystem: React.FC<FranchiseManagementSystemProps> = ({ showNotification, activeSubTab, onSubTabChange: _onSubTabChange, mode = 'franchise' }) => {
   const [activeTab, setActiveTab] = useState<'listings' | 'approvals' | 'featured_premium' | 'analytics' | 'categories_locations' | 'enquiries' | 'gallery' | 'reports'>('listings');
 
   React.useEffect(() => {
@@ -95,6 +98,13 @@ export const FranchiseManagementSystem: React.FC<FranchiseManagementSystemProps>
   // Derived filtered listings
   const filteredListings = useMemo(() => {
     return franchiseDb.filter(f => {
+      // Filter by mode
+      if (mode === 'franchise') {
+        if (f.opportunityType === 'Existing Business') return false;
+      } else if (mode === 'business') {
+        if (f.opportunityType !== 'Existing Business') return false;
+      }
+
       if (selectedCategory !== 'All' && f.category !== selectedCategory && f.type !== selectedCategory) return false;
       if (selectedStatus !== 'All' && (f.approvalStatus || 'Published') !== selectedStatus) return false;
       if (selectedBroker !== 'All' && !f.assignedBrokerIds?.includes(selectedBroker) && f.dealerId !== selectedBroker) return false;
@@ -108,7 +118,7 @@ export const FranchiseManagementSystem: React.FC<FranchiseManagementSystemProps>
       }
       return true;
     });
-  }, [franchiseDb, selectedCategory, selectedStatus, selectedBroker, searchQuery]);
+  }, [franchiseDb, selectedCategory, selectedStatus, selectedBroker, searchQuery, mode]);
 
   // Bulk Actions handler
   const handleSelectAll = (checked: boolean) => {
@@ -154,11 +164,11 @@ export const FranchiseManagementSystem: React.FC<FranchiseManagementSystemProps>
   const openAddModal = () => {
     setModalMode('add');
     setEditingFranchise({
-      id: `F${Date.now().toString().slice(-4)}`,
+      id: `${mode === 'business' ? 'B' : 'F'}${Date.now().toString().slice(-4)}`,
       brand: '',
       type: '',
       category: 'Food & Beverage',
-      opportunityType: 'New Franchise',
+      opportunityType: mode === 'business' ? 'Existing Business' : 'New Franchise',
       status: 'Active',
       investment: 30,
       investmentDisplay: '₹25 - ₹40 Lakhs',
@@ -288,18 +298,20 @@ export const FranchiseManagementSystem: React.FC<FranchiseManagementSystemProps>
       {/* Top System Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '2px solid #E2E8F0', paddingBottom: '16px' }}>
         <div>
-          <h2 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", fontSize: '1.75rem', fontWeight: 800, color: '#0F172A', margin: '0 0 6px 0', letterSpacing: '0.02em' }}>
-            ENTERPRISE FRANCHISE MANAGEMENT SYSTEM
+          <h2 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", fontSize: '1.75rem', fontWeight: 800, color: '#0F172A', margin: '0 0 6px 0', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+            {mode === 'business' ? 'Business Management System' : 'Enterprise Franchise Management System'}
           </h2>
           <p style={{ margin: 0, color: '#64748B', fontSize: '0.9rem' }}>
-            Centralized hub for franchise opportunities, existing business sales, broker CRM workflows, approvals, and public website synchronization.
+            {mode === 'business' 
+              ? 'Centralized hub for managing business listings, approvals, analytics and website synchronization.' 
+              : 'Centralized hub for franchise opportunities, existing business sales, broker CRM workflows, approvals, and public website synchronization.'}
           </p>
         </div>
         <button
           onClick={openAddModal}
           style={{ padding: '12px 24px', backgroundColor: '#1E40AF', color: '#FFFFFF', border: 'none', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", letterSpacing: '0.04em', boxShadow: '0 4px 12px rgba(30, 64, 175, 0.2)' }}
         >
-          <FaPlus /> + ADD NEW FRANCHISE OPPORTUNITY
+          <FaPlus /> {mode === 'business' ? '+ ADD NEW BUSINESS' : '+ ADD NEW FRANCHISE OPPORTUNITY'}
         </button>
       </div>
 
@@ -1047,349 +1059,632 @@ export const FranchiseManagementSystem: React.FC<FranchiseManagementSystemProps>
       )}
 
       {/* ================= 7-SUBTAB ADD/EDIT FRANCHISE MODAL ================= */}
+      {/* ================= REDESIGNED STEP-BY-STEP MODAL (MATCHING Master Property DESIGN SYSTEM) ================= */}
       {isModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.75)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', width: '95%', maxWidth: '1000px', maxHeight: '92vh', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div data-lenis-prevent="true" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(15, 23, 42, 0.82)', backdropFilter: 'blur(6px)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px' }}>
+          <div style={{ backgroundColor: '#F8FAFC', width: '100%', maxWidth: '1280px', height: '92vh', display: 'flex', flexDirection: 'column', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)', border: '1px solid #E2E8F0' }}>
             
             {/* Modal Header */}
-            <div style={{ padding: '20px 24px', backgroundColor: '#1E40AF', color: '#FFFFFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", fontSize: '1.3rem', fontWeight: 800, margin: 0 }}>
-                {modalMode === 'add' ? '+ ADD NEW FRANCHISE OPPORTUNITY' : `EDIT FRANCHISE: ${editingFranchise.brand}`}
-              </h3>
-              <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', color: '#FFFFFF', fontSize: '1.5rem', cursor: 'pointer', fontWeight: 700 }}>×</button>
+            <div style={{ backgroundColor: '#1E3A8A', color: '#FFFFFF', padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '46px', height: '46px', borderRadius: '14px', backgroundColor: 'rgba(255, 255, 255, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', color: '#FFFFFF', flexShrink: 0 }}>
+                  <FaBuilding />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <h3 style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif", margin: 0, fontSize: '1.45rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+                      {modalMode === 'add' 
+                        ? (mode === 'business' ? 'Add New Business' : 'Add New Franchise Opportunity') 
+                        : (mode === 'business' ? 'Edit Business Listing' : 'Edit Franchise Opportunity')}
+                    </h3>
+                    <span style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', padding: '4px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.5px' }}>
+                      {editingFranchise.id || 'NEW'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', color: '#FFFFFF', fontSize: '1.6rem', cursor: 'pointer', transition: 'opacity 0.2s', padding: '4px' }} title="Close">×</button>
             </div>
 
-            {/* Modal Subnavigation */}
-            <div style={{ display: 'flex', backgroundColor: '#F1F5F9', borderBottom: '1px solid #CBD5E1', overflowX: 'auto' }}>
+            {/* Horizontal Stepper Bar */}
+            <div style={{ backgroundColor: '#FFFFFF', padding: '20px 36px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, overflowX: 'auto' }}>
               {[
-                { id: 'basic', label: '1. Basic Info' },
-                { id: 'investment', label: '2. Investment & ROI' },
-                { id: 'business', label: '3. Business & Support' },
-                { id: 'space', label: '4. Space Specs' },
-                { id: 'location', label: '5. Location Hierarchy' },
-                { id: 'media', label: '6. Media & Docs' },
-                { id: 'broker', label: '7. Broker Assignment' }
-              ].map(sub => (
-                <button
-                  key={sub.id}
-                  onClick={() => setModalSubTab(sub.id as any)}
-                  style={{
-                    padding: '12px 18px',
-                    backgroundColor: modalSubTab === sub.id ? '#FFFFFF' : 'transparent',
-                    color: modalSubTab === sub.id ? '#1E40AF' : '#64748B',
-                    border: 'none',
-                    borderBottom: modalSubTab === sub.id ? '3px solid #1E40AF' : 'none',
-                    fontWeight: 800,
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {sub.label}
-                </button>
-              ))}
+                { id: 'basic', num: 1, label: 'Basic Info', sub: 'Details of opportunity' },
+                { id: 'investment', num: 2, label: 'Investment', sub: 'Roi & Capital terms' },
+                { id: 'business', num: 3, label: 'Company', sub: 'Establishment & outlets' },
+                { id: 'space', num: 4, label: 'Space', sub: 'Area & space preference' },
+                { id: 'location', num: 5, label: 'Location', sub: 'Geographic region' },
+                { id: 'media', num: 6, label: 'Media', sub: 'Image & brand logo' },
+                { id: 'broker', num: 7, label: 'Broker', sub: 'Assign broker CRM' }
+              ].map((step, idx, arr) => {
+                const isActive = modalSubTab === step.id;
+                const isCompleted = arr.findIndex(x => x.id === modalSubTab) > idx;
+                return (
+                  <React.Fragment key={step.id}>
+                    <button
+                      type="button"
+                      onClick={() => setModalSubTab(step.id as any)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}
+                    >
+                      <div style={{
+                        width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.95rem',
+                        backgroundColor: isActive ? '#2563EB' : isCompleted ? '#10B981' : '#F1F5F9',
+                        color: isActive || isCompleted ? '#FFFFFF' : '#64748B',
+                        boxShadow: isActive ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none',
+                        transition: 'all 0.2s'
+                      }}>
+                        {isCompleted ? <FaCheck style={{ fontSize: '0.85rem' }} /> : step.num}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                        <span style={{ fontWeight: 800, fontSize: '0.92rem', color: isActive ? '#1E3A8A' : isCompleted ? '#0F172A' : '#475569' }}>{step.label}</span>
+                        <span style={{ fontWeight: 500, fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>{step.sub}</span>
+                      </div>
+                    </button>
+                    {idx < arr.length - 1 && (
+                      <div style={{ flexGrow: 1, height: '1.5px', backgroundColor: isCompleted ? '#10B981' : '#E2E8F0', minWidth: '24px', margin: '0 16px', transition: 'background 0.2s' }} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
 
             {/* Modal Form Content */}
-            <form onSubmit={handleSaveFranchise} style={{ padding: '24px', overflowY: 'auto', flexGrow: 1 }}>
+            <form onSubmit={handleSaveFranchise} style={{ padding: '28px 36px', overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               
-              {modalSubTab === 'basic' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>BRAND / FRANCHISE TITLE *</label>
-                    <input
-                      type="text"
-                      required
-                      value={editingFranchise.brand || ''}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, brand: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>BUSINESS SUBTYPE DESCRIPTION *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Artisanal Coffee & Bakery Chain"
-                      value={editingFranchise.type || ''}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, type: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>FRANCHISE CATEGORY</label>
-                    <select
-                      value={editingFranchise.category || 'Food & Beverage'}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, category: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1' }}
-                    >
-                      {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>OPPORTUNITY TYPE</label>
-                    <select
-                      value={editingFranchise.opportunityType || 'New Franchise'}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, opportunityType: e.target.value as any })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1' }}
-                    >
-                      <option value="New Franchise">New Franchise Opportunity</option>
-                      <option value="Existing Business">Existing Running Business for Sale</option>
-                    </select>
-                  </div>
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>DETAILED OPPORTUNITY OVERVIEW</label>
-                    <textarea
-                      rows={4}
-                      value={editingFranchise.detailedDescription || ''}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, detailedDescription: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                </div>
-              )}
+              <div style={{ flexGrow: 1, marginBottom: '24px' }}>
+                {modalSubTab === 'basic' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: '24px', alignItems: 'stretch' }}>
+                    {/* Left Column: Form Card */}
+                    <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>1. Basic Information</h4>
+                        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 20px 0' }}>Provide essential details about the opportunity</p>
+                      </div>
 
-              {modalSubTab === 'investment' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>MINIMUM INVESTMENT (Lakhs ₹)</label>
-                    <input
-                      type="number"
-                      value={editingFranchise.minInvestment || 25}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, minInvestment: Number(e.target.value), investmentDisplay: `₹${e.target.value} - ₹${editingFranchise.maxInvestment || 45} Lakhs` })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>MAXIMUM INVESTMENT (Lakhs ₹)</label>
-                    <input
-                      type="number"
-                      value={editingFranchise.maxInvestment || 45}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, maxInvestment: Number(e.target.value), investmentDisplay: `₹${editingFranchise.minInvestment || 25} - ₹${e.target.value} Lakhs` })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>EXPECTED ROI (%)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 35% - 45%"
-                      value={editingFranchise.expectedRoi || ''}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, expectedRoi: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>EXPECTED PAYBACK PERIOD</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 14 - 18 Months"
-                      value={editingFranchise.paybackPeriod || ''}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, paybackPeriod: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>FRANCHISE FEE</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. ₹5 Lakhs"
-                      value={editingFranchise.franchiseFee || ''}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, franchiseFee: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>ROYALTY FEE</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 6% of monthly revenue"
-                      value={editingFranchise.royaltyFee || ''}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, royaltyFee: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {modalSubTab === 'business' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>LEGAL COMPANY NAME</label>
-                    <input
-                      type="text"
-                      value={editingFranchise.companyName || ''}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, companyName: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>YEAR ESTABLISHED</label>
-                    <input
-                      type="number"
-                      value={editingFranchise.yearEstablished || 2020}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, yearEstablished: Number(e.target.value) })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>EXISTING OPERATIONAL OUTLETS</label>
-                    <input
-                      type="number"
-                      value={editingFranchise.existingOutletsCount || 10}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, existingOutletsCount: Number(e.target.value) })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>BUSINESS MODEL</label>
-                    <input
-                      type="text"
-                      placeholder="FOFO / FOCO / COCO"
-                      value={editingFranchise.businessModel || 'FOFO'}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, businessModel: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {modalSubTab === 'space' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>MINIMUM AREA REQUIRED (Sq. Ft.)</label>
-                    <input
-                      type="number"
-                      value={editingFranchise.minAreaSqFt || 500}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, minAreaSqFt: Number(e.target.value) })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>SHOP TYPE PREFERENCE</label>
-                    <select
-                      value={editingFranchise.shopType || 'High Street'}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, shopType: e.target.value as any })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1' }}
-                    >
-                      <option value="High Street">High Street Frontage</option>
-                      <option value="Mall">Shopping Mall</option>
-                      <option value="Standalone">Standalone Building</option>
-                      <option value="Kiosk">Kiosk / Island</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {modalSubTab === 'location' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>STATE</label>
-                    <input
-                      type="text"
-                      value={editingFranchise.state || 'Telangana'}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, state: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>CITY</label>
-                    <input
-                      type="text"
-                      value={editingFranchise.city || 'Hyderabad'}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, city: e.target.value, location: `${editingFranchise.area || 'Jubilee Hills'}, ${e.target.value}` })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {modalSubTab === 'media' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>PRIMARY COVER IMAGE URL</label>
-                    <input
-                      type="text"
-                      value={editingFranchise.image || ''}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, image: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155', display: 'block', marginBottom: '6px' }}>BRAND LOGO URL</label>
-                    <input
-                      type="text"
-                      value={editingFranchise.logo || ''}
-                      onChange={e => setEditingFranchise({ ...editingFranchise, logo: e.target.value })}
-                      style={{ width: '100%', padding: '12px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {modalSubTab === 'broker' && (
-                <div>
-                  <h4 style={{ margin: '0 0 12px 0', color: '#0F172A', fontSize: '1rem', fontWeight: 800 }}>
-                    ASSIGN ONE OR MULTIPLE BROKERS FROM BROKER MANAGEMENT SYSTEM
-                  </h4>
-                  <input
-                    type="text"
-                    placeholder="Search broker by name or company..."
-                    value={brokerSearch}
-                    onChange={e => setBrokerSearch(e.target.value)}
-                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #CBD5E1', marginBottom: '16px', boxSizing: 'border-box' }}
-                  />
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-                    {dealersDb
-                      .filter(d => (d.name || d.companyName || '').toLowerCase().includes(brokerSearch.toLowerCase()) || (d.company || d.companyName || '').toLowerCase().includes(brokerSearch.toLowerCase()))
-                      .map(dealer => {
-                        const isAssigned = (editingFranchise.assignedBrokerIds || []).includes(dealer.id);
-                        return (
-                          <div
-                            key={dealer.id}
-                            onClick={() => toggleBrokerAssignment(dealer.id)}
-                            style={{
-                              padding: '14px',
-                              border: isAssigned ? '2px solid #10B981' : '1px solid #CBD5E1',
-                              backgroundColor: isAssigned ? '#ECFDF5' : '#FFFFFF',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              borderRadius: '4px'
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <img src={dealer.image} alt={dealer.name} style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
-                              <div>
-                                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0F172A' }}>{dealer.name}</div>
-                                <div style={{ fontSize: '0.78rem', color: '#64748B' }}>{dealer.company} • {dealer.rating}★</div>
-                              </div>
-                            </div>
-                            <span style={{ fontWeight: 800, color: isAssigned ? '#10B981' : '#94A3B8' }}>{isAssigned ? '✓ ASSIGNED' : '+ Assign'}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div>
+                          <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>BRAND / TITLE NAME *</label>
+                          <input
+                            type="text"
+                            required
+                            value={editingFranchise.brand || ''}
+                            onChange={e => setEditingFranchise({ ...editingFranchise, brand: e.target.value })}
+                            placeholder={mode === 'business' ? "e.g. Premium Coffee Shop & Lounge" : "e.g. Starbucks Coffee Franchise"}
+                            style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>BUSINESS SUBTYPE DESCRIPTION *</label>
+                          <input
+                            type="text"
+                            required
+                            value={editingFranchise.type || ''}
+                            onChange={e => setEditingFranchise({ ...editingFranchise, type: e.target.value })}
+                            placeholder="e.g. Artisanal Coffee & Bakery Chain"
+                            style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                          />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>CATEGORY</label>
+                            <select
+                              value={editingFranchise.category || 'Food & Beverage'}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, category: e.target.value })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600, backgroundColor: '#FFFFFF' }}
+                            >
+                              {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                            </select>
                           </div>
-                        );
-                      })}
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>OPPORTUNITY TYPE</label>
+                            <select
+                              value={editingFranchise.opportunityType || (mode === 'business' ? 'Existing Business' : 'New Franchise')}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, opportunityType: e.target.value as any })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600, backgroundColor: '#FFFFFF' }}
+                            >
+                              <option value="New Franchise">New Franchise Opportunity</option>
+                              <option value="Existing Business">Existing Running Business for Sale</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>DETAILED OPPORTUNITY OVERVIEW</label>
+                          <textarea
+                            rows={4}
+                            value={editingFranchise.detailedDescription || ''}
+                            onChange={e => setEditingFranchise({ ...editingFranchise, detailedDescription: e.target.value })}
+                            placeholder="Provide a rich, compelling overview of the business architecture, operational margins, views, surroundings, and exclusive features..."
+                            style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', lineHeight: 1.6, outline: 'none' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Guide Card */}
+                    <div style={{ backgroundColor: '#F8FAFC', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'center' }}>
+                      <h5 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>Listing Guidelines</h5>
+                      <p style={{ color: '#475569', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>
+                        Provide clear, precise descriptions of the operational model and brand parameters. Standardizing the title and subtype formatting makes your listings highly searchable for prospective brokers and investors.
+                      </p>
+                      <div style={{ backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '12px', padding: '16px', display: 'flex', gap: '12px', color: '#1E40AF', fontSize: '0.85rem', fontWeight: 600 }}>
+                        <span style={{ fontSize: '1.25rem' }}>★</span>
+                        <span>Ensure brand name matches registered trade name exactly to ensure successful verification.</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+
+                {modalSubTab === 'investment' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: '24px', alignItems: 'stretch' }}>
+                    {/* Left Column: Form Card */}
+                    <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>2. Investment & ROI Terms</h4>
+                        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 20px 0' }}>Provide financial parameters and capital requirements</p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>MINIMUM INVESTMENT (Lakhs ₹)</label>
+                            <input
+                              type="number"
+                              value={editingFranchise.minInvestment || 25}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, minInvestment: Number(e.target.value), investmentDisplay: `₹${e.target.value} - ₹${editingFranchise.maxInvestment || 45} Lakhs` })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>MAXIMUM INVESTMENT (Lakhs ₹)</label>
+                            <input
+                              type="number"
+                              value={editingFranchise.maxInvestment || 45}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, maxInvestment: Number(e.target.value), investmentDisplay: `₹${editingFranchise.minInvestment || 25} - ₹${e.target.value} Lakhs` })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>EXPECTED ROI (%)</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. 35% - 45%"
+                              value={editingFranchise.expectedRoi || ''}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, expectedRoi: e.target.value })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>EXPECTED PAYBACK PERIOD</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. 14 - 18 Months"
+                              value={editingFranchise.paybackPeriod || ''}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, paybackPeriod: e.target.value })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>FRANCHISE FEE</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. ₹5 Lakhs"
+                              value={editingFranchise.franchiseFee || ''}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, franchiseFee: e.target.value })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>ROYALTY FEE</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. 6% of monthly revenue"
+                              value={editingFranchise.royaltyFee || ''}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, royaltyFee: e.target.value })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Guide Card */}
+                    <div style={{ backgroundColor: '#F8FAFC', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'center' }}>
+                      <h5 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>Investment Verification</h5>
+                      <p style={{ color: '#475569', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>
+                        Provide transparent financial projections. Minimum and maximum capital thresholds will help filter candidates effectively based on their budget profiles.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {modalSubTab === 'business' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: '24px', alignItems: 'stretch' }}>
+                    {/* Left Column: Form Card */}
+                    <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>3. Company & Operational Details</h4>
+                        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 20px 0' }}>Provide company background and historical parameters</p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div>
+                          <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>LEGAL COMPANY NAME</label>
+                          <input
+                            type="text"
+                            value={editingFranchise.companyName || ''}
+                            onChange={e => setEditingFranchise({ ...editingFranchise, companyName: e.target.value })}
+                            placeholder="e.g. Coffee Labs Private Limited"
+                            style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                          />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>YEAR ESTABLISHED</label>
+                            <input
+                              type="number"
+                              value={editingFranchise.yearEstablished || 2020}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, yearEstablished: Number(e.target.value) })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>EXISTING OPERATIONAL OUTLETS</label>
+                            <input
+                              type="number"
+                              value={editingFranchise.existingOutletsCount || 10}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, existingOutletsCount: Number(e.target.value) })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>BUSINESS MODEL</label>
+                          <input
+                            type="text"
+                            placeholder="FOFO / FOCO / COCO"
+                            value={editingFranchise.businessModel || 'FOFO'}
+                            onChange={e => setEditingFranchise({ ...editingFranchise, businessModel: e.target.value })}
+                            style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Guide Card */}
+                    <div style={{ backgroundColor: '#F8FAFC', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'center' }}>
+                      <h5 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>Operational Models</h5>
+                      <p style={{ color: '#475569', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>
+                        Select the correct operational model category:
+                        <br />• <strong>FOFO</strong>: Franchise Owned Franchise Operated
+                        <br />• <strong>FOCO</strong>: Franchise Owned Company Operated
+                        <br />• <strong>COCO</strong>: Company Owned Company Operated
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {modalSubTab === 'space' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: '24px', alignItems: 'stretch' }}>
+                    {/* Left Column: Form Card */}
+                    <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>4. Space Specifications</h4>
+                        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 20px 0' }}>Provide structural and layout requirements</p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>MINIMUM AREA REQUIRED (Sq. Ft.)</label>
+                            <input
+                              type="number"
+                              value={editingFranchise.minAreaSqFt || 500}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, minAreaSqFt: Number(e.target.value) })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>SHOP TYPE PREFERENCE</label>
+                            <select
+                              value={editingFranchise.shopType || 'High Street'}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, shopType: e.target.value as any })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontWeight: 600, backgroundColor: '#FFFFFF' }}
+                            >
+                              <option value="High Street">High Street Frontage</option>
+                              <option value="Mall">Shopping Mall</option>
+                              <option value="Standalone">Standalone Building</option>
+                              <option value="Kiosk">Kiosk / Island</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Guide Card */}
+                    <div style={{ backgroundColor: '#F8FAFC', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'center' }}>
+                      <h5 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>Space Guidelines</h5>
+                      <p style={{ color: '#475569', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>
+                        Provide details on spatial specifications to verify structural requirements fit standard brand blueprints cleanly.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {modalSubTab === 'location' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: '24px', alignItems: 'stretch' }}>
+                    {/* Left Column: Form Card */}
+                    <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>5. Location Hierarchy</h4>
+                        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 20px 0' }}>Provide location and territory information</p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>STATE</label>
+                            <input
+                              type="text"
+                              value={editingFranchise.state || 'Telangana'}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, state: e.target.value })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>CITY</label>
+                            <input
+                              type="text"
+                              value={editingFranchise.city || 'Hyderabad'}
+                              onChange={e => setEditingFranchise({ ...editingFranchise, city: e.target.value, location: `${editingFranchise.area || 'Jubilee Hills'}, ${e.target.value}` })}
+                              style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Guide Card */}
+                    <div style={{ backgroundColor: '#F8FAFC', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'center' }}>
+                      <h5 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>Territory Assignment</h5>
+                      <p style={{ color: '#475569', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>
+                        Defining the exact state and municipal location is necessary to map territorial exclusivity rights inside investor listings.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {modalSubTab === 'media' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: '24px', alignItems: 'stretch' }}>
+                    {/* Left Column: Form Card */}
+                    <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>6. Media & Creative Uploads</h4>
+                        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 20px 0' }}>Upload brand cover and logo images</p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {/* Primary Cover Image */}
+                        <div style={{ backgroundColor: '#F8FAFC', border: '1.5px solid #CBD5E1', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1E40AF' }}>
+                              PRIMARY COVER IMAGE
+                            </span>
+                          </div>
+                          {editingFranchise.image && (
+                            <div style={{ width: '100%', height: '180px', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#E2E8F0' }}>
+                              <img src={editingFranchise.image} alt="Cover" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                const file = e.dataTransfer.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (ev) => {
+                                    setEditingFranchise({ ...editingFranchise, image: ev.target?.result as string });
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                              onClick={() => document.getElementById('franchise-cover-file')?.click()}
+                              style={{
+                                border: '2px dashed #CBD5E1',
+                                borderRadius: '12px',
+                                padding: '16px',
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                backgroundColor: '#FFFFFF',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                color: '#475569',
+                              }}
+                            >
+                              <div>Drag & Drop or Click to Upload Primary Cover Image</div>
+                              <div style={{ fontSize: '0.68rem', color: '#94A3B8', marginTop: '2px' }}>PNG, JPG, or WEBP</div>
+                            </div>
+                            <input
+                              id="franchise-cover-file"
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (ev) => {
+                                    setEditingFranchise({ ...editingFranchise, image: ev.target?.result as string });
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Brand Logo */}
+                        <div style={{ backgroundColor: '#F8FAFC', border: '1.5px solid #CBD5E1', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1E40AF' }}>
+                              BRAND LOGO
+                            </span>
+                          </div>
+                          {editingFranchise.logo && (
+                            <div style={{ width: '100px', height: '100px', borderRadius: '50%', overflow: 'hidden', backgroundColor: '#E2E8F0', border: '2px solid #1E40AF', alignSelf: 'center' }}>
+                              <img src={editingFranchise.logo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                const file = e.dataTransfer.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (ev) => {
+                                    setEditingFranchise({ ...editingFranchise, logo: ev.target?.result as string });
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                              onClick={() => document.getElementById('franchise-logo-file')?.click()}
+                              style={{
+                                border: '2px dashed #CBD5E1',
+                                borderRadius: '12px',
+                                padding: '16px',
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                backgroundColor: '#FFFFFF',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                color: '#475569',
+                              }}
+                            >
+                              <div>Drag & Drop or Click to Upload Brand Logo</div>
+                              <div style={{ fontSize: '0.68rem', color: '#94A3B8', marginTop: '2px' }}>PNG, JPG, or WEBP</div>
+                            </div>
+                            <input
+                              id="franchise-logo-file"
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (ev) => {
+                                    setEditingFranchise({ ...editingFranchise, logo: ev.target?.result as string });
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Guide Card */}
+                    <div style={{ backgroundColor: '#F8FAFC', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'center' }}>
+                      <h5 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>Creative Requirements</h5>
+                      <p style={{ color: '#475569', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>
+                        High-quality cover assets increase click-through rates by up to 4x. Make sure the cover is a landscape image, and logo is a square layout.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {modalSubTab === 'broker' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: '24px', alignItems: 'stretch' }}>
+                    {/* Left Column: Form Card */}
+                    <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>7. Broker Assignments</h4>
+                        <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '4px 0 20px 0' }}>Assign sales representatives or advisors to handle leads</p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <input
+                          type="text"
+                          placeholder="Search broker by name or company..."
+                          value={brokerSearch}
+                          onChange={e => setBrokerSearch(e.target.value)}
+                          style={{ width: '100%', padding: '14px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, outline: 'none' }}
+                        />
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px', maxHeight: '300px', overflowY: 'auto' }}>
+                          {dealersDb
+                            .filter(d => (d.name || d.companyName || '').toLowerCase().includes(brokerSearch.toLowerCase()) || (d.company || d.companyName || '').toLowerCase().includes(brokerSearch.toLowerCase()))
+                            .map(dealer => {
+                              const isAssigned = (editingFranchise.assignedBrokerIds || []).includes(dealer.id);
+                              return (
+                                <div
+                                  key={dealer.id}
+                                  onClick={() => toggleBrokerAssignment(dealer.id)}
+                                  style={{
+                                    padding: '14px',
+                                    border: isAssigned ? '2px solid #10B981' : '1px solid #CBD5E1',
+                                    backgroundColor: isAssigned ? '#ECFDF5' : '#FFFFFF',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    borderRadius: '12px',
+                                    transition: 'all 0.2s',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <img src={dealer.image} alt={dealer.name} style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
+                                    <div>
+                                      <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0F172A' }}>{dealer.name}</div>
+                                      <div style={{ fontSize: '0.78rem', color: '#64748B' }}>{dealer.company} • {dealer.rating}★</div>
+                                    </div>
+                                  </div>
+                                  <span style={{ fontWeight: 800, color: isAssigned ? '#10B981' : '#94A3B8', fontSize: '0.85rem' }}>{isAssigned ? '✓ ASSIGNED' : '+ Assign'}</span>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Guide Card */}
+                    <div style={{ backgroundColor: '#F8FAFC', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'center' }}>
+                      <h5 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>Broker CRM Workflows</h5>
+                      <p style={{ color: '#475569', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>
+                        Assigning active brokers gives them access to leads, client inquiries, and transaction pipelines linked to this marketplace listing.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Modal Footer Controls */}
-              <div style={{ marginTop: '28px', borderTop: '1px solid #CBD5E1', paddingTop: '18px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <div style={{ marginTop: 'auto', borderTop: '1px solid #E2E8F0', paddingTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  style={{ padding: '12px 20px', backgroundColor: '#F1F5F9', color: '#475569', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+                  style={{ padding: '12px 24px', backgroundColor: '#F1F5F9', border: '1px solid #CBD5E1', color: '#475569', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
                 >
                   CANCEL
                 </button>
-                <button
-                  type="submit"
-                  style={{ padding: '12px 28px', backgroundColor: '#1E40AF', color: '#FFFFFF', border: 'none', fontWeight: 700, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" }}
-                >
-                  {modalMode === 'add' ? '✓ SAVE & PUBLISH FRANCHISE' : '✓ SAVE CHANGES'}
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    type="submit"
+                    style={{ padding: '12px 28px', backgroundColor: '#1E40AF', color: '#FFFFFF', border: 'none', borderRadius: '12px', fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 14px rgba(30, 64, 175, 0.25)', transition: 'all 0.2s' }}
+                  >
+                    {modalMode === 'add' ? '✓ SAVE & PUBLISH' : '✓ SAVE CHANGES'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

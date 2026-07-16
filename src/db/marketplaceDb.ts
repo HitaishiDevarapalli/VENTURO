@@ -88,6 +88,8 @@ export interface PropertyListing {
   title: string;
   description: string;
   image: string;
+  image2?: string;
+  image3?: string;
   images?: string[];
   state: string;
   district: string;

@@ -11,7 +11,7 @@ interface RegisteredUser {
 }
 
 export const LoginPage: React.FC = () => {
-  const { loginWithGmail } = useAuth();
+  const { login, register, loginWithGmail } = useAuth();
   
   // Navigation flow
   const [flow, setFlow] = useState<'login' | 'register' | 'otp_verification' | 'forgot_password' | 'reset_password'>('login');
@@ -108,7 +108,7 @@ export const LoginPage: React.FC = () => {
   };
 
   // Login handler
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -119,36 +119,20 @@ export const LoginPage: React.FC = () => {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      const users = getRegisteredUsers();
-      
-      // Check admin fallback credentials
-      if (email.trim().toLowerCase() === 'admin@venturo.in' && password === 'admin123') {
-        if (rememberMe) {
-          localStorage.setItem('venturo_remembered_credentials', email);
-        } else {
-          localStorage.removeItem('venturo_remembered_credentials');
-        }
-        loginWithGmail(email, 'Verified Investor');
-        return;
-      }
+    const result = await login(email, password);
+    setLoading(false);
+    if (!result.success) {
+      setError(result.error || 'Invalid email address or password.');
+      return;
+    }
 
-      const match = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase() && u.passwordHash === password);
-      if (!match) {
-        setError('Invalid email address or password. Try admin@venturo.in / admin123');
-        return;
-      }
+    if (rememberMe) {
+      localStorage.setItem('venturo_remembered_credentials', email);
+    } else {
+      localStorage.removeItem('venturo_remembered_credentials');
+    }
 
-      if (rememberMe) {
-        localStorage.setItem('venturo_remembered_credentials', email);
-      } else {
-        localStorage.removeItem('venturo_remembered_credentials');
-      }
-
-      // Automatically login
-      loginWithGmail(match.email, 'Verified Investor');
-    }, 1000);
+    setSuccess('Login successful!');
   };
 
   // Register validation and submission
@@ -202,7 +186,7 @@ export const LoginPage: React.FC = () => {
   };
 
   // Verify OTP handler
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -213,30 +197,23 @@ export const LoginPage: React.FC = () => {
     }
 
     setLoading(true);
-    setTimeout(() => {
+    if (otpPurpose === 'register') {
+      const result = await register(registerName.trim(), registerMobile.trim(), registerEmail.trim(), registerPassword);
       setLoading(false);
-      const users = getRegisteredUsers();
-
-      if (otpPurpose === 'register') {
-        const newUser: RegisteredUser = {
-          fullName: registerName.trim(),
-          mobile: registerMobile.trim(),
-          email: registerEmail.trim(),
-          passwordHash: registerPassword
-        };
-        users.push(newUser);
-        saveRegisteredUsers(users);
-        setSuccess('Registration completed successfully! Please login.');
-        setFlow('login');
-      } else {
-        // Switch to reset password flow
-        setFlow('reset_password');
+      if (!result.success) {
+        setError(result.error || 'Registration failed');
+        return;
       }
-    }, 1000);
+      setSuccess('Registration completed successfully! Welcome.');
+    } else {
+      setLoading(false);
+      // Switch to reset password flow
+      setFlow('reset_password');
+    }
   };
 
   // Forgot password handler
-  const handleForgotPasswordSubmit = (e: React.FormEvent) => {
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -246,35 +223,34 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
-    const users = getRegisteredUsers();
-    const match = users.find(u => u.email.toLowerCase() === forgotInput.trim().toLowerCase() || u.mobile === forgotInput.trim());
-
-    // Admin recovery fallback
-    if (forgotInput.trim().toLowerCase() === 'admin@venturo.in') {
-      setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-        triggerOtpSend('9999999999', 'admin@venturo.in', 'forgot');
-        setFlow('otp_verification');
-      }, 1000);
-      return;
-    }
-
-    if (!match) {
-      setError('No registered account matches that email or mobile number');
-      return;
-    }
-
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: forgotInput.trim() })
+      });
+      const data = await res.json();
       setLoading(false);
-      triggerOtpSend(match.mobile, match.email, 'forgot');
+      if (!res.ok) {
+        setError(data.error || 'No registered account matches that email or mobile number');
+        return;
+      }
+      setGeneratedOtp(data.otpCode);
+      setOtpTargetMobile(data.targetMobile);
+      setOtpTargetEmail(data.targetEmail);
+      setOtpPurpose('forgot');
+      setResendTimer(30);
+      setSimulatedSms({ mobile: data.targetMobile, otp: data.otpCode });
       setFlow('otp_verification');
-    }, 1000);
+    } catch (err) {
+      setLoading(false);
+      setError('Cannot connect to backend server');
+    }
   };
 
   // Reset password handler
-  const handleResetPasswordSubmit = (e: React.FormEvent) => {
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -289,27 +265,24 @@ export const LoginPage: React.FC = () => {
     }
 
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: otpTargetEmail, password: resetNewPassword })
+      });
+      const data = await res.json();
       setLoading(false);
-      const users = getRegisteredUsers();
-      
-      // Update target user
-      if (otpTargetEmail.toLowerCase() === 'admin@venturo.in') {
-        setSuccess('Password updated successfully! Please login.');
-        setFlow('login');
+      if (!res.ok) {
+        setError(data.error || 'Failed to reset password');
         return;
       }
-
-      const updated = users.map(u => {
-        if (u.email.toLowerCase() === otpTargetEmail.toLowerCase()) {
-          return { ...u, passwordHash: resetNewPassword };
-        }
-        return u;
-      });
-      saveRegisteredUsers(updated);
       setSuccess('Password reset successfully! Please login with your new password.');
       setFlow('login');
-    }, 1000);
+    } catch (err) {
+      setLoading(false);
+      setError('Cannot connect to backend server');
+    }
   };
 
   const handleGoogleLogin = () => {

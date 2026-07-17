@@ -687,39 +687,56 @@ export const setSelectedCity = (city: string) => {
   window.dispatchEvent(new CustomEvent('nexopp_data_changed'));
 };
 
-// Load from LocalStorage
-const loadData = () => {
+// API URL Configuration
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Load from Backend API
+export const loadDataAsync = async () => {
   try {
-    if (localStorage.getItem('nexopp_wiped_fake_data_v10_all') !== 'true') {
-      localStorage.removeItem('nexopp_properties');
-      localStorage.removeItem('nexopp_franchises');
-      localStorage.removeItem('nexopp_dealers');
-      localStorage.removeItem('nexopp_enquiries');
-      localStorage.removeItem('nexopp_franchise_enquiries');
-      localStorage.removeItem('nexopp_team_members');
-      localStorage.removeItem('nexopp_businesses');
-      localStorage.setItem('nexopp_wiped_fake_data_v10_all', 'true');
+    // 1. Fetch settings
+    const settingsRes = await fetch(`${API_URL}/settings`);
+    if (settingsRes.ok) {
+      siteSettingsDb = await settingsRes.json();
     }
 
-    const p = localStorage.getItem('nexopp_properties');
-    const f = localStorage.getItem('nexopp_franchises');
-    const d = localStorage.getItem('nexopp_dealers');
-    const e = localStorage.getItem('nexopp_enquiries');
-    const fe = localStorage.getItem('nexopp_franchise_enquiries');
-    const s = localStorage.getItem('nexopp_settings');
-    const t = localStorage.getItem('nexopp_team_members');
-    const b = localStorage.getItem('nexopp_businesses');
+    // 2. Fetch properties
+    const propsRes = await fetch(`${API_URL}/properties`);
+    if (propsRes.ok) {
+      propertiesDb = await propsRes.json();
+    }
+
+    // 3. Fetch franchises
+    const franRes = await fetch(`${API_URL}/franchises`);
+    if (franRes.ok) {
+      franchiseDb = await franRes.json();
+    }
+
+    // 4. Fetch businesses
+    const busRes = await fetch(`${API_URL}/businesses`);
+    if (busRes.ok) {
+      businessDb = await busRes.json();
+    }
+
+    // 5. Fetch dealers
+    const dealersRes = await fetch(`${API_URL}/dealers`);
+    if (dealersRes.ok) {
+      dealersDb = await dealersRes.json();
+    }
+
+    // 6. Fetch enquiries
+    const enquiriesRes = await fetch(`${API_URL}/enquiries`);
+    if (enquiriesRes.ok) {
+      const data = await enquiriesRes.json();
+      enquiriesDb = data.properties || [];
+      franchiseEnquiriesDb = data.franchises || [];
+    }
+
+    // 7. Load local-only metadata from LocalStorage
     const dr = localStorage.getItem('nexopp_demand_regions');
     const sv = localStorage.getItem('nexopp_showcase_videos');
     const ss = localStorage.getItem('nexopp_showcase_settings');
+    const t = localStorage.getItem('nexopp_team_members');
 
-    propertiesDb = p ? JSON.parse(p) : [];
-    franchiseDb = f ? JSON.parse(f) : [];
-    businessDb = b ? JSON.parse(b) : [];
-    dealersDb = d ? JSON.parse(d) : [];
-    enquiriesDb = e ? JSON.parse(e) : [];
-    franchiseEnquiriesDb = fe ? JSON.parse(fe) : [];
-    siteSettingsDb = s ? JSON.parse(s) : defaultSettings;
     teamMembersDb = t ? JSON.parse(t) : [];
     demandRegionsDb = dr ? JSON.parse(dr) : defaultDemandRegions;
     showcaseVideosDb = sv ? JSON.parse(sv) : defaultShowcaseVideos;
@@ -729,150 +746,180 @@ const loadData = () => {
       defaultPlaybackDurationSec: 10
     };
 
-    if (siteSettingsDb.primaryColor === '#D4AF37') {
-      siteSettingsDb.primaryColor = '#10B981';
+    // Recalculate frontend stats from database records
+    const analyticsRes = await fetch(`${API_URL}/analytics`);
+    if (analyticsRes.ok) {
+      const stats = await analyticsRes.json();
+      siteSettingsDb.analytics = {
+        activeListings: stats.activeListings,
+        happyClients: stats.happyClients,
+        dealsClosed: stats.dealsClosed,
+        totalVisitors: stats.totalVisitors
+      };
     }
-    if (!siteSettingsDb.availableCities || !siteSettingsDb.availableCities.includes('Guntur')) {
-      siteSettingsDb.availableCities = ['Guntur', 'Vijayawada', 'Hyderabad', 'Visakhapatnam', 'Bengaluru', 'Mumbai', 'Delhi NCR', 'Chennai', 'Pune'];
-    }
-    if (!siteSettingsDb.promotionalVideoUrl) {
-      siteSettingsDb.promotionalVideoUrl = "https://assets.mixkit.co/videos/preview/mixkit-modern-apartment-building-exterior-41580-large.mp4";
-    }
-    if (!siteSettingsDb.heroHighlightText) {
-      siteSettingsDb.heroHighlightText = "One Click Away";
-    }
-    if (!siteSettingsDb.heroMediaType) {
-      siteSettingsDb.heroMediaType = "image";
-    }
-    if (!siteSettingsDb.heroVideoUrl) {
-      siteSettingsDb.heroVideoUrl = "https://assets.mixkit.co/videos/preview/mixkit-modern-apartment-building-exterior-41580-large.mp4";
-    }
-    if (!siteSettingsDb.heroPopularTags || siteSettingsDb.heroPopularTags.length === 0) {
-      siteSettingsDb.heroPopularTags = ['Apartment', 'Villa', 'Franchise', 'Commercial Property'];
-    }
-    if (!siteSettingsDb.heroBadge1Text) {
-      siteSettingsDb.heroBadge1Text = "View More Pics";
-    }
-    if (!siteSettingsDb.heroBadge2Text) {
-      siteSettingsDb.heroBadge2Text = "Verified Genuine Listings";
-    }
-    if (!siteSettingsDb.mainPageStats) {
-      siteSettingsDb.mainPageStats = defaultSettings.mainPageStats;
-    }
-    insuranceDb = [];
-    servicesDb = [];
+
+    window.dispatchEvent(new Event('nexopp_data_changed'));
   } catch (err) {
-    console.error("Error loading marketplace data from localStorage:", err);
-    propertiesDb = [];
-    franchiseDb = [];
-    dealersDb = [];
-    enquiriesDb = [];
-    franchiseEnquiriesDb = [];
-    siteSettingsDb = defaultSettings;
-    teamMembersDb = [];
-    showcaseVideosDb = defaultShowcaseVideos;
-    showcaseSettingsDb = {
-      maxVideoSizeMB: 200,
-      maxVideoDurationSec: 60,
-      defaultPlaybackDurationSec: 10
-    };
+    console.error("Error loading marketplace data from API:", err);
   }
 };
 
-// Save to LocalStorage and Notify App
+// Save local-only metadata to LocalStorage and Notify App
 export const notifyDataChanged = () => {
   try {
-    localStorage.setItem('nexopp_properties', JSON.stringify(propertiesDb));
-    localStorage.setItem('nexopp_franchises', JSON.stringify(franchiseDb));
-    localStorage.setItem('nexopp_businesses', JSON.stringify(businessDb));
-    localStorage.setItem('nexopp_dealers', JSON.stringify(dealersDb));
-    localStorage.setItem('nexopp_enquiries', JSON.stringify(enquiriesDb));
-    localStorage.setItem('nexopp_franchise_enquiries', JSON.stringify(franchiseEnquiriesDb));
-    localStorage.setItem('nexopp_settings', JSON.stringify(siteSettingsDb));
     localStorage.setItem('nexopp_team_members', JSON.stringify(teamMembersDb));
     localStorage.setItem('nexopp_demand_regions', JSON.stringify(demandRegionsDb));
     localStorage.setItem('nexopp_showcase_videos', JSON.stringify(showcaseVideosDb));
     localStorage.setItem('nexopp_showcase_settings', JSON.stringify(showcaseSettingsDb));
     window.dispatchEvent(new Event('nexopp_data_changed'));
   } catch (err) {
-    console.error("Error saving data to localStorage:", err);
+    console.error("Error saving metadata to localStorage:", err);
   }
 };
 
 // Initialize immediately on module load
-loadData();
+loadDataAsync();
 
 // Mutations
-export const addProperty = (item: PropertyListing) => {
-  propertiesDb = [item, ...propertiesDb];
-  notifyDataChanged();
+export const addProperty = async (item: PropertyListing) => {
+  try {
+    await fetch(`${API_URL}/properties`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item)
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const updateProperty = (id: string, updated: Partial<PropertyListing>) => {
-  propertiesDb = propertiesDb.map(p => p.id === id ? { ...p, ...updated } : p);
-  notifyDataChanged();
+export const updateProperty = async (id: string, updated: Partial<PropertyListing>) => {
+  try {
+    await fetch(`${API_URL}/properties/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated)
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const deleteProperty = (id: string) => {
-  propertiesDb = propertiesDb.filter(p => p.id !== id);
-  showcaseVideosDb = showcaseVideosDb.filter(v => !(v.linkedCategory === 'Property' && v.linkedId === id));
-  notifyDataChanged();
+export const deleteProperty = async (id: string) => {
+  try {
+    await fetch(`${API_URL}/properties/${id}`, { method: 'DELETE' });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const updatePropertyVerification = (id: string, verified: boolean) => {
-  updateProperty(id, { verified });
+export const updatePropertyVerification = async (id: string, verified: boolean) => {
+  await updateProperty(id, { verified });
 };
 
-export const togglePropertyFeatured = (id: string) => {
+export const togglePropertyFeatured = async (id: string) => {
   const item = propertiesDb.find(p => p.id === id);
-  if (item) updateProperty(id, { premium: !item.premium });
+  if (item) await updateProperty(id, { premium: !item.premium });
 };
 
-export const togglePropertyTrending = (id: string) => {
+export const togglePropertyTrending = async (id: string) => {
   const item = propertiesDb.find(p => p.id === id);
-  if (item) updateProperty(id, { trending: !item.trending });
+  if (item) await updateProperty(id, { trending: !item.trending });
 };
 
-export const addFranchise = (item: FranchiseListing) => {
-  franchiseDb = [item, ...franchiseDb];
-  notifyDataChanged();
+export const addFranchise = async (item: FranchiseListing) => {
+  try {
+    await fetch(`${API_URL}/franchises`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item)
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const updateFranchise = (id: string, updated: Partial<FranchiseListing>) => {
-  franchiseDb = franchiseDb.map(f => f.id === id ? { ...f, ...updated } : f);
-  notifyDataChanged();
+export const updateFranchise = async (id: string, updated: Partial<FranchiseListing>) => {
+  try {
+    await fetch(`${API_URL}/franchises/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated)
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const deleteFranchise = (id: string) => {
-  franchiseDb = franchiseDb.filter(f => f.id !== id);
-  showcaseVideosDb = showcaseVideosDb.filter(v => !(v.linkedCategory === 'Franchise' && v.linkedId === id));
-  notifyDataChanged();
+export const deleteFranchise = async (id: string) => {
+  try {
+    await fetch(`${API_URL}/franchises/${id}`, { method: 'DELETE' });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const addDealer = (item: Dealer) => {
-  dealersDb = [item, ...dealersDb];
-  notifyDataChanged();
+export const addDealer = async (item: Dealer) => {
+  try {
+    await fetch(`${API_URL}/dealers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item)
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const updateDealer = (id: string, updated: Partial<Dealer>) => {
-  dealersDb = dealersDb.map(d => d.id === id ? { ...d, ...updated } : d);
-  notifyDataChanged();
+export const updateDealer = async (id: string, updated: Partial<Dealer>) => {
+  try {
+    await fetch(`${API_URL}/dealers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated)
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const deleteDealer = (id: string) => {
-  dealersDb = dealersDb.filter(d => d.id !== id);
-  notifyDataChanged();
+export const deleteDealer = async (id: string) => {
+  try {
+    await fetch(`${API_URL}/dealers/${id}`, { method: 'DELETE' });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const addBusiness = (item: BusinessListing) => {
-  businessDb = [item, ...businessDb];
-  notifyDataChanged();
+export const addBusiness = async (item: BusinessListing) => {
+  try {
+    await fetch(`${API_URL}/businesses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item)
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const deleteBusiness = (id: string) => {
-  businessDb = businessDb.filter(b => b.id !== id);
-  showcaseVideosDb = showcaseVideosDb.filter(v => !(v.linkedCategory === 'Business' && v.linkedId === id));
-  notifyDataChanged();
+export const deleteBusiness = async (id: string) => {
+  try {
+    await fetch(`${API_URL}/businesses/${id}`, { method: 'DELETE' });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
 // Showcase Video Mutations
@@ -901,44 +948,84 @@ export const updateShowcaseSettings = (updated: Partial<ShowcaseSettings>) => {
   notifyDataChanged();
 };
 
-export const deleteEnquiry = (id: string) => {
-  enquiriesDb = enquiriesDb.filter(e => e.id !== id);
-  notifyDataChanged();
+export const deleteEnquiry = async (id: string) => {
+  try {
+    await fetch(`${API_URL}/enquiries/${id}`, { method: 'DELETE' });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const updateEnquiryStatus = (id: string, status: 'New' | 'Contacted' | 'Follow-up' | 'Closed') => {
-  enquiriesDb = enquiriesDb.map(e => e.id === id ? { ...e, status } : e);
-  notifyDataChanged();
+export const updateEnquiryStatus = async (id: string, status: 'New' | 'Contacted' | 'Follow-up' | 'Closed') => {
+  try {
+    await fetch(`${API_URL}/enquiries/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const updateSiteSettings = (settings: Partial<SiteSettings>) => {
-  siteSettingsDb = { ...siteSettingsDb, ...settings };
-  notifyDataChanged();
+export const updateSiteSettings = async (settings: Partial<SiteSettings>) => {
+  try {
+    await fetch(`${API_URL}/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const clearAllStaticData = () => {
-  propertiesDb = [];
-  franchiseDb = [];
-  dealersDb = [];
-  enquiriesDb = [];
-  franchiseEnquiriesDb = [];
+export const clearAllStaticData = async () => {
+  // Clear mock local metadata
   teamMembersDb = [];
   notifyDataChanged();
 };
 
-export const bulkPublishProperties = (ids: string[]) => {
-  propertiesDb = propertiesDb.map(p => ids.includes(p.id) ? { ...p, listingStatus: 'Published' } : p);
-  notifyDataChanged();
+export const bulkPublishProperties = async (ids: string[]) => {
+  try {
+    await fetch(`${API_URL}/properties/bulk-publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const bulkHideProperties = (ids: string[]) => {
-  propertiesDb = propertiesDb.map(p => ids.includes(p.id) ? { ...p, listingStatus: 'Hidden' } : p);
-  notifyDataChanged();
+export const bulkHideProperties = async (ids: string[]) => {
+  try {
+    await fetch(`${API_URL}/properties/bulk-hide`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const bulkDeleteProperties = (ids: string[]) => {
-  propertiesDb = propertiesDb.filter(p => !ids.includes(p.id));
-  notifyDataChanged();
+export const bulkDeleteProperties = async (ids: string[]) => {
+  try {
+    await fetch(`${API_URL}/properties/bulk-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
 export const addTeamMember = (item: TeamMember) => {
@@ -956,38 +1043,92 @@ export const deleteTeamMember = (id: string) => {
   notifyDataChanged();
 };
 
-export const addFranchiseEnquiry = (item: FranchiseEnquiry) => {
-  franchiseEnquiriesDb = [item, ...franchiseEnquiriesDb];
-  notifyDataChanged();
+export const addFranchiseEnquiry = async (item: FranchiseEnquiry) => {
+  try {
+    await fetch(`${API_URL}/enquiries/franchise`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item)
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const updateFranchiseEnquiryStatus = (id: string, status: FranchiseEnquiry['status']) => {
-  franchiseEnquiriesDb = franchiseEnquiriesDb.map(e => e.id === id ? { ...e, status } : e);
-  notifyDataChanged();
+export const updateFranchiseEnquiryStatus = async (id: string, status: FranchiseEnquiry['status']) => {
+  try {
+    await fetch(`${API_URL}/enquiries/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, type: 'Franchise' })
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const assignFranchiseEnquiryBroker = (id: string, brokerId: string, brokerName: string) => {
-  franchiseEnquiriesDb = franchiseEnquiriesDb.map(e => e.id === id ? { ...e, assignedBrokerId: brokerId, assignedBrokerName: brokerName } : e);
-  notifyDataChanged();
+export const assignFranchiseEnquiryBroker = async (id: string, brokerId: string, brokerName: string) => {
+  try {
+    await fetch(`${API_URL}/enquiries/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignedBrokerId: brokerId, assignedBrokerName: brokerName, type: 'Franchise' })
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const deleteFranchiseEnquiry = (id: string) => {
-  franchiseEnquiriesDb = franchiseEnquiriesDb.filter(e => e.id !== id);
-  notifyDataChanged();
+export const deleteFranchiseEnquiry = async (id: string) => {
+  try {
+    await fetch(`${API_URL}/enquiries/${id}?type=Franchise`, { method: 'DELETE' });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const bulkPublishFranchises = (ids: string[]) => {
-  franchiseDb = franchiseDb.map(f => ids.includes(f.id) ? { ...f, approvalStatus: 'Published', status: 'Active' } : f);
-  notifyDataChanged();
+export const bulkPublishFranchises = async (ids: string[]) => {
+  try {
+    await fetch(`${API_URL}/franchises/bulk-publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const bulkArchiveFranchises = (ids: string[]) => {
-  franchiseDb = franchiseDb.map(f => ids.includes(f.id) ? { ...f, approvalStatus: 'Archived' } : f);
-  notifyDataChanged();
+export const bulkArchiveFranchises = async (ids: string[]) => {
+  try {
+    await fetch(`${API_URL}/franchises/bulk-archive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const bulkDeleteFranchises = (ids: string[]) => {
-  franchiseDb = franchiseDb.filter(f => !ids.includes(f.id));
+export const bulkDeleteFranchises = async (ids: string[]) => {
+  try {
+    await fetch(`${API_URL}/franchises/bulk-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    await loadDataAsync();
+  } catch (err) {
+    console.error(err);
+  }
+};
   notifyDataChanged();
 };
 

@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, type ReactNode } from 'react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 export interface User {
   name: string;
   email: string;
@@ -9,9 +11,12 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   isLoginModalOpen: boolean;
   openLoginModal: () => void;
   closeLoginModal: () => void;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (fullName: string, mobile: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loginWithGmail: (email: string, role?: string) => void;
   logout: () => void;
 }
@@ -27,10 +32,57 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return null;
     }
   });
+
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem('venturo_token');
+  });
+
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   const openLoginModal = () => setIsLoginModalOpen(true);
   const closeLoginModal = () => setIsLoginModalOpen(false);
+
+  const login = async (email: string, password: string) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || 'Login failed' };
+      }
+      setUser(data.user);
+      setToken(data.token);
+      localStorage.setItem('venturo_user', JSON.stringify(data.user));
+      localStorage.setItem('venturo_token', data.token);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: 'Cannot connect to backend server' };
+    }
+  };
+
+  const register = async (fullName: string, mobile: string, email: string, password: string) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, mobile, email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || 'Registration failed' };
+      }
+      setUser(data.user);
+      setToken(data.token);
+      localStorage.setItem('venturo_user', JSON.stringify(data.user));
+      localStorage.setItem('venturo_token', data.token);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: 'Cannot connect to backend server' };
+    }
+  };
 
   const loginWithGmail = (emailInput: string, role = 'Verified Investor') => {
     let email = emailInput.trim();
@@ -40,7 +92,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       email = `${email}@gmail.com`;
     }
 
-    // Extract a nice display name from the gmail address
     const namePart = email.split('@')[0];
     const formattedName = namePart
       .split(/[\.\-_]/)
@@ -55,21 +106,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     setUser(newUser);
+    const mockToken = 'mock_jwt_token_' + Date.now();
+    setToken(mockToken);
     try {
       localStorage.setItem('venturo_user', JSON.stringify(newUser));
+      localStorage.setItem('venturo_token', mockToken);
     } catch (e) {}
     setIsLoginModalOpen(false);
   };
 
   const logout = () => {
     setUser(null);
+    setToken(null);
     try {
       localStorage.removeItem('venturo_user');
+      localStorage.removeItem('venturo_token');
     } catch (e) {}
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoginModalOpen, openLoginModal, closeLoginModal, loginWithGmail, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoginModalOpen, openLoginModal, closeLoginModal, login, register, loginWithGmail, logout }}>
       {children}
     </AuthContext.Provider>
   );

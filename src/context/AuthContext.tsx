@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, type ReactNode } from 'reac
 export interface User {
   name: string;
   email: string;
+  phone?: string;
   avatar?: string;
   role?: 'Verified Investor' | 'Franchise Partner' | 'Business Buyer' | 'Capital Partner';
 }
@@ -12,7 +13,7 @@ interface AuthContextType {
   isLoginModalOpen: boolean;
   openLoginModal: () => void;
   closeLoginModal: () => void;
-  loginWithGmail: (email: string, role?: string) => void;
+  loginWithGmail: (email: string, role?: string, customName?: string, customPhone?: string) => void;
   logout: () => void;
 }
 
@@ -32,7 +33,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const openLoginModal = () => setIsLoginModalOpen(true);
   const closeLoginModal = () => setIsLoginModalOpen(false);
 
-  const loginWithGmail = (emailInput: string, role = 'Verified Investor') => {
+  const loginWithGmail = (emailInput: string, role = 'Verified Investor', customName?: string, customPhone?: string) => {
     let email = emailInput.trim();
     if (!email) return;
     
@@ -41,15 +42,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     // Extract a nice display name from the gmail address
-    const namePart = email.split('@')[0];
-    const formattedName = namePart
-      .split(/[\.\-_]/)
-      .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-      .join(' ');
+    let formattedName = '';
+    if (customName && customName.trim()) {
+      formattedName = customName.trim();
+    } else {
+      const namePart = email.split('@')[0];
+      formattedName = namePart
+        .split(/[\.\-_]/)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(' ');
+    }
 
     const newUser: User = {
       name: formattedName || 'Google User',
       email: email,
+      phone: customPhone,
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(formattedName || 'G')}&background=0D9488&color=fff&size=128&bold=true`,
       role: role as any
     };

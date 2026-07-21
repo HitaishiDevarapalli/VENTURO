@@ -32,6 +32,8 @@ export const LoginPage: React.FC = () => {
   const [loginOtpSent, setLoginOtpSent] = useState(false);
   const [loginOtpInput, setLoginOtpInput] = useState('');
   const [countryCode, setCountryCode] = useState('+91');
+  const [loginName, setLoginName] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
 
   // Register inputs
   const [registerName, setRegisterName] = useState('');
@@ -433,8 +435,16 @@ export const LoginPage: React.FC = () => {
                  setError('');
                  setSuccess('');
                  if (!loginOtpSent) {
+                   if (!loginName.trim()) {
+                     setError('Full Name is required');
+                     return;
+                   }
                    if (!loginMobile.trim() || loginMobile.length < 10) {
                      setError('Please enter a valid 10-digit mobile number');
+                     return;
+                   }
+                   if (!loginEmail.trim() || !loginEmail.includes('@')) {
+                     setError('Please enter a valid email address');
                      return;
                    }
                    setLoading(true);
@@ -456,46 +466,26 @@ export const LoginPage: React.FC = () => {
                    setLoading(true);
                    setTimeout(() => {
                      setLoading(false);
-                     loginWithGmail(`${loginMobile}@gmail.com`, 'Verified Investor');
+                     loginWithGmail(loginEmail, 'Verified Investor', loginName, `${countryCode} ${loginMobile}`);
                    }, 800);
                  }
                }}
                style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
              >
                {!loginOtpSent ? (
-                 <div>
-                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
-                     Mobile Number
-                   </label>
-                   <div style={{ position: 'relative', display: 'flex', gap: '8px' }}>
-                     <select
-                       value={countryCode}
-                       onChange={(e) => setCountryCode(e.target.value)}
-                       style={{
-                         padding: '12px',
-                         borderRadius: '12px',
-                         border: '1.5px solid #E2E8F0',
-                         backgroundColor: '#F8FAFC',
-                         fontSize: '0.92rem',
-                         fontWeight: 600,
-                         outline: 'none',
-                         cursor: 'pointer'
-                       }}
-                     >
-                       <option value="+91">+91 (IN)</option>
-                       <option value="+1">+1 (US)</option>
-                       <option value="+44">+44 (UK)</option>
-                       <option value="+971">+971 (UAE)</option>
-                     </select>
-                     <div style={{ position: 'relative', flex: 1 }}>
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                   <div>
+                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+                       Full Name
+                     </label>
+                     <div style={{ position: 'relative' }}>
                        <input
-                         type="tel"
+                         type="text"
                          required
-                         maxLength={10}
-                         placeholder="Enter your mobile number"
-                         value={loginMobile}
+                         placeholder="Enter your name"
+                         value={loginName}
                          onChange={(e) => {
-                           setLoginMobile(e.target.value.replace(/\D/g, ''));
+                           setLoginName(e.target.value);
                            setError('');
                          }}
                          style={{
@@ -513,7 +503,95 @@ export const LoginPage: React.FC = () => {
                          onFocus={(e) => (e.currentTarget.style.borderColor = '#10B981')}
                          onBlur={(e) => (e.currentTarget.style.borderColor = '#E2E8F0')}
                        />
-                       <FaPhoneAlt style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: '13px' }} />
+                       <FaUser style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: '13px' }} />
+                     </div>
+                   </div>
+
+                   <div>
+                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+                       Email Address
+                     </label>
+                     <div style={{ position: 'relative' }}>
+                       <input
+                         type="email"
+                         required
+                         placeholder="name@example.com"
+                         value={loginEmail}
+                         onChange={(e) => {
+                           setLoginEmail(e.target.value);
+                           setError('');
+                         }}
+                         style={{
+                           width: '100%',
+                           padding: '12px 12px 12px 42px',
+                           borderRadius: '12px',
+                           border: '1.5px solid #E2E8F0',
+                           fontSize: '0.92rem',
+                           fontWeight: 500,
+                           outline: 'none',
+                           color: '#0F172A',
+                           boxSizing: 'border-box',
+                           transition: 'border-color 0.2s',
+                         }}
+                         onFocus={(e) => (e.currentTarget.style.borderColor = '#10B981')}
+                         onBlur={(e) => (e.currentTarget.style.borderColor = '#E2E8F0')}
+                       />
+                       <FaEnvelope style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: '13px' }} />
+                     </div>
+                   </div>
+
+                   <div>
+                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+                       Mobile Number
+                     </label>
+                     <div style={{ position: 'relative', display: 'flex', gap: '8px' }}>
+                       <select
+                         value={countryCode}
+                         onChange={(e) => setCountryCode(e.target.value)}
+                         style={{
+                           padding: '12px',
+                           borderRadius: '12px',
+                           border: '1.5px solid #E2E8F0',
+                           backgroundColor: '#F8FAFC',
+                           fontSize: '0.92rem',
+                           fontWeight: 600,
+                           outline: 'none',
+                           cursor: 'pointer'
+                         }}
+                       >
+                         <option value="+91">+91 (IN)</option>
+                         <option value="+1">+1 (US)</option>
+                         <option value="+44">+44 (UK)</option>
+                         <option value="+971">+971 (UAE)</option>
+                       </select>
+                       <div style={{ position: 'relative', flex: 1 }}>
+                         <input
+                           type="tel"
+                           required
+                           maxLength={10}
+                           placeholder="Enter your mobile number"
+                           value={loginMobile}
+                           onChange={(e) => {
+                             setLoginMobile(e.target.value.replace(/\D/g, ''));
+                             setError('');
+                           }}
+                           style={{
+                             width: '100%',
+                             padding: '12px 12px 12px 42px',
+                             borderRadius: '12px',
+                             border: '1.5px solid #E2E8F0',
+                             fontSize: '0.92rem',
+                             fontWeight: 500,
+                             outline: 'none',
+                             color: '#0F172A',
+                             boxSizing: 'border-box',
+                             transition: 'border-color 0.2s',
+                           }}
+                           onFocus={(e) => (e.currentTarget.style.borderColor = '#10B981')}
+                           onBlur={(e) => (e.currentTarget.style.borderColor = '#E2E8F0')}
+                         />
+                         <FaPhoneAlt style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: '13px' }} />
+                       </div>
                      </div>
                    </div>
                  </div>

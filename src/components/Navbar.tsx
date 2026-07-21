@@ -478,7 +478,7 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex: _heroBgIndex, onOpe
                 }}>
                   {user.name.charAt(0).toUpperCase()}
                 </div>
-                <span>{user.name.split(' ')[0]}</span>
+                <span>{user.name}</span>
                 <FaChevronDown style={{ fontSize: '10px', color: '#64748B' }} />
               </button>
 
@@ -492,14 +492,18 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex: _heroBgIndex, onOpe
                   border: '1px solid #E2E8F0',
                   borderRadius: '12px',
                   boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-                  minWidth: '180px',
+                  minWidth: '220px',
                   zIndex: 50,
                   overflow: 'hidden',
                   padding: '6px 0'
                 }}>
                   <div style={{ padding: '8px 16px', borderBottom: '1px solid #F1F5F9' }}>
-                    <div style={{ fontSize: '12px', color: '#64748B' }}>Signed in as</div>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
+                    <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>PROFILE DETAILS</div>
+                    <div style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>{user.name}</div>
+                    <div style={{ fontSize: '12px', color: '#475569', marginTop: '2px', wordBreak: 'break-all' }}>{user.email}</div>
+                    {user.phone && (
+                      <div style={{ fontSize: '11px', color: '#0D9488', fontWeight: 700, marginTop: '2px' }}>📞 {user.phone}</div>
+                    )}
                   </div>
                   <button
                     onClick={() => {

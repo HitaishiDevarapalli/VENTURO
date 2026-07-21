@@ -880,17 +880,30 @@ loadData();
 export const addProperty = (item: PropertyListing) => {
   propertiesDb = [item, ...propertiesDb];
   notifyDataChanged();
+  fetch('http://localhost:8081/api/properties', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(item)
+  }).catch(err => console.error("Sync failed:", err));
 };
 
 export const updateProperty = (id: string, updated: Partial<PropertyListing>) => {
   propertiesDb = propertiesDb.map(p => p.id === id ? { ...p, ...updated } : p);
   notifyDataChanged();
+  fetch(`http://localhost:8081/api/properties/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updated)
+  }).catch(err => console.error("Sync failed:", err));
 };
 
 export const deleteProperty = (id: string) => {
   propertiesDb = propertiesDb.filter(p => p.id !== id);
   showcaseVideosDb = showcaseVideosDb.filter(v => !(v.linkedCategory === 'Property' && v.linkedId === id));
   notifyDataChanged();
+  fetch(`http://localhost:8081/api/properties/${id}`, {
+    method: 'DELETE'
+  }).catch(err => console.error("Sync failed:", err));
 };
 
 export const updatePropertyVerification = (id: string, verified: boolean) => {

@@ -464,8 +464,74 @@ export interface DemandRegion {
   manualOverrideLevel?: 'High' | 'Medium' | 'Low' | null;
 }
 
+const defaultDealers: Dealer[] = [
+  {
+    id: 'd1',
+    companyName: 'Apex Realty Advisors',
+    fullName: 'Rajesh Kumar',
+    logo: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80',
+    photo: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80',
+    rating: 4.9,
+    reviewCount: 38,
+    verified: true,
+    premiumPartner: true,
+    bestSeller: true,
+    yearsExperience: 12,
+    responseTime: '< 15 mins',
+    inventoryCount: 45,
+    coverage: { 'Hyderabad': 25, 'Guntur': 20 },
+    latitude: 17.3850,
+    longitude: 78.4867,
+    phone: '+91 98765 43210',
+    email: 'rajesh@apexrealty.in',
+    specialization: 'Luxury Residential & Commercial'
+  },
+  {
+    id: 'd2',
+    companyName: 'UrbanSpace Realty',
+    fullName: 'Priya Sharma',
+    logo: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
+    photo: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
+    rating: 4.8,
+    reviewCount: 24,
+    verified: true,
+    premiumPartner: false,
+    bestSeller: true,
+    yearsExperience: 8,
+    responseTime: '< 30 mins',
+    inventoryCount: 28,
+    coverage: { 'Hyderabad': 18, 'Vijayawada': 10 },
+    latitude: 17.4401,
+    longitude: 78.3489,
+    phone: '+91 98765 43211',
+    email: 'priya@urbanspace.in',
+    specialization: 'Villas & Gated Communities'
+  },
+  {
+    id: 'd3',
+    companyName: 'PrimeLand Properties',
+    fullName: 'Srinivas Rao',
+    logo: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80',
+    photo: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80',
+    rating: 4.7,
+    reviewCount: 19,
+    verified: true,
+    premiumPartner: true,
+    bestSeller: false,
+    yearsExperience: 15,
+    responseTime: '< 1 hour',
+    inventoryCount: 60,
+    coverage: { 'Guntur': 35, 'Vijayawada': 25 },
+    latitude: 16.3067,
+    longitude: 80.4365,
+    phone: '+91 98765 43212',
+    email: 'srinivas@primeland.in',
+    specialization: 'Commercial & Open Plots'
+  }
+];
+
 const sampleTeamMembers: TeamMember[] = [];
-const sampleDealers: Dealer[] = [];
+const sampleDealers: Dealer[] = defaultDealers;
 const sampleProperties: PropertyListing[] = [];
 const sampleFranchises: FranchiseListing[] = [];
 const sampleBusinesses: BusinessListing[] = [];
@@ -717,6 +783,9 @@ const loadData = () => {
     franchiseDb = f ? JSON.parse(f) : [];
     businessDb = b ? JSON.parse(b) : [];
     dealersDb = d ? JSON.parse(d) : [];
+    if (!dealersDb || dealersDb.length === 0) {
+      dealersDb = defaultDealers;
+    }
     enquiriesDb = e ? JSON.parse(e) : [];
     franchiseEnquiriesDb = fe ? JSON.parse(fe) : [];
     siteSettingsDb = s ? JSON.parse(s) : defaultSettings;

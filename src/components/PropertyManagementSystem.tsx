@@ -1816,40 +1816,47 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                     </h4>
                     <p style={{ color: '#64748B', fontSize: '0.88rem', margin: '0 0 20px 0' }}>Select the authorized realty advisor responsible for client inquiries and site visits</p>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-                      {dealersDb.map(broker => {
-                        const isAssigned = formData.assignedBrokerIds?.includes(broker.id) || formData.dealerId === broker.id;
-                        return (
-                          <div
-                            key={broker.id}
-                            onClick={() => {
-                              const curr = formData.assignedBrokerIds || [];
-                              if (isAssigned) {
-                                setFormData({ ...formData, assignedBrokerIds: curr.filter(id => id !== broker.id) });
-                              } else {
-                                setFormData({ ...formData, assignedBrokerIds: [...curr, broker.id], dealerId: broker.id });
-                              }
-                            }}
-                            style={{ padding: '16px 20px', backgroundColor: isAssigned ? '#EFF6FF' : '#F8FAFC', border: isAssigned ? '2px solid #2563EB' : '1px solid #E2E8F0', borderRadius: '16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s', boxShadow: isAssigned ? '0 4px 12px rgba(37, 99, 235, 0.15)' : 'none' }}
-                          >
-                            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-                              <img src={broker.photo || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=100&q=80'} alt={broker.companyName} style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
+                    {dealersDb.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '32px 20px', backgroundColor: '#F8FAFC', borderRadius: '16px', border: '1px border-dashed #CBD5E1' }}>
+                        <p style={{ color: '#64748B', fontWeight: 600, margin: '0 0 12px 0' }}>No broker partners found in system.</p>
+                        <p style={{ color: '#94A3B8', fontSize: '0.82rem', margin: 0 }}>Brokers can be added from the Broker Management tab in the Admin Panel.</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                        {dealersDb.map(broker => {
+                          const isAssigned = formData.assignedBrokerIds?.includes(broker.id) || formData.dealerId === broker.id;
+                          return (
+                            <div
+                              key={broker.id}
+                              onClick={() => {
+                                const curr = formData.assignedBrokerIds || [];
+                                if (isAssigned) {
+                                  setFormData({ ...formData, assignedBrokerIds: curr.filter(id => id !== broker.id) });
+                                } else {
+                                  setFormData({ ...formData, assignedBrokerIds: [...curr, broker.id], dealerId: broker.id });
+                                }
+                              }}
+                              style={{ padding: '16px 20px', backgroundColor: isAssigned ? '#EFF6FF' : '#F8FAFC', border: isAssigned ? '2px solid #2563EB' : '1px solid #E2E8F0', borderRadius: '16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s', boxShadow: isAssigned ? '0 4px 12px rgba(37, 99, 235, 0.15)' : 'none' }}
+                            >
+                              <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                                <img src={broker.photo || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=100&q=80'} alt={broker.companyName} style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
+                                <div>
+                                  <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.95rem' }}>{broker.companyName}</div>
+                                  <div style={{ fontSize: '0.8rem', color: '#64748B' }}>{broker.fullName || 'Advisor'} • ⭐ {broker.rating}</div>
+                                </div>
+                              </div>
                               <div>
-                                <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.95rem' }}>{broker.companyName}</div>
-                                <div style={{ fontSize: '0.8rem', color: '#64748B' }}>{broker.fullName || 'Advisor'} • ⭐ {broker.rating}</div>
+                                {isAssigned ? (
+                                  <span style={{ padding: '6px 14px', backgroundColor: '#2563EB', color: '#FFF', fontWeight: 800, fontSize: '0.78rem', borderRadius: '20px' }}>✓ ASSIGNED</span>
+                                ) : (
+                                  <span style={{ padding: '6px 14px', backgroundColor: '#E2E8F0', color: '#475569', fontWeight: 700, fontSize: '0.78rem', borderRadius: '20px' }}>SELECT</span>
+                                )}
                               </div>
                             </div>
-                            <div>
-                              {isAssigned ? (
-                                <span style={{ padding: '6px 14px', backgroundColor: '#2563EB', color: '#FFF', fontWeight: 800, fontSize: '0.78rem', borderRadius: '20px' }}>✓ ASSIGNED</span>
-                              ) : (
-                                <span style={{ padding: '6px 14px', backgroundColor: '#E2E8F0', color: '#475569', fontWeight: 700, fontSize: '0.78rem', borderRadius: '20px' }}>SELECT</span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

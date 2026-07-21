@@ -27,6 +27,12 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
+  // New Phone OTP login states
+  const [loginMobile, setLoginMobile] = useState('');
+  const [loginOtpSent, setLoginOtpSent] = useState(false);
+  const [loginOtpInput, setLoginOtpInput] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
+
   // Register inputs
   const [registerName, setRegisterName] = useState('');
   const [registerMobile, setRegisterMobile] = useState('');
@@ -416,150 +422,163 @@ export const LoginPage: React.FC = () => {
                 Welcome Back <span style={{ fontSize: '1.8rem' }}>👋</span>
               </h1>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748B' }}>
-                Sign in to access your account
+                Sign in using your mobile number and verification code
               </p>
             </div>
 
-            {/* Google SSO Button */}
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '12px',
-                border: '1px solid #E2E8F0',
-                backgroundColor: '#FFFFFF',
-                color: '#334155',
-                fontSize: '0.95rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '12px',
-                transition: 'all 0.2s',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.02)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#F8FAFC';
-                e.currentTarget.style.borderColor = '#CBD5E1';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#FFFFFF';
-                e.currentTarget.style.borderColor = '#E2E8F0';
-              }}
-            >
-              <FaGoogle style={{ color: '#EA4335', fontSize: '16px' }} />
-              <span>Continue with Google</span>
-            </button>
+             {/* Form Fields */}
+             <form
+               onSubmit={(e) => {
+                 e.preventDefault();
+                 setError('');
+                 setSuccess('');
+                 if (!loginOtpSent) {
+                   if (!loginMobile.trim() || loginMobile.length < 10) {
+                     setError('Please enter a valid 10-digit mobile number');
+                     return;
+                   }
+                   setLoading(true);
+                   setTimeout(() => {
+                     setLoading(false);
+                     setLoginOtpSent(true);
+                     const code = Math.floor(100000 + Math.random() * 900000).toString();
+                     setGeneratedOtp(code);
+                     setResendTimer(60);
+                     setSimulatedSms({ mobile: loginMobile, otp: code });
+                     setTimeout(() => setSimulatedSms(null), 15000);
+                     setSuccess(`Verification code sent to ${countryCode} ${loginMobile}`);
+                   }, 800);
+                 } else {
+                   if (loginOtpInput.trim() !== generatedOtp) {
+                     setError('Incorrect OTP code. Please try again.');
+                     return;
+                   }
+                   setLoading(true);
+                   setTimeout(() => {
+                     setLoading(false);
+                     loginWithGmail(`${loginMobile}@gmail.com`, 'Verified Investor');
+                   }, 800);
+                 }
+               }}
+               style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+             >
+               {!loginOtpSent ? (
+                 <div>
+                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+                     Mobile Number
+                   </label>
+                   <div style={{ position: 'relative', display: 'flex', gap: '8px' }}>
+                     <select
+                       value={countryCode}
+                       onChange={(e) => setCountryCode(e.target.value)}
+                       style={{
+                         padding: '12px',
+                         borderRadius: '12px',
+                         border: '1.5px solid #E2E8F0',
+                         backgroundColor: '#F8FAFC',
+                         fontSize: '0.92rem',
+                         fontWeight: 600,
+                         outline: 'none',
+                         cursor: 'pointer'
+                       }}
+                     >
+                       <option value="+91">+91 (IN)</option>
+                       <option value="+1">+1 (US)</option>
+                       <option value="+44">+44 (UK)</option>
+                       <option value="+971">+971 (UAE)</option>
+                     </select>
+                     <div style={{ position: 'relative', flex: 1 }}>
+                       <input
+                         type="tel"
+                         required
+                         maxLength={10}
+                         placeholder="Enter your mobile number"
+                         value={loginMobile}
+                         onChange={(e) => {
+                           setLoginMobile(e.target.value.replace(/\D/g, ''));
+                           setError('');
+                         }}
+                         style={{
+                           width: '100%',
+                           padding: '12px 12px 12px 42px',
+                           borderRadius: '12px',
+                           border: '1.5px solid #E2E8F0',
+                           fontSize: '0.92rem',
+                           fontWeight: 500,
+                           outline: 'none',
+                           color: '#0F172A',
+                           boxSizing: 'border-box',
+                           transition: 'border-color 0.2s',
+                         }}
+                         onFocus={(e) => (e.currentTarget.style.borderColor = '#10B981')}
+                         onBlur={(e) => (e.currentTarget.style.borderColor = '#E2E8F0')}
+                       />
+                       <FaPhoneAlt style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: '13px' }} />
+                     </div>
+                   </div>
+                 </div>
+               ) : (
+                 <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+                     Enter 6-Digit OTP
+                   </label>
+                   <div style={{ position: 'relative' }}>
+                     <input
+                       type="text"
+                       required
+                       maxLength={6}
+                       placeholder="XXXXXX"
+                       value={loginOtpInput}
+                       onChange={(e) => {
+                         setLoginOtpInput(e.target.value.replace(/\D/g, ''));
+                         setError('');
+                       }}
+                       style={{
+                         width: '100%',
+                         padding: '12px 12px 12px 42px',
+                         borderRadius: '12px',
+                         border: '1.5px solid #E2E8F0',
+                         fontSize: '1.1rem',
+                         fontWeight: 700,
+                         letterSpacing: '6px',
+                         textAlign: 'left',
+                         outline: 'none',
+                         color: '#0F172A',
+                         boxSizing: 'border-box',
+                         transition: 'border-color 0.2s',
+                       }}
+                       onFocus={(e) => (e.currentTarget.style.borderColor = '#10B981')}
+                       onBlur={(e) => (e.currentTarget.style.borderColor = '#E2E8F0')}
+                     />
+                     <FaLock style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: '14px' }} />
+                   </div>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '0.82rem' }}>
+                     <span style={{ color: '#64748B' }}>
+                       OTP sent to {countryCode} {loginMobile}
+                     </span>
+                     {resendTimer > 0 ? (
+                       <span style={{ color: '#94A3B8', fontWeight: 600 }}>Resend in {resendTimer}s</span>
+                     ) : (
+                       <button
+                         type="button"
+                         onClick={() => {
+                           const code = Math.floor(100000 + Math.random() * 900000).toString();
+                           setGeneratedOtp(code);
+                           setResendTimer(60);
+                           setSimulatedSms({ mobile: loginMobile, otp: code });
+                           setTimeout(() => setSimulatedSms(null), 15000);
+                           setSuccess('New verification code sent');
+                         }}
+                         style={{ background: 'none', border: 'none', color: '#10B981', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                       >
+                         Resend OTP
+                       </button>
+                     )}
+                   </div>
+                 </div>
+               )}
 
-            {/* Divider */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                margin: '24px 0',
-                color: '#94A3B8',
-                fontSize: '0.75rem',
-                fontWeight: 800,
-                letterSpacing: '1px',
-              }}
-            >
-              <div style={{ flex: 1, height: '1px', backgroundColor: '#E2E8F0' }} />
-              <span style={{ padding: '0 16px' }}>OR</span>
-              <div style={{ flex: 1, height: '1px', backgroundColor: '#E2E8F0' }} />
-            </div>
-
-            {/* Form Fields */}
-            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Email Address */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
-                  Email Address
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="email"
-                    required
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setError('');
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 12px 12px 42px',
-                      borderRadius: '12px',
-                      border: '1.5px solid #E2E8F0',
-                      fontSize: '0.92rem',
-                      fontWeight: 500,
-                      outline: 'none',
-                      color: '#0F172A',
-                      boxSizing: 'border-box',
-                      transition: 'border-color 0.2s',
-                    }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = '#10B981')}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = '#E2E8F0')}
-                  />
-                  <FaEnvelope style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: '14px' }} />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
-                  Password
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setError('');
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 42px 12px 42px',
-                      borderRadius: '12px',
-                      border: '1.5px solid #E2E8F0',
-                      fontSize: '0.92rem',
-                      fontWeight: 500,
-                      outline: 'none',
-                      color: '#0F172A',
-                      boxSizing: 'border-box',
-                      transition: 'border-color 0.2s',
-                    }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = '#10B981')}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = '#E2E8F0')}
-                  />
-                  <FaLock style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: '14px' }} />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '14px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: '#94A3B8',
-                      cursor: 'pointer',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                  >
-                    {showPassword ? <FaEyeSlash fontSize="16px" /> : <FaEye fontSize="16px" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Remember me & Forgot Password */}
+               {/* Remember me & Forgot Password */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', cursor: 'pointer', fontWeight: 600 }}>
                   <input
@@ -607,7 +626,7 @@ export const LoginPage: React.FC = () => {
                   boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
                 }}
               >
-                <span>Sign In</span>
+                <span>{!loginOtpSent ? 'Send OTP' : 'Verify OTP'}</span>
                 <FaArrowRight fontSize="13px" />
               </button>
             </form>

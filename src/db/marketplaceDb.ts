@@ -140,6 +140,11 @@ export interface PropertyListing {
   agentImage?: string;
   parking?: string;
 
+  // Property Analytics (Admin Only)
+  viewsCount?: number;
+  uniqueVisitorsCount?: number;
+  lastViewedAt?: string;
+
   // Property Management System Extensions
   propertyPurpose?: 'Sale' | 'Rent' | 'Lease';
   propertySubtype?: string;
@@ -900,6 +905,33 @@ export const togglePropertyFeatured = (id: string) => {
 export const togglePropertyTrending = (id: string) => {
   const item = propertiesDb.find(p => p.id === id);
   if (item) updateProperty(id, { trending: !item.trending });
+};
+
+export const incrementPropertyViewCount = (id: string) => {
+  const prop = propertiesDb.find(p => p.id === id);
+  if (!prop) return;
+  
+  const currentViews = prop.viewsCount || 0;
+  const currentUniques = prop.uniqueVisitorsCount || Math.max(1, Math.floor(currentViews * 0.75));
+  
+  const sessionKey = `viewed_prop_${id}`;
+  const isNewVisitor = !sessionStorage.getItem(sessionKey);
+  if (isNewVisitor) {
+    sessionStorage.setItem(sessionKey, 'true');
+  }
+
+  const updatedViews = currentViews + 1;
+  const updatedUniques = isNewVisitor ? currentUniques + 1 : currentUniques;
+  const nowFormatted = new Date().toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+
+  updateProperty(id, {
+    viewsCount: updatedViews,
+    uniqueVisitorsCount: updatedUniques,
+    lastViewedAt: nowFormatted
+  });
 };
 
 export const addFranchise = (item: FranchiseListing) => {

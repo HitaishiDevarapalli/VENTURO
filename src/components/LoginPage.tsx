@@ -64,7 +64,7 @@ export const LoginPage: React.FC = () => {
   // Load remembered credentials on mount
   useEffect(() => {
     try {
-      const remembered = localStorage.getItem('venturo_remembered_credentials');
+      const remembered = localStorage.getItem('nexoop_remembered_credentials');
       if (remembered) {
         setEmail(remembered);
         setRememberMe(true);
@@ -85,7 +85,7 @@ export const LoginPage: React.FC = () => {
   // Read users helper
   const getRegisteredUsers = (): RegisteredUser[] => {
     try {
-      const data = localStorage.getItem('venturo_registered_users');
+      const data = localStorage.getItem('nexoop_registered_users');
       return data ? JSON.parse(data) : [];
     } catch (e) {
       return [];
@@ -95,7 +95,7 @@ export const LoginPage: React.FC = () => {
   // Save users helper
   const saveRegisteredUsers = (users: RegisteredUser[]) => {
     try {
-      localStorage.setItem('venturo_registered_users', JSON.stringify(users));
+      localStorage.setItem('nexoop_registered_users', JSON.stringify(users));
     } catch (e) {}
   };
 
@@ -132,11 +132,11 @@ export const LoginPage: React.FC = () => {
       const users = getRegisteredUsers();
       
       // Check admin fallback credentials
-      if (email.trim().toLowerCase() === 'admin@venturo.in' && password === 'admin123') {
+      if (email.trim().toLowerCase() === 'admin@nexoop.in' && password === 'admin123') {
         if (rememberMe) {
-          localStorage.setItem('venturo_remembered_credentials', email);
+          localStorage.setItem('nexoop_remembered_credentials', email);
         } else {
-          localStorage.removeItem('venturo_remembered_credentials');
+          localStorage.removeItem('nexoop_remembered_credentials');
         }
         loginWithGmail(email, 'Verified Investor');
         return;
@@ -144,7 +144,7 @@ export const LoginPage: React.FC = () => {
 
       const match = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase() && u.passwordHash === password);
       if (!match) {
-        setError('Invalid email address or password. Try admin@venturo.in / admin123');
+        setError('Invalid email address or password. Try admin@nexoop.in / admin123');
         return;
       }
 
@@ -258,11 +258,11 @@ export const LoginPage: React.FC = () => {
     const match = users.find(u => u.email.toLowerCase() === forgotInput.trim().toLowerCase() || u.mobile === forgotInput.trim());
 
     // Admin recovery fallback
-    if (forgotInput.trim().toLowerCase() === 'admin@venturo.in') {
+    if (forgotInput.trim().toLowerCase() === 'admin@nexoop.in') {
       setLoading(true);
       setTimeout(() => {
         setLoading(false);
-        triggerOtpSend('9999999999', 'admin@venturo.in', 'forgot');
+        triggerOtpSend('9999999999', 'admin@nexoop.in', 'forgot');
         setFlow('otp_verification');
       }, 1000);
       return;

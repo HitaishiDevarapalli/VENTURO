@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { FaGoogle, FaTimes, FaShieldAlt, FaCheckCircle, FaBuilding, FaBriefcase, FaChartLine } from 'react-icons/fa';
 
 export const LoginModal: React.FC = () => {

@@ -69,10 +69,10 @@ import {
   deleteShowcaseVideo,
   updateShowcaseSettings
 } from '../db/marketplaceDb';
-import { BrokerManagementSystem } from './BrokerManagementSystem';
-import { Logo } from './Logo';
-import { PropertyManagementSystem } from './PropertyManagementSystem';
-import { FranchiseManagementSystem } from './FranchiseManagementSystem';
+import { BrokerManagementSystem } from '../components/BrokerManagementSystem';
+import { Logo } from '../components/common/Logo';
+import { PropertyManagementSystem } from '../components/PropertyManagementSystem';
+import { FranchiseManagementSystem } from '../components/FranchiseManagementSystem';
 import type {
   PropertyListing,
   FranchiseListing,

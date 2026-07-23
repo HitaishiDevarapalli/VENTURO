@@ -27,7 +27,7 @@ import {
   FaRulerCombined,
   FaCoins,
 } from 'react-icons/fa';
-import { LiveLocationMap } from './LiveLocationMap';
+import { LiveLocationMap } from './ui/LiveLocationMap';
 
 interface FranchiseMarketplaceProps {
   onExploreResales?: () => void;

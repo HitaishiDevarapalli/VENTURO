@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FaHome, FaBuilding, FaBriefcase, FaCoins, FaInfoCircle, FaChevronDown, FaMapMarkedAlt, FaStore, FaHandHoldingUsd, FaChartLine, FaShieldAlt, FaEnvelope, FaUtensils, FaMedkit, FaSearch, FaRegHeart, FaUser } from 'react-icons/fa';
-import { selectedCity, setSelectedCity } from '../db/marketplaceDb';
-import { searchLivePlaces, geocodeLocationOnline } from '../utils/locationIntelligence';
-import { Logo } from './Logo';
-import { useAuth } from '../context/AuthContext';
+import { selectedCity, setSelectedCity } from '../../db/marketplaceDb';
+import { searchLivePlaces, geocodeLocationOnline } from '../../utils/locationIntelligence';
+import { Logo } from '../common/Logo';
+import { useAuth } from '../../context/AuthContext';
 
 interface NavbarProps {
   heroBgIndex: number;

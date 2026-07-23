@@ -8,7 +8,7 @@ import {
 } from '../db/marketplaceDb';
 import type { PropertyListing } from '../db/marketplaceDb';
 import { COMPREHENSIVE_INDIA_PLACES_DB, searchLivePlaces, geocodeLocationOnline } from '../utils/locationIntelligence';
-import { LocationPickerMap } from './LocationPickerMap';
+import { LocationPickerMap } from './ui/LocationPickerMap';
 import { 
   FaBuilding, FaSearch, FaPlus, FaEdit, FaTrash, 
   FaCrown, FaMapMarkerAlt, FaFileExport, FaCopy, 

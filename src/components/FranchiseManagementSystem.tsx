@@ -39,7 +39,7 @@ import {
   FaLightbulb
 } from 'react-icons/fa';
 import { COMPREHENSIVE_INDIA_PLACES_DB, searchLivePlaces, geocodeLocationOnline } from '../utils/locationIntelligence';
-import { LocationPickerMap } from './LocationPickerMap';
+import { LocationPickerMap } from './ui/LocationPickerMap';
 
 interface FranchiseManagementSystemProps {
   showNotification: (msg: string, type?: string) => void;

@@ -26,7 +26,7 @@ import {
   FaExpand,
   FaFilter,
 } from 'react-icons/fa';
-import { LiveLocationMap } from './LiveLocationMap';
+import { LiveLocationMap } from './ui/LiveLocationMap';
 
 interface PropertyCategoriesProps {
   onPropertyClick?: (id: string) => void;

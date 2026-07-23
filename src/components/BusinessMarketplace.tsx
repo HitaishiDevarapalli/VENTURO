@@ -28,7 +28,7 @@ import {
   FaDollarSign,
   FaBalanceScale,
 } from 'react-icons/fa';
-import { LiveLocationMap } from './LiveLocationMap';
+import { LiveLocationMap } from './ui/LiveLocationMap';
 
 interface BusinessMarketplaceProps {
   onExploreCategory?: (category: any) => void;

@@ -415,35 +415,7 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex: _heroBgIndex, onOpe
             <span>Saved</span>
           </button>
 
-          {/* Post Property Button */}
-          <button
-            onClick={() => {
-              if (onNavigateProperties) onNavigateProperties();
-              if (onNavigateToPage) onNavigateToPage('properties');
-            }}
-            style={{
-              backgroundColor: '#10B981',
-              color: '#FFFFFF',
-              border: 'none',
-              padding: '8px 18px',
-              borderRadius: '20px',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 10px rgba(16, 185, 129, 0.25)',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#059669';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#10B981';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            + Post Property
-          </button>
+
 
           {/* Login / Profile Section */}
           {user ? (

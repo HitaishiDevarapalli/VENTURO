@@ -4,7 +4,8 @@ import {
   addProperty, 
   updateProperty, 
   deleteProperty, 
-  dealersDb 
+  dealersDb,
+  notifyDataChanged
 } from '../db/marketplaceDb';
 import type { PropertyListing } from '../db/marketplaceDb';
 import { COMPREHENSIVE_INDIA_PLACES_DB, searchLivePlaces, geocodeLocationOnline } from '../utils/locationIntelligence';
@@ -1941,10 +1942,60 @@ export const PropertyManagementSystem: React.FC<PropertyManagementSystemProps> =
                 <div style={{ backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', padding: '16px', borderRadius: '16px', textAlign: 'center' }}>
                   <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Views</div>
                   <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#1E3A8A', marginTop: '4px' }}>👁️ {viewAnalyticsProperty.viewsCount || 0}</div>
+                  <div style={{ display: 'flex', gap: '4px', marginTop: '10px' }}>
+                    <button
+                      onClick={() => {
+                        const amt = prompt('Enter new views count:', String(viewAnalyticsProperty.viewsCount || 0));
+                        if (amt !== null && !isNaN(Number(amt))) {
+                          updateProperty(viewAnalyticsProperty.id, { viewsCount: Number(amt) });
+                          setViewAnalyticsProperty({ ...viewAnalyticsProperty, viewsCount: Number(amt) });
+                          notifyDataChanged();
+                        }
+                      }}
+                      style={{ flex: 1, padding: '4px 6px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#1E40AF', fontSize: '0.62rem', fontWeight: 700, borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        updateProperty(viewAnalyticsProperty.id, { viewsCount: 0 });
+                        setViewAnalyticsProperty({ ...viewAnalyticsProperty, viewsCount: 0 });
+                        notifyDataChanged();
+                      }}
+                      style={{ flex: 1, padding: '4px 6px', border: '1px solid #FCA5A5', backgroundColor: '#FEF2F2', color: '#EF4444', fontSize: '0.62rem', fontWeight: 700, borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      Reset
+                    </button>
+                  </div>
                 </div>
                 <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0', padding: '16px', borderRadius: '16px', textAlign: 'center' }}>
                   <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unique Visitors</div>
                   <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#14532D', marginTop: '4px' }}>👤 {viewAnalyticsProperty.uniqueVisitorsCount || Math.max(0, Math.floor((viewAnalyticsProperty.viewsCount || 0) * 0.75))}</div>
+                  <div style={{ display: 'flex', gap: '4px', marginTop: '10px' }}>
+                    <button
+                      onClick={() => {
+                        const amt = prompt('Enter new unique visitors count:', String(viewAnalyticsProperty.uniqueVisitorsCount || 0));
+                        if (amt !== null && !isNaN(Number(amt))) {
+                          updateProperty(viewAnalyticsProperty.id, { uniqueVisitorsCount: Number(amt) });
+                          setViewAnalyticsProperty({ ...viewAnalyticsProperty, uniqueVisitorsCount: Number(amt) });
+                          notifyDataChanged();
+                        }
+                      }}
+                      style={{ flex: 1, padding: '4px 6px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#166534', fontSize: '0.62rem', fontWeight: 700, borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        updateProperty(viewAnalyticsProperty.id, { uniqueVisitorsCount: 0 });
+                        setViewAnalyticsProperty({ ...viewAnalyticsProperty, uniqueVisitorsCount: 0 });
+                        notifyDataChanged();
+                      }}
+                      style={{ flex: 1, padding: '4px 6px', border: '1px solid #FCA5A5', backgroundColor: '#FEF2F2', color: '#EF4444', fontSize: '0.62rem', fontWeight: 700, borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      Reset
+                    </button>
+                  </div>
                 </div>
               </div>
 

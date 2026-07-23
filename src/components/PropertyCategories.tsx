@@ -300,6 +300,7 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
         trending: p.trending || false,
         approvalStatus: p.approvalStatus,
         listingStatus: p.listingStatus,
+        viewsCount: p.viewsCount || 0,
       };
     });
 
@@ -1237,8 +1238,9 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
                         <h4 style={{ margin: '0 0 4px 0', fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>
                           {prop.title}
                         </h4>
-                        <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 500, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 500, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span>{prop.location}</span>
+                          <span style={{ color: '#16A34A', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>👁️ {prop.viewsCount || 0}</span>
                         </div>
 
                         {/* Specs Row */}

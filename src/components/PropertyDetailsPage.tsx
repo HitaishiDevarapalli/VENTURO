@@ -860,6 +860,7 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
               <div className="price-box-footer">
                 <span className="price-loc"><FaMapMarkerAlt /> {property.area}, {property.city}</span>
                 <span className="price-date">Posted: {property.createdDate}</span>
+                <span className="price-date" style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '4px' }}>👁️ {property.viewsCount || 0} Views</span>
               </div>
 
               {dealer && (

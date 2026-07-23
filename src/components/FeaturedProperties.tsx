@@ -123,6 +123,7 @@ export const FeaturedProperties: React.FC<FeaturedPropertiesProps> = ({ onProper
               <div className="property-details">
                 <div className="property-meta-top">
                   <span className="property-type">{prop.category}</span>
+                  <span className="property-type" style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '3px', marginLeft: '8px' }}>👁️ {prop.viewsCount || 0}</span>
                   <span className="property-area">{prop.areaSqFt || prop.area}</span>
                 </div>
                 <h3 

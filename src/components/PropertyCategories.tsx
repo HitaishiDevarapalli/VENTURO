@@ -869,182 +869,74 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
             </div>
 
             {/* Budget Section */}
-            <div style={{ marginBottom: '24px', borderBottom: '1px solid #F1F5F9', paddingBottom: '20px' }}>
+            <div style={{ paddingBottom: '4px' }}>
               <div
-                onClick={() => setBudgetOpen(!budgetOpen)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '14px' }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}
               >
                 <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>Budget</span>
-                {budgetOpen ? <FaChevronUp style={{ fontSize: '11px', color: '#64748B' }} /> : <FaChevronDown style={{ fontSize: '11px', color: '#64748B' }} />}
               </div>
 
-              {budgetOpen && (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '10px' }}>
-                    <span>{isRent ? '₹ 1K' : '₹ 1K'}</span>
-                    <span>{isRent ? '₹ 10 Lac+' : '₹ 1 Cr+'}</span>
-                  </div>
-                  {/* Range Bar Graphic */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '10px' }}>
+                  <span>{isRent ? '₹ 1K' : '₹ 1K'}</span>
+                  <span>{isRent ? '₹ 10 Lac+' : '₹ 1 Cr+'}</span>
+                </div>
+                {/* Range Bar Graphic */}
+                <div
+                  id="budget-slider-track"
+                  style={{ position: 'relative', height: '6px', backgroundColor: '#E2E8F0', borderRadius: '3px', margin: '14px 6px' }}
+                >
+                  {/* Active green range fill */}
                   <div
-                    id="budget-slider-track"
-                    style={{ position: 'relative', height: '6px', backgroundColor: '#E2E8F0', borderRadius: '3px', margin: '14px 6px' }}
-                  >
-                    {/* Active green range fill */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: `${((minBudget - sliderMin) / (sliderMax - sliderMin)) * 100}%`,
-                        right: `${100 - ((maxBudget - sliderMin) / (sliderMax - sliderMin)) * 100}%`,
-                        top: 0,
-                        bottom: 0,
-                        backgroundColor: '#16A34A',
-                        borderRadius: '3px',
-                      }}
-                    />
-                    {/* Min thumb */}
-                    <div
-                      onMouseDown={() => setDragging('min')}
-                      style={{
-                        position: 'absolute',
-                        left: `calc(${((minBudget - sliderMin) / (sliderMax - sliderMin)) * 100}% - 9px)`,
-                        top: '-6px',
-                        width: '18px',
-                        height: '18px',
-                        borderRadius: '50%',
-                        backgroundColor: '#FFFFFF',
-                        border: '3px solid #16A34A',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                        cursor: 'ew-resize',
-                        zIndex: 2,
-                      }}
-                    />
-                    {/* Max thumb */}
-                    <div
-                      onMouseDown={() => setDragging('max')}
-                      style={{
-                        position: 'absolute',
-                        left: `calc(${((maxBudget - sliderMin) / (sliderMax - sliderMin)) * 100}% - 9px)`,
-                        top: '-6px',
-                        width: '18px',
-                        height: '18px',
-                        borderRadius: '50%',
-                        backgroundColor: '#FFFFFF',
-                        border: '3px solid #16A34A',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                        cursor: 'ew-resize',
-                        zIndex: 2,
-                      }}
-                    />
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#16A34A', fontWeight: 800, marginTop: '8px', textAlign: 'center' }}>
-                    Selected: {minBudget < 1 ? `₹ ${Math.round(minBudget * 1000)}` : minBudget >= 100 ? `₹ ${(minBudget / 100).toFixed(1)} Cr` : `₹ ${minBudget.toFixed(1)} Lac`} - {maxBudget >= sliderMax ? (isRent ? '₹ 10 Lac+' : '₹ 1 Cr+') : maxBudget >= 100 ? `₹ ${(maxBudget / 100).toFixed(1)} Cr` : maxBudget < 1 ? `₹ ${Math.round(maxBudget * 1000)}` : `₹ ${maxBudget.toFixed(1)} Lac`}
-                  </div>
+                    style={{
+                      position: 'absolute',
+                      left: `${((minBudget - sliderMin) / (sliderMax - sliderMin)) * 100}%`,
+                      right: `${100 - ((maxBudget - sliderMin) / (sliderMax - sliderMin)) * 100}%`,
+                      top: 0,
+                      bottom: 0,
+                      backgroundColor: '#16A34A',
+                      borderRadius: '3px',
+                    }}
+                  />
+                  {/* Min thumb */}
+                  <div
+                    onMouseDown={() => setDragging('min')}
+                    style={{
+                      position: 'absolute',
+                      left: `calc(${((minBudget - sliderMin) / (sliderMax - sliderMin)) * 100}% - 9px)`,
+                      top: '-6px',
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      backgroundColor: '#FFFFFF',
+                      border: '3px solid #16A34A',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                      cursor: 'ew-resize',
+                      zIndex: 2,
+                    }}
+                  />
+                  {/* Max thumb */}
+                  <div
+                    onMouseDown={() => setDragging('max')}
+                    style={{
+                      position: 'absolute',
+                      left: `calc(${((maxBudget - sliderMin) / (sliderMax - sliderMin)) * 100}% - 9px)`,
+                      top: '-6px',
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      backgroundColor: '#FFFFFF',
+                      border: '3px solid #16A34A',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                      cursor: 'ew-resize',
+                      zIndex: 2,
+                    }}
+                  />
                 </div>
-              )}
-            </div>
-
-            {/* BHK Section */}
-            <div style={{ marginBottom: '24px', borderBottom: '1px solid #F1F5F9', paddingBottom: '20px' }}>
-              <div
-                onClick={() => setBhkOpen(!bhkOpen)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '14px' }}
-              >
-                <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>BHK</span>
-                {bhkOpen ? <FaChevronUp style={{ fontSize: '11px', color: '#64748B' }} /> : <FaChevronDown style={{ fontSize: '11px', color: '#64748B' }} />}
+                <div style={{ fontSize: '11px', color: '#16A34A', fontWeight: 800, marginTop: '8px', textAlign: 'center' }}>
+                  Selected: {minBudget < 1 ? `₹ ${Math.round(minBudget * 1000)}` : minBudget >= 100 ? `₹ ${(minBudget / 100).toFixed(1)} Cr` : `₹ ${minBudget.toFixed(1)} Lac`} - {maxBudget >= sliderMax ? (isRent ? '₹ 10 Lac+' : '₹ 1 Cr+') : maxBudget >= 100 ? `₹ ${(maxBudget / 100).toFixed(1)} Cr` : maxBudget < 1 ? `₹ ${Math.round(maxBudget * 1000)}` : `₹ ${maxBudget.toFixed(1)} Lac`}
+                </div>
               </div>
-
-              {bhkOpen && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  {['1 BHK', '2 BHK', '3 BHK', '4 BHK', '4+ BHK'].map((val) => {
-                    const checked = selectedBhks.includes(val);
-                    return (
-                      <label
-                        key={val}
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: checked ? 700 : 500, color: checked ? '#0F172A' : '#475569', cursor: 'pointer' }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleBhk(val)}
-                          style={{ accentColor: '#16A34A', width: '16px', height: '16px', cursor: 'pointer', borderRadius: '4px' }}
-                        />
-                        <span>{val}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Property Type Section */}
-            <div style={{ marginBottom: '20px', borderBottom: '1px solid #F1F5F9', paddingBottom: '20px' }}>
-              <div
-                onClick={() => setTypeOpen(!typeOpen)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: '14px' }}
-              >
-                <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>Property Type</span>
-                {typeOpen ? <FaChevronUp style={{ fontSize: '11px', color: '#64748B' }} /> : <FaChevronDown style={{ fontSize: '11px', color: '#64748B' }} />}
-              </div>
-
-              {typeOpen && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {[
-                    { label: 'Apartment', icon: FaBuilding },
-                    { label: 'Independent House', icon: FaHome },
-                    { label: 'Villa', icon: FaHome },
-                    { label: 'Plot / Land', icon: FaMapMarkerAlt },
-                    { label: 'Commercial Property', icon: FaBuilding },
-                  ].map((typeItem) => {
-                    const checked = selectedTypes.includes(typeItem.label);
-                    const Icon = typeItem.icon;
-                    return (
-                      <label
-                        key={typeItem.label}
-                        style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', fontWeight: checked ? 700 : 500, color: checked ? '#0F172A' : '#475569', cursor: 'pointer' }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleType(typeItem.label)}
-                          style={{ accentColor: '#16A34A', width: '16px', height: '16px', cursor: 'pointer' }}
-                        />
-                        <Icon style={{ color: checked ? '#16A34A' : '#94A3B8', fontSize: '15px' }} />
-                        <span>{typeItem.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* More Filters Section */}
-            <div>
-              <div
-                onClick={() => setMoreOpen(!moreOpen)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-              >
-                <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>More Filters</span>
-                {moreOpen ? <FaChevronUp style={{ fontSize: '11px', color: '#64748B' }} /> : <FaChevronDown style={{ fontSize: '11px', color: '#64748B' }} />}
-              </div>
-
-              {moreOpen && (
-                <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {['Verified Only', 'Ready to Move', 'Owner Listed', 'Parking Available', 'Park Facing', 'Corner Property'].map((mf) => {
-                    const checked = selectedMoreFilters.includes(mf);
-                    return (
-                      <label key={mf} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: checked ? 700 : 500, color: checked ? '#0F172A' : '#475569', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleMoreFilter(mf)}
-                          style={{ accentColor: '#16A34A', cursor: 'pointer' }}
-                        />
-                        <span>{mf}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           </div>
 

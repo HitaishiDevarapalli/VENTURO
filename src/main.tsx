@@ -4,6 +4,7 @@ import './index.css'
 import { App } from './App.tsx'
 import { WishlistProvider } from './context/WishlistContext.tsx'
 import { AuthProvider } from './context/AuthContext.tsx'
+import { LocationProvider } from './context/LocationContext.tsx'
 import { Provider } from 'react-redux'
 import { store } from './db/store'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -22,9 +23,11 @@ createRoot(document.getElementById('root')!).render(
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <WishlistProvider>
-            <App />
-          </WishlistProvider>
+          <LocationProvider>
+            <WishlistProvider>
+              <App />
+            </WishlistProvider>
+          </LocationProvider>
         </AuthProvider>
       </QueryClientProvider>
     </Provider>

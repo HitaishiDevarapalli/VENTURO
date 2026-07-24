@@ -4,6 +4,8 @@ import { selectedCity, setSelectedCity } from '../../db/marketplaceDb';
 import { searchLivePlaces, geocodeLocationOnline } from '../../utils/locationIntelligence';
 import { Logo } from '../common/Logo';
 import { useAuth } from '../../context/AuthContext';
+import { useLocationStore } from '../../context/LocationContext';
+import { LocationSelectorPanel } from './LocationSelectorPanel';
 
 interface NavbarProps {
   heroBgIndex: number;
@@ -25,50 +27,11 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex: _heroBgIndex, onOpe
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [currentCity, setCurrentCityState] = useState(selectedCity);
 
-  // Live Location Modal State
-  const [showLocationModal, setShowLocationModal] = useState(false);
-  const [locSearchQuery, setLocSearchQuery] = useState('');
-  const [locSuggestions, setLocSuggestions] = useState<any[]>([]);
-  const [isLocSearching, setIsLocSearching] = useState(false);
-  const [locDetecting, setLocDetecting] = useState(false);
+  // Location Context & Panel State
+  const { location } = useLocationStore();
+  const [showLocationPanel, setShowLocationPanel] = useState(false);
 
-  useEffect(() => {
-    if (!locSearchQuery || locSearchQuery.trim().length < 2) {
-      setLocSuggestions([]);
-      return;
-    }
-    setIsLocSearching(true);
-    const timer = setTimeout(() => {
-      searchLivePlaces(locSearchQuery).then(res => {
-        setLocSuggestions(res);
-        setIsLocSearching(false);
-      });
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [locSearchQuery]);
 
-  const handleDetectGPS = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
-    setLocDetecting(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const geo = await geocodeLocationOnline(`${latitude}, ${longitude}`);
-        const newCity = geo.city || geo.area || 'Guntur';
-        setSelectedCity(newCity);
-        setCurrentCityState(newCity);
-        setLocDetecting(false);
-        setShowLocationModal(false);
-      },
-      () => {
-        setLocDetecting(false);
-        alert("Unable to retrieve your location. Please check browser permissions.");
-      }
-    );
-  };
 
   useEffect(() => {
     const handler = () => setCurrentCityState(localStorage.getItem('nexopp_selected_city') || 'Hyderabad');
@@ -272,7 +235,7 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex: _heroBgIndex, onOpe
         <ul style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '2px',
+          gap: '16px',
           listStyle: 'none',
           margin: 0,
           padding: 0,
@@ -280,7 +243,7 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex: _heroBgIndex, onOpe
           {menuItems.map((item) => (
             <li
               key={item.id}
-              style={{ position: 'relative' }}
+              style={{ position: 'relative', display: 'flex', alignItems: 'center', height: '80px' }}
               onMouseEnter={() => {
                 setHoveredItem(item.id);
                 if (item.dropdown) setOpenDropdown(item.id);
@@ -299,17 +262,27 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex: _heroBgIndex, onOpe
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  padding: '8px 14px',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: activeSection === item.id ? 600 : 500,
+                  padding: '8px 4px',
+                  fontSize: '14.5px',
+                  fontWeight: 600,
                   color: getNavTextColor(item.id),
-                  transition: 'color 0.2s ease, background-color 0.2s ease',
+                  transition: 'color 0.2s ease',
                   whiteSpace: 'nowrap',
-                  backgroundColor: hoveredItem === item.id ? '#F0FDF4' : 'transparent',
+                  position: 'relative'
                 }}
               >
                 <span>{item.label}</span>
+                {activeSection === item.id && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '0px',
+                    left: '0',
+                    width: '100%',
+                    height: '2px',
+                    backgroundColor: '#16A34A',
+                    borderRadius: '2px'
+                  }} />
+                )}
                 {item.dropdown && (
                   <FaChevronDown style={{
                     fontSize: '10px',
@@ -377,81 +350,120 @@ export const Navbar: React.FC<NavbarProps> = ({ heroBgIndex: _heroBgIndex, onOpe
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          gap: '12px',
           flexShrink: 0,
           marginLeft: '8px',
         }}>
+          {/* Vertical Separator */}
+          <div style={{ width: '1px', height: '28px', backgroundColor: '#E2E8F0', marginRight: '8px' }} />
+
           {/* Location Trigger Button */}
-          <button
-            onClick={() => setShowLocationModal(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#ECFDF5', border: '1px solid #10B981', padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s' }}
-          >
-            <FaMapMarkedAlt style={{ color: '#10B981', fontSize: '14px' }} />
-            <span style={{ color: '#0F172A', fontWeight: 700, fontSize: '13px' }}>{currentCity || 'Guntur'}</span>
-            <FaChevronDown style={{ color: '#10B981', fontSize: '11px', marginLeft: '2px' }} />
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowLocationPanel(!showLocationPanel)}
+              onMouseEnter={(e) => {
+                if(!showLocationPanel) {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = '#F8FAFC';
+                  (e.currentTarget as HTMLElement).style.borderColor = '#CBD5E1';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if(!showLocationPanel) {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = '#FFFFFF';
+                  (e.currentTarget as HTMLElement).style.borderColor = '#E2E8F0';
+                }
+              }}
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                backgroundColor: showLocationPanel ? '#F8FAFC' : '#FFFFFF', 
+                border: '1px solid',
+                borderColor: showLocationPanel ? '#CBD5E1' : '#E2E8F0',
+                height: '42px',
+                padding: '0 16px', 
+                borderRadius: '21px', 
+                cursor: 'pointer', 
+                transition: 'all 0.2s ease' 
+              }}
+            >
+              <FaMapMarkedAlt style={{ color: '#10B981', fontSize: '15px' }} />
+              <span style={{ color: '#1E293B', fontWeight: 600, fontSize: '13.5px' }}>{location?.city || 'Location'}</span>
+              <FaChevronDown style={{ color: '#64748B', fontSize: '11px', marginLeft: '2px', transition: 'transform 0.2s', transform: showLocationPanel ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+            </button>
+            {showLocationPanel && <LocationSelectorPanel onClose={() => setShowLocationPanel(false)} />}
+          </div>
 
           {/* Saved / Wishlist Button */}
           <button
             onClick={onOpenWishlist}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = '#F8FAFC';
+              (e.currentTarget as HTMLElement).style.borderColor = '#CBD5E1';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = '#FFFFFF';
+              (e.currentTarget as HTMLElement).style.borderColor = '#E2E8F0';
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '8px',
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
-              padding: '6px 14px',
-              borderRadius: '20px',
+              height: '42px',
+              padding: '0 16px',
+              borderRadius: '21px',
               cursor: 'pointer',
-              color: '#0F172A',
-              fontWeight: 600,
-              fontSize: '13px',
-              position: 'relative',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s ease',
             }}
           >
-            <FaRegHeart style={{ color: '#EF4444', fontSize: '14px' }} />
-            <span>Saved</span>
+            <FaRegHeart style={{ color: '#EF4444', fontSize: '15px' }} />
+            <span style={{ color: '#1E293B', fontWeight: 600, fontSize: '13.5px' }}>Saved</span>
           </button>
-
-
 
           {/* Login / Profile Section */}
           {user ? (
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setOpenDropdown(openDropdown === 'user' ? null : 'user')}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = '#F8FAFC';
+                  (e.currentTarget as HTMLElement).style.borderColor = '#CBD5E1';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = '#FFFFFF';
+                  (e.currentTarget as HTMLElement).style.borderColor = '#E2E8F0';
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  backgroundColor: '#F1F5F9',
-                  border: '1px solid #CBD5E1',
-                  padding: '5px 12px',
-                  borderRadius: '20px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  height: '42px',
+                  padding: '0 12px 0 6px',
+                  borderRadius: '21px',
                   cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: '13px',
-                  color: '#1E293B',
+                  transition: 'all 0.2s ease',
                 }}
               >
                 <div style={{
-                  width: '24px',
-                  height: '24px',
+                  width: '30px',
+                  height: '30px',
                   borderRadius: '50%',
                   backgroundColor: '#10B981',
                   color: '#FFF',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '11px',
+                  fontSize: '13px',
                   fontWeight: 700
                 }}>
                   {user.name.charAt(0).toUpperCase()}
                 </div>
-                <span>{user.name}</span>
-                <FaChevronDown style={{ fontSize: '10px', color: '#64748B' }} />
+                <span style={{ color: '#1E293B', fontWeight: 600, fontSize: '13.5px' }}>{user.name}</span>
+                <FaChevronDown style={{ fontSize: '11px', color: '#64748B', marginLeft: '2px' }} />
               </button>
 
               {openDropdown === 'user' && (

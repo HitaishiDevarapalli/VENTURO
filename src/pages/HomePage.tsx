@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { propertiesDb, dealersDb } from '../db/marketplaceDb';
-import { LiveLocationMap } from '../components/ui/LiveLocationMap';
+import { propertiesDb, dealersDb, selectedCity, setSelectedCity, siteSettingsDb } from '../db/marketplaceDb';
 import { ShowcaseVideoCarousel } from '../components/ShowcaseVideoCarousel';
 import {
   FaBuilding,
@@ -8,24 +7,29 @@ import {
   FaMapMarkerAlt,
   FaStore,
   FaBriefcase,
-  FaChartLine,
-  FaIndustry,
-  FaTractor,
-  FaHeart,
-  FaRegHeart,
-  FaBed,
-  FaRulerCombined,
-  FaStar,
-  FaCalculator,
-  FaBalanceScale,
-  FaRobot,
   FaShieldAlt,
-  FaUserTie,
-  FaMoneyCheckAlt,
   FaArrowRight,
   FaCheckCircle,
-  FaFire,
   FaCrown,
+  FaStar,
+  FaSearch,
+  FaChevronDown,
+  FaRegHeart,
+  FaHeart,
+  FaTag,
+  FaHeadset,
+  FaSlidersH,
+  FaBed,
+  FaBath,
+  FaRulerCombined,
+  FaChevronLeft,
+  FaChevronRight,
+  FaTree,
+  FaLeaf,
+  FaUsers,
+  FaCity,
+  FaCoins,
+  FaSmile
 } from 'react-icons/fa';
 
 interface HomePageProps {
@@ -33,8 +37,77 @@ interface HomePageProps {
   onPropertyClick?: (id: string) => void;
 }
 
+const HERO_SLIDES = [
+  {
+    id: 'slide_1',
+    title: 'Ultra Luxury Sky Villa with Private Pool',
+    location: 'Gachibowli, Hyderabad',
+    price: '₹1.82 Cr',
+    bhk: '4 BHK',
+    baths: '5 Bath',
+    area: '3200 Sq.ft',
+    type: 'Villa',
+    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&auto=format&fit=crop&q=80',
+    isPremium: true,
+    isVerified: true
+  },
+  {
+    id: 'slide_2',
+    title: 'Modern High-Rise Penthouse in Benz Circle',
+    location: 'Benz Circle, Vijayawada',
+    price: '₹1.45 Cr',
+    bhk: '3 BHK',
+    baths: '3 Bath',
+    area: '2400 Sq.ft',
+    type: 'Apartment',
+    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80',
+    isPremium: true,
+    isVerified: true
+  },
+  {
+    id: 'slide_3',
+    title: 'Prime Gated Villa Plot near AIIMS',
+    location: 'Mangalagiri, Guntur',
+    price: '₹65 Lakhs',
+    bhk: 'Plot',
+    baths: 'N/A',
+    area: '240 Sq.Yds',
+    type: 'Plots/Land',
+    image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&auto=format&fit=crop&q=80',
+    isPremium: false,
+    isVerified: true
+  }
+];
+
 export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick }) => {
-  const [selectedRadius, setSelectedRadius] = useState('5 KM');
+  // Hero Carousel Index State
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
+  const s = siteSettingsDb.mainPageStats || {
+    propertiesListed: '18,500+',
+    franchisesCount: '950+',
+    verifiedBrokers: '2,400+',
+    citiesCovered: '32',
+    totalPropertyValue: '₹850 Cr+',
+    happyClients: '15K+',
+  };
+
+  const stats = [
+    { icon: FaHome, color: '#16A34A', bg: '#DCFCE7', value: s.propertiesListed, label: 'Properties Listed' },
+    { icon: FaStore, color: '#9333EA', bg: '#F3E8FF', value: s.franchisesCount, label: 'Franchises' },
+    { icon: FaUsers, color: '#EA580C', bg: '#FFEDD5', value: s.verifiedBrokers, label: 'Verified Brokers' },
+    { icon: FaCity, color: '#2563EB', bg: '#DBEAFE', value: s.citiesCovered, label: 'Cities Covered' },
+    { icon: FaCoins, color: '#DB2777', bg: '#FCE7F3', value: s.totalPropertyValue, label: 'Total Property Value' },
+    { icon: FaSmile, color: '#16A34A', bg: '#DCFCE7', value: s.happyClients, label: 'Happy Clients' },
+  ];
+
+  // Search Bar Filter States
+  const [activeSearchTab, setActiveSearchTab] = useState<'Property' | 'Franchise' | 'Business' | 'Plots/Land' | 'Commercial'>('Property');
+  const [searchLocation, setSearchLocationState] = useState(selectedCity || 'Guntur');
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState('BHK');
+  const [budgetFilter, setBudgetFilter] = useState('₹5L - ₹5 Cr');
+  const [priceRangeFilter, setPriceRangeFilter] = useState('Any');
+  const [selectedTag, setSelectedTag] = useState('Villa');
   const [wishlisted, setWishlisted] = useState<Record<string, boolean>>({});
 
   const toggleWishlist = (id: string, e: React.MouseEvent) => {
@@ -42,519 +115,822 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onPropertyClick 
     setWishlisted((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const categories = [
-    { title: 'Apartments', icon: FaBuilding, bg: '#DCFCE7', color: '#16A34A', page: 'flatsPage' },
-    { title: 'Villas', icon: FaHome, bg: '#DBEAFE', color: '#2563EB', page: 'villasPage' },
-    { title: 'Independent Houses', icon: FaHome, bg: '#E0E7FF', color: '#4F46E5', page: 'housesPage' },
-    { title: 'Plots / Land', icon: FaMapMarkerAlt, bg: '#DCFCE7', color: '#16A34A', page: 'landPage' },
-    { title: 'Commercial', icon: FaBuilding, bg: '#FFEDD5', color: '#EA580C', page: 'propertiesPage' },
-    { title: 'Industrial', icon: FaIndustry, bg: '#F3E8FF', color: '#9333EA', page: 'propertiesPage' },
-    { title: 'Farm Land', icon: FaTractor, bg: '#FCE7F3', color: '#DB2777', page: 'landPage' },
-    { title: 'Franchises', icon: FaStore, bg: '#FFE4E6', color: '#E11D48', page: 'franchisePage' },
-    { title: 'Businesses', icon: FaBriefcase, bg: '#E0F2FE', color: '#0284C7', page: 'businessPage' },
+  const handleNextSlide = () => {
+    setCurrentSlideIndex((prev) => (prev + 1) % HERO_SLIDES.length);
+  };
+
+  const handlePrevSlide = () => {
+    setCurrentSlideIndex((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+  };
+
+  const currentSlide = HERO_SLIDES[currentSlideIndex];
+
+  // Category Cards List matching the mockup
+  const popularCategories = [
+    { title: 'Residential', subtitle: 'Find your dream home', icon: FaHome, bg: '#DCFCE7', color: '#16A34A', page: 'flatsPage' },
+    { title: 'Commercial', subtitle: 'Office, Shops & Spaces', icon: FaBuilding, bg: '#DBEAFE', color: '#2563EB', page: 'propertiesPage' },
+    { title: 'Plots & Land', subtitle: 'Invest in Prime Land', icon: FaLeaf, bg: '#DCFCE7', color: '#16A34A', page: 'landPage' },
+    { title: 'Franchise', subtitle: 'Start your Business', icon: FaStore, bg: '#F3E8FF', color: '#9333EA', page: 'franchisePage' },
+    { title: 'Business', subtitle: 'Buy Profitable Business', icon: FaBriefcase, bg: '#E0F2FE', color: '#0284C7', page: 'businessPage' },
+    { title: 'Finance & Insurance', subtitle: 'Secure your Future', icon: FaShieldAlt, bg: '#DCFCE7', color: '#16A34A', page: 'financePage' },
   ];
 
-  const featuredProperties = propertiesDb
-    .slice(0, 4)
-    .map((p) => {
-      const assignedBroker = dealersDb.find(d => d.id === p.dealerId || (p.assignedBrokerIds && p.assignedBrokerIds.includes(d.id)));
-      const brokerName = assignedBroker?.companyName || assignedBroker?.fullName || p.agentName || 'RealtyPlus Advisors';
-      const brokerRating = assignedBroker?.rating ? `${assignedBroker.rating} (${assignedBroker.reviewCount || 10})` : (p.agentRating ? `${p.agentRating} (${p.reviewCount || 10})` : '4.8 (24)');
-      const brokerImg = assignedBroker?.photo || assignedBroker?.logo || p.agentImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80';
-      return {
-        id: p.id,
-        title: p.title || `${p.bedrooms || 3} BHK ${p.category}`,
-        price: p.priceDisplay || (`₹${p.price || 1} L`),
-        badge: p.verified ? 'Verified' : (p.premium ? 'Premium' : 'New Launch'),
-        badgeColor: p.verified ? '#DCFCE7' : (p.premium ? '#FEF08A' : '#E0E7FF'),
-        badgeText: p.verified ? '#16A34A' : (p.premium ? '#854D0E' : '#4F46E5'),
-        badgeIcon: p.verified ? FaCheckCircle : (p.premium ? FaCrown : FaStar),
-        image: p.image || p.imageUrl || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&auto=format&fit=crop&q=80',
-        location: `${p.area ? p.area + ', ' : ''}${p.city || ''}`,
-        bhk: `${p.bedrooms || 3} BHK`,
-        area: p.sqft ? `${p.sqft} Sq.ft` : (p.builtUpArea ? `${p.builtUpArea} Sq.ft` : '1500 Sq.ft'),
-        dist: '1.2 KM Away',
-        brokerName,
-        brokerRating,
-        brokerImg,
-        approvalStatus: p.approvalStatus,
-        listingStatus: p.listingStatus,
-      };
-    });
-
-  const quickTools = [
-    { title: 'Home Loan', subtitle: 'Calculate EMI & Apply Now', icon: FaMoneyCheckAlt, bg: '#DCFCE7', color: '#16A34A', page: 'loansPage' },
-    { title: 'EMI Calculator', subtitle: 'Know your EMI in seconds', icon: FaCalculator, bg: '#DBEAFE', color: '#2563EB', page: 'financePage' },
-    { title: 'Compare Properties', subtitle: 'Compare up to 4 properties', icon: FaBalanceScale, bg: '#FFEDD5', color: '#EA580C', page: 'propertiesPage' },
-    { title: 'AI Assistant', subtitle: 'Get best property recommendations', icon: FaRobot, bg: '#FCE7F3', color: '#DB2777', page: 'propertiesPage' },
-    { title: 'Insurance', subtitle: 'Protect what matters most', icon: FaShieldAlt, bg: '#F3E8FF', color: '#9333EA', page: 'insurancePage' },
-    { title: 'Top Brokers', subtitle: 'Connect with Trusted Brokers', icon: FaUserTie, bg: '#CCFBF1', color: '#0D9488', page: 'propertiesPage' },
-  ];
+  // Featured Listings from marketplaceDb
+  const featuredListings = propertiesDb.slice(0, 4).map((p) => {
+    const assignedBroker = dealersDb.find(d => d.id === p.dealerId || (p.assignedBrokerIds && p.assignedBrokerIds.includes(d.id)));
+    const brokerName = assignedBroker?.companyName || assignedBroker?.fullName || p.agentName || 'RealtyPlus Advisors';
+    const brokerImg = assignedBroker?.photo || assignedBroker?.logo || p.agentImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80';
+    return {
+      id: p.id,
+      title: p.title || `${p.bedrooms || 3} BHK ${p.category}`,
+      price: p.priceDisplay || (`₹${p.price || 1} L`),
+      badge: p.verified ? 'Verified' : (p.premium ? 'Premium' : 'New Launch'),
+      badgeColor: p.verified ? '#DCFCE7' : (p.premium ? '#FEF08A' : '#E0E7FF'),
+      badgeText: p.verified ? '#16A34A' : (p.premium ? '#854D0E' : '#4F46E5'),
+      badgeIcon: p.verified ? FaCheckCircle : (p.premium ? FaCrown : FaStar),
+      image: p.image || p.imageUrl || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&auto=format&fit=crop&q=80',
+      location: `${p.area ? p.area + ', ' : ''}${p.city || 'Guntur'}`,
+      bhk: `${p.bedrooms || 3} BHK`,
+      area: p.sqft ? `${p.sqft} Sq.ft` : (p.builtUpArea ? `${p.builtUpArea} Sq.ft` : '1500 Sq.ft'),
+      brokerName,
+      brokerImg,
+      approvalStatus: p.approvalStatus,
+      listingStatus: p.listingStatus,
+    };
+  });
 
   return (
-    <section style={{ backgroundColor: '#F8FAFC', padding: '2rem 0 5rem 0', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
-      <div style={{ maxWidth: '1360px', width: '100%', margin: '0 auto', padding: '0 24px', boxSizing: 'border-box' }}>
-        
-        {/* Middle Section: Asymmetric 2-Column Layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '36px', marginBottom: '48px' }}>
+    <div style={{ backgroundColor: '#F8FAFC', paddingBottom: '60px', paddingTop: '80px', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
+      
+      {/* 1. HERO SECTION */}
+      <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '50px 24px 20px 24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: '36px', alignItems: 'center' }}>
           
-          {/* LEFT SIDE: Categories + Featured Properties */}
+          {/* Left Column: Headline & Value Proposition */}
           <div>
-            
-            {/* Featured Showcase Videos */}
-            <ShowcaseVideoCarousel onNavigate={onNavigate} onPropertyClick={onPropertyClick} />
-
-            {/* Explore by Category */}
-            <div style={{ marginBottom: '44px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  Explore by Category
-                  <FaChartLine style={{ color: '#2563EB', fontSize: '1.2rem' }} />
-                </h2>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
-                {categories.map((cat, idx) => {
-                  const Icon = cat.icon;
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => onNavigate(cat.page)}
-                      style={{
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: '16px',
-                        border: '1px solid #E2E8F0',
-                        padding: '18px 12px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                        textAlign: 'center',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-3px)';
-                        e.currentTarget.style.borderColor = cat.color;
-                        e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.08)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.borderColor = '#E2E8F0';
-                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.03)';
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '52px',
-                          height: '52px',
-                          borderRadius: '50%',
-                          backgroundColor: cat.bg,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginBottom: '10px',
-                        }}
-                      >
-                        <Icon style={{ color: cat.color, fontSize: '22px' }} />
-                      </div>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#1E293B' }}>
-                        {cat.title}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Top Trust Badge */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              padding: '6px 16px',
+              borderRadius: '20px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              color: '#475569',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              marginBottom: '20px'
+            }}>
+              <FaShieldAlt style={{ color: '#10B981', fontSize: '14px' }} />
+              <span>Trusted by 10,000+ Buyers & Investors</span>
             </div>
 
-            {/* Featured Properties */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
-                  Featured Properties
-                </h2>
-                <button
-                  onClick={() => onNavigate('propertiesPage')}
-                  style={{ background: 'none', border: 'none', color: '#16A34A', fontWeight: 700, fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <span>View All</span>
-                  <FaArrowRight style={{ fontSize: '12px' }} />
-                </button>
+            {/* Main Headline */}
+            <h1 style={{
+              fontSize: '3.2rem',
+              fontWeight: 900,
+              lineHeight: 1.15,
+              color: '#0F172A',
+              letterSpacing: '-0.03em',
+              margin: '0 0 18px 0'
+            }}>
+              Your Next Opportunity<br />
+              Is Just <span style={{ color: '#10B981', position: 'relative', display: 'inline-block' }}>
+                One Click Away
+                {/* Curved Yellow Underline Accent */}
+                <svg style={{ position: 'absolute', bottom: '-10px', left: 0, width: '100%', height: '14px' }} viewBox="0 0 200 12" fill="none">
+                  <path d="M3 9C55 3 145 3 197 9" stroke="#F59E0B" strokeWidth="4" strokeLinecap="round" />
+                </svg>
+              </span>
+            </h1>
+
+            {/* Subtitle */}
+            <p style={{
+              fontSize: '1.05rem',
+              color: '#64748B',
+              lineHeight: 1.6,
+              margin: '0 0 32px 0',
+              maxWidth: '520px',
+              fontWeight: 400
+            }}>
+              Discover verified properties, premium franchises, profitable businesses, financing & insurance — all in one place.
+            </p>
+
+            {/* Trust Features Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <FaShieldAlt style={{ color: '#10B981', fontSize: '18px' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0F172A' }}>Verified Listings</div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748B' }}>100% Trusted</div>
+                </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '18px' }}>
-                {featuredProperties.length === 0 ? (
-                  <div style={{ gridColumn: '1 / -1', backgroundColor: '#FFFFFF', padding: '40px 20px', borderRadius: '20px', border: '1px solid #E2E8F0', textAlign: 'center', color: '#64748B' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🏠</div>
-                    <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', margin: '0 0 6px 0' }}>No Featured Properties Yet</h4>
-                    <p style={{ fontSize: '0.85rem', margin: 0 }}>Properties added to the database will appear here.</p>
-                  </div>
-                ) : (
-                  featuredProperties.map((prop) => {
-                  const BadgeIcon = prop.badgeIcon;
-                  const isFav = !!wishlisted[prop.id];
-                  return (
-                    <div
-                      key={prop.id}
-                      onClick={() => {
-                        if (onPropertyClick) onPropertyClick(prop.id);
-                        else onNavigate('propertiesPage');
-                      }}
-                      style={{
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: '20px',
-                        border: '1px solid #E2E8F0',
-                        overflow: 'hidden',
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        display: 'flex',
-                        flexDirection: 'column',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-4px)';
-                        e.currentTarget.style.boxShadow = '0 12px 30px rgba(0,0,0,0.1)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.04)';
-                      }}
-                    >
-                      {/* Image Banner */}
-                      <div style={{ position: 'relative', height: '160px', backgroundColor: '#0F172A' }}>
-                        <img src={prop.image} alt={prop.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        
-                        {/* Badge */}
-                        {prop.approvalStatus === 'Sold' || prop.listingStatus === 'Sold' ? (
-                          <>
-                            <style>{`
-                              @keyframes soldBadgeFadeIn {
-                                from { opacity: 0; transform: scale(0.9) rotate(-10deg); }
-                                to { opacity: 1; transform: scale(1) rotate(-10deg); }
-                              }
-                            `}</style>
-                            <div
-                              style={{
-                                position: 'absolute',
-                                top: '12px',
-                                left: '12px',
-                                backgroundColor: '#E53935',
-                                color: '#FFFFFF',
-                                padding: '6px 14px',
-                                borderRadius: '9999px',
-                                fontSize: '12px',
-                                fontWeight: 900,
-                                letterSpacing: '0.05em',
-                                boxShadow: '0 4px 10px rgba(229, 57, 53, 0.4)',
-                                zIndex: 10,
-                                transform: 'rotate(-10deg)',
-                                animation: 'soldBadgeFadeIn 0.4s ease-out forwards',
-                                fontFamily: "'Outfit', 'Inter', sans-serif"
-                              }}
-                            >
-                              SOLD
-                            </div>
-                          </>
-                        ) : (
-                          <div style={{ position: 'absolute', top: '12px', left: '12px', backgroundColor: prop.badgeColor, color: prop.badgeText, padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <BadgeIcon />
-                            <span>{prop.badge}</span>
-                          </div>
-                        )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <FaTag style={{ color: '#10B981', fontSize: '16px' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0F172A' }}>Best Prices</div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748B' }}>Market Competitive</div>
+                </div>
+              </div>
 
-                        {/* Wishlist Heart */}
-                        <button
-                          onClick={(e) => toggleWishlist(prop.id, e)}
-                          style={{ position: 'absolute', top: '12px', right: '12px', width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                        >
-                          {isFav ? <FaHeart style={{ color: '#EF4444', fontSize: '14px' }} /> : <FaRegHeart style={{ color: '#FFFFFF', fontSize: '14px' }} />}
-                        </button>
-                      </div>
-
-                      {/* Content */}
-                      <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>{prop.title}</h3>
-                            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#16A34A' }}>{prop.price}</span>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#64748B', marginBottom: '12px', fontWeight: 500 }}>
-                            <FaMapMarkerAlt style={{ color: '#16A34A' }} />
-                            <span>{prop.location}</span>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', fontWeight: 600, color: '#475569', backgroundColor: '#F8FAFC', padding: '8px 10px', borderRadius: '10px', marginBottom: '12px' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><FaBed style={{ color: '#3B82F6' }} /> {prop.bhk}</span>
-                            {prop.area && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><FaRulerCombined style={{ color: '#3B82F6' }} /> {prop.area}</span>}
-                            <span style={{ color: '#16A34A', marginLeft: 'auto' }}>{prop.dist}</span>
-                          </div>
-                        </div>
-
-                        {/* Broker Footer */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F1F5F9', paddingTop: '10px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <img src={prop.brokerImg} alt={prop.brokerName} style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'contain', border: '2px solid #1E40AF', backgroundColor: '#EFF6FF' }} />
-                            <div>
-                              <div style={{ fontSize: '10px', fontWeight: 600, color: '#64748B' }}>Posted by:</div>
-                              <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', wordBreak: 'break-word' }}>{prop.brokerName}</div>
-                            </div>
-                          </div>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <FaStar /> {prop.brokerRating}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }))}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <FaHeadset style={{ color: '#10B981', fontSize: '18px' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0F172A' }}>Expert Support</div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748B' }}>We're Here to Help</div>
+                </div>
               </div>
             </div>
 
           </div>
 
-          {/* RIGHT SIDE: Map Card + Quick Tools & Services Grid */}
-          <div>
-            
-            {/* Find Properties Near You (Interactive Map Card) */}
-            <div
-              style={{
-                backgroundColor: '#FFFFFF',
-                borderRadius: '24px',
-                border: '1px solid #E2E8F0',
-                padding: '22px',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.04)',
-                marginBottom: '28px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
-                  Find Properties Near You
-                </h3>
-                <span style={{ backgroundColor: '#DCFCE7', color: '#16A34A', padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#16A34A' }} /> Live
+          {/* Right Column: Featured Interactive Showcase Card */}
+          <div style={{ position: 'relative' }}>
+            <div style={{
+              position: 'relative',
+              borderRadius: '24px',
+              overflow: 'hidden',
+              height: '380px',
+              boxShadow: '0 20px 40px rgba(15, 23, 42, 0.15)',
+              backgroundColor: '#0F172A'
+            }}>
+              {/* Card Image */}
+              <img
+                src={currentSlide.image}
+                alt={currentSlide.title}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              
+              {/* Overlay Gradient */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'linear-gradient(180deg, rgba(15,23,42,0.3) 0%, rgba(15,23,42,0.85) 100%)'
+              }} />
+
+              {/* Badges Top Left */}
+              <div style={{ position: 'absolute', top: '16px', left: '16px', display: 'flex', gap: '8px', zIndex: 3 }}>
+                <span style={{
+                  padding: '6px 14px',
+                  backgroundColor: '#FEF08A',
+                  color: '#854D0E',
+                  borderRadius: '20px',
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}>
+                  <FaCrown /> Premium Listing
+                </span>
+                <span style={{
+                  padding: '6px 14px',
+                  backgroundColor: '#DCFCE7',
+                  color: '#16A34A',
+                  borderRadius: '20px',
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}>
+                  <FaCheckCircle /> Verified
                 </span>
               </div>
 
-              <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', marginBottom: '16px' }}>
-                {/* Real Live Map component */}
-                <div
-                  style={{
-                    flex: 1,
-                    borderRadius: '16px',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    minHeight: '220px',
-                    border: '1px solid #E2E8F0',
-                  }}
-                >
-                  <LiveLocationMap
-                    items={propertiesDb}
-                    type="property"
-                    height="220px"
-                    onSelectItem={onPropertyClick}
-                  />
-                </div>
+              {/* Wishlist Button Top Right */}
+              <button
+                onClick={(e) => toggleWishlist(currentSlide.id, e)}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.85)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 3
+                }}
+              >
+                {wishlisted[currentSlide.id] ? (
+                  <FaHeart style={{ color: '#EF4444', fontSize: '18px' }} />
+                ) : (
+                  <FaRegHeart style={{ color: '#1E293B', fontSize: '18px' }} />
+                )}
+              </button>
 
-                {/* Search Radius Options */}
-                <div style={{ width: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', marginBottom: '4px' }}>Search Radius</div>
-                  {['1 KM', '3 KM', '5 KM', '10 KM', '20 KM', '50 KM'].map((rad) => {
-                    const isSel = selectedRadius === rad;
-                    return (
-                      <label
-                        key={rad}
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: isSel ? 700 : 500, color: isSel ? '#16A34A' : '#475569', cursor: 'pointer', padding: '4px 0' }}
-                      >
-                        <input
-                          type="radio"
-                          name="radius"
-                          checked={isSel}
-                          onChange={() => setSelectedRadius(rad)}
-                          style={{ accentColor: '#16A34A', cursor: 'pointer' }}
-                        />
-                        <span>{rad}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
+              {/* Navigation Arrow Buttons */}
+              <button
+                onClick={handlePrevSlide}
+                style={{
+                  position: 'absolute',
+                  left: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  backgroundColor: '#FFFFFF',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  zIndex: 4
+                }}
+              >
+                <FaChevronLeft style={{ fontSize: '14px', color: '#1E293B' }} />
+              </button>
 
               <button
-                onClick={() => onNavigate('propertiesPage')}
+                onClick={handleNextSlide}
                 style={{
-                  width: '100%',
-                  backgroundColor: '#16A34A',
-                  color: '#FFFFFF',
+                  position: 'absolute',
+                  right: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  backgroundColor: '#FFFFFF',
                   border: 'none',
-                  borderRadius: '14px',
-                  padding: '12px',
-                  fontSize: '14px',
-                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  zIndex: 4
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#15803D')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#16A34A')}
               >
-                View on Map
+                <FaChevronRight style={{ fontSize: '14px', color: '#1E293B' }} />
               </button>
-            </div>
 
-            {/* Quick Tools & Services Grid (2x3 Grid) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
-              {quickTools.map((tool, idx) => {
-                const Icon = tool.icon;
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => onNavigate(tool.page)}
-                    style={{
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: '18px',
-                      border: '1px solid #E2E8F0',
-                      padding: '16px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-3px)';
-                      e.currentTarget.style.borderColor = tool.color;
-                      e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.08)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.borderColor = '#E2E8F0';
-                      e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.03)';
-                    }}
-                  >
-                    <div
+              {/* Bottom Details Overlay */}
+              <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', zIndex: 3, color: '#FFFFFF' }}>
+                <div style={{ fontSize: '0.9rem', color: '#E2E8F0', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <FaMapMarkerAlt style={{ color: '#10B981' }} />
+                  <span>{currentSlide.location}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '0.85rem', color: '#CBD5E1' }}>
+                    <span><FaBed /> {currentSlide.bhk}</span>
+                    <span><FaBath /> {currentSlide.baths}</span>
+                    <span><FaRulerCombined /> {currentSlide.area}</span>
+                    <span><FaHome /> {currentSlide.type}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <span style={{ fontSize: '1.75rem', fontWeight: 900, color: '#FFFFFF' }}>
+                      {currentSlide.price}
+                    </span>
+                    <button
+                      onClick={() => onNavigate('propertiesPage')}
                       style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: '12px',
-                        backgroundColor: tool.bg,
+                        padding: '10px 20px',
+                        backgroundColor: '#10B981',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '20px',
+                        fontWeight: 800,
+                        fontSize: '0.88rem',
+                        cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '12px',
+                        gap: '6px'
                       }}
                     >
-                      <Icon style={{ color: tool.color, fontSize: '20px' }} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', marginBottom: '4px' }}>{tool.title}</div>
-                      <div style={{ fontSize: '11px', color: '#64748B', lineHeight: 1.4, fontWeight: 500 }}>{tool.subtitle}</div>
-                    </div>
+                      View Details <FaArrowRight style={{ fontSize: '12px' }} />
+                    </button>
                   </div>
-                );
-              })}
-            </div>
+                </div>
 
+                {/* Carousel Dots */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '12px' }}>
+                  {HERO_SLIDES.map((_, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setCurrentSlideIndex(idx)}
+                      style={{
+                        width: idx === currentSlideIndex ? '20px' : '7px',
+                        height: '7px',
+                        borderRadius: '4px',
+                        backgroundColor: idx === currentSlideIndex ? '#10B981' : 'rgba(255,255,255,0.4)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    />
+                  ))}
+                </div>
+
+              </div>
+
+            </div>
           </div>
 
         </div>
+      </div>
 
-        {/* Bottom Section: 3 Horizontal Columns (Franchise, Insights, Testimonial) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '28px', borderTop: '1px solid #E2E8F0', paddingTop: '40px' }}>
+      {/* 2. FLOATING SEARCH & FILTER CARD (Wide Horizontal Bar as in Picture 2) */}
+      <div style={{ maxWidth: '1360px', margin: '24px auto 48px auto', padding: '0 24px' }}>
+        <div style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: '24px',
+          padding: '32px 36px',
+          boxShadow: '0 20px 50px -10px rgba(15, 23, 42, 0.07), 0 0 1px rgba(0,0,0,0.05)',
+          border: '1px solid #E2E8F0'
+        }}>
           
-          {/* Column 1: Top Franchise Opportunities */}
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '24px', border: '1px solid #E2E8F0', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>Top Franchise Opportunities</h3>
-              <button onClick={() => onNavigate('franchisePage')} style={{ background: 'none', border: 'none', color: '#16A34A', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span>View All</span> <FaArrowRight style={{ fontSize: '10px' }} />
-              </button>
+          {/* Top Category Tabs (5 Pills in 1 Single Horizontal Row) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', flexWrap: 'nowrap', overflowX: 'auto' }}>
+            {[
+              { id: 'Property', label: 'Property', icon: FaHome },
+              { id: 'Franchise', label: 'Franchise', icon: FaStore },
+              { id: 'Business', label: 'Business', icon: FaBriefcase },
+              { id: 'Plots/Land', label: 'Plots/Land', icon: FaMapMarkerAlt },
+              { id: 'Commercial', label: 'Commercial', icon: FaBuilding },
+            ].map((tab) => {
+              const TabIcon = tab.icon;
+              const isActive = activeSearchTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveSearchTab(tab.id as any)}
+                  style={{
+                    padding: '10px 22px',
+                    borderRadius: '20px',
+                    border: isActive ? 'none' : '1px solid #E2E8F0',
+                    backgroundColor: isActive ? '#00A86B' : '#F8FAFC',
+                    color: isActive ? '#FFFFFF' : '#475569',
+                    fontWeight: isActive ? 800 : 600,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isActive ? '0 4px 14px rgba(0, 168, 107, 0.3)' : 'none',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <TabIcon style={{ fontSize: '14px' }} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Filter Dropdowns Grid (1 Horizontal Row) */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1.3fr 1.1fr 1.1fr 1.1fr auto 1.4fr',
+            gap: '14px',
+            alignItems: 'center'
+          }}>
+
+            {/* 1. Search Location */}
+            <div style={{
+              backgroundColor: '#F8FAFC',
+              border: '1.5px solid #E2E8F0',
+              borderRadius: '14px',
+              padding: '10px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
+            }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>
+                Search Location
+              </span>
+              <select
+                value={searchLocation}
+                onChange={(e) => {
+                  setSearchLocationState(e.target.value);
+                  setSelectedCity(e.target.value);
+                }}
+                style={{
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  color: '#0F172A',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  paddingTop: '2px'
+                }}
+              >
+                <option value="Guntur">Guntur</option>
+                <option value="Vijayawada">Vijayawada</option>
+                <option value="Hyderabad">Hyderabad</option>
+                <option value="Visakhapatnam">Visakhapatnam</option>
+                <option value="Bengaluru">Bengaluru</option>
+                <option value="Mumbai">Mumbai</option>
+                <option value="Chennai">Chennai</option>
+              </select>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-              {[
-                { name: 'SUBWAY', color: '#15803D', bg: '#DCFCE7' },
-                { name: 'KFC', color: '#DC2626', bg: '#FEE2E2' },
-                { name: 'Café Coffee Day', color: '#B91C1C', bg: '#FFE4E6' },
-                { name: "Domino's", color: '#1D4ED8', bg: '#DBEAFE' },
-                { name: 'Apollo Pharmacy', color: '#0D9488', bg: '#CCFBF1' },
-              ].map((brand, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => onNavigate('franchisePage')}
-                  style={{ padding: '12px 18px', borderRadius: '14px', backgroundColor: brand.bg, color: brand.color, fontWeight: 800, fontSize: '13px', cursor: 'pointer', border: '1px solid transparent', transition: 'all 0.2s', flexGrow: 1, textAlign: 'center' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            {/* 2. Property Type */}
+            <div style={{
+              backgroundColor: '#F8FAFC',
+              border: '1.5px solid #E2E8F0',
+              borderRadius: '14px',
+              padding: '10px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
+            }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>
+                Property Type
+              </span>
+              <select
+                value={propertyTypeFilter}
+                onChange={(e) => setPropertyTypeFilter(e.target.value)}
+                style={{
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  color: '#0F172A',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  paddingTop: '2px'
+                }}
+              >
+                <option value="BHK">BHK</option>
+                <option value="1 BHK">1 BHK</option>
+                <option value="2 BHK">2 BHK</option>
+                <option value="3 BHK">3 BHK</option>
+                <option value="4 BHK">4 BHK / Villa</option>
+              </select>
+            </div>
+
+            {/* 3. Budget */}
+            <div style={{
+              backgroundColor: '#F8FAFC',
+              border: '1.5px solid #E2E8F0',
+              borderRadius: '14px',
+              padding: '10px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
+            }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>
+                Budget
+              </span>
+              <select
+                value={budgetFilter}
+                onChange={(e) => setBudgetFilter(e.target.value)}
+                style={{
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  color: '#0F172A',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  paddingTop: '2px'
+                }}
+              >
+                <option value="₹5L - ₹5 Cr">₹5L - ₹5 Cr</option>
+                <option value="Under ₹50L">Under ₹50L</option>
+                <option value="₹50L - ₹1 Cr">₹50L - ₹1 Cr</option>
+                <option value="₹1 Cr - ₹3 Cr">₹1 Cr - ₹3 Cr</option>
+                <option value="₹3 Cr+">₹3 Cr+</option>
+              </select>
+            </div>
+
+            {/* 4. Price Range */}
+            <div style={{
+              backgroundColor: '#F8FAFC',
+              border: '1.5px solid #E2E8F0',
+              borderRadius: '14px',
+              padding: '10px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
+            }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>
+                Price Range
+              </span>
+              <select
+                value={priceRangeFilter}
+                onChange={(e) => setPriceRangeFilter(e.target.value)}
+                style={{
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  color: '#0F172A',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  paddingTop: '2px'
+                }}
+              >
+                <option value="Any">Any</option>
+                <option value="Min Price">Min Price</option>
+                <option value="Max Price">Max Price</option>
+              </select>
+            </div>
+
+            {/* 5. More Filters Button */}
+            <button
+              onClick={() => onNavigate('propertiesPage')}
+              style={{
+                padding: '16px 20px',
+                borderRadius: '14px',
+                border: '1.5px solid #E2E8F0',
+                backgroundColor: '#F8FAFC',
+                color: '#475569',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <FaSlidersH /> More Filters
+            </button>
+
+            {/* 6. Search Button */}
+            <button
+              onClick={() => onNavigate('propertiesPage')}
+              style={{
+                padding: '16px 28px',
+                borderRadius: '14px',
+                backgroundColor: '#00A86B',
+                color: '#FFFFFF',
+                border: 'none',
+                fontWeight: 800,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 6px 18px rgba(0, 168, 107, 0.3)'
+              }}
+            >
+              <FaSearch /> Search Properties
+            </button>
+
+          </div>
+
+          {/* Use My Location Checkbox */}
+          <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              fontSize: '0.88rem',
+              fontWeight: 700,
+              color: '#00A86B',
+              userSelect: 'none'
+            }}>
+              <input
+                type="checkbox"
+                style={{ width: '16px', height: '16px', accentColor: '#00A86B', cursor: 'pointer', borderRadius: '4px' }}
+              />
+              Use My Location
+            </label>
+          </div>
+
+          {/* Popular Searches Row */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: '16px',
+            paddingTop: '16px',
+            borderTop: '1px solid #F1F5F9'
+          }}>
+            {/* Left: Popular Searches */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#475569' }}>
+                Popular Searches:
+              </span>
+              {['Apartment', 'Villa', 'Plots', 'Commercial', 'Franchise', 'Farm Land'].map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => {
+                    setSelectedTag(tag);
+                    if (tag === 'Apartment') onNavigate('flatsPage');
+                    else if (tag === 'Plots') onNavigate('landPage');
+                    else if (tag === 'Franchise') onNavigate('franchisePage');
+                    else onNavigate('propertiesPage');
+                  }}
+                  style={{
+                    padding: '6px 16px',
+                    borderRadius: '16px',
+                    border: tag === selectedTag ? 'none' : '1px solid #E2E8F0',
+                    backgroundColor: tag === selectedTag ? '#DCFCE7' : '#F8FAFC',
+                    color: tag === selectedTag ? '#16A34A' : '#64748B',
+                    fontWeight: tag === selectedTag ? 800 : 600,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
                 >
-                  {brand.name}
-                </div>
+                  {tag}
+                </button>
               ))}
             </div>
+
+            {/* Right: Advanced Search Link */}
+            <button
+              onClick={() => onNavigate('propertiesPage')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#00A86B',
+                fontWeight: 800,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              Advanced Search <FaArrowRight style={{ fontSize: '11px' }} />
+            </button>
           </div>
 
-          {/* Column 2: Investment Insights */}
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '24px', border: '1px solid #E2E8F0', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>Investment Insights</h3>
-              <button onClick={() => onNavigate('propertiesPage')} style={{ background: 'none', border: 'none', color: '#16A34A', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span>View All</span> <FaArrowRight style={{ fontSize: '10px' }} />
-              </button>
-            </div>
+        </div>
+      </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {[
-                { title: 'Hyderabad Property Prices', val: '+12.4%', icon: FaBuilding, color: '#16A34A' },
-                { title: 'Guntur Best ROI City', val: '+18.7%', icon: FaChartLine, color: '#16A34A' },
-                { title: 'Villas High Demand', val: '+23.1%', icon: FaHome, color: '#16A34A' },
-              ].map((item, idx) => {
-                const Icon = item.icon;
-                return (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', backgroundColor: '#F8FAFC', border: '1px solid #F1F5F9' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', fontWeight: 700, color: '#334155' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#E0F2FE', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284C7' }}>
-                        <Icon style={{ fontSize: '14px' }} />
-                      </div>
-                      <span>{item.title}</span>
-                    </div>
-                    <span style={{ fontSize: '14px', fontWeight: 800, color: item.color }}>{item.val}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Column 3: What Our Clients Say */}
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '24px', border: '1px solid #E2E8F0', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>What Our Clients Say</h3>
-              <button onClick={() => alert('Viewing All Reviews...')} style={{ background: 'none', border: 'none', color: '#16A34A', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span>View All</span> <FaArrowRight style={{ fontSize: '10px' }} />
-              </button>
-            </div>
-
-            <div style={{ padding: '16px', borderRadius: '16px', backgroundColor: '#F8FAFC', border: '1px solid #F1F5F9' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#F59E0B', marginBottom: '10px', fontSize: '14px' }}>
-                <FaStar /><FaStar /><FaStar /><FaStar /><FaStar />
-              </div>
-              <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.6, margin: '0 0 16px 0', fontStyle: 'italic', fontWeight: 500 }}>
-                "Found my dream villa through TheNexOop. Amazing experience and verified listings made everything seamless!"
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" alt="Client" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }} />
+      {/* Stats Row (6 Horizontal Pill Cards) */}
+      <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 24px 40px 24px' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(6, 1fr)',
+            gap: '16px',
+          }}
+        >
+          {stats.map((stat, idx) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={idx}
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '18px',
+                  padding: '18px 16px',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
+                  border: '1px solid #F1F5F9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-3px)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.04)';
+                }}
+              >
+                <div
+                  style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '50%',
+                    backgroundColor: stat.bg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Icon style={{ color: stat.color, fontSize: '20px' }} />
+                </div>
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>Rajesh Kumar</div>
-                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>Investor, Guntur AP</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.1 }}>
+                    {stat.value}
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748B', margin: '4px 0 0 0' }}>
+                    {stat.label}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            );
+          })}
+        </div>
+      </div>
 
+      {/* 3. POPULAR CATEGORIES SECTION */}
+      <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 24px 40px 24px' }}>
+        
+        {/* Section Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+            Popular Categories
+          </h2>
+          <button
+            onClick={() => onNavigate('propertiesPage')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#10B981',
+              fontWeight: 700,
+              fontSize: '0.92rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span>View All Categories</span>
+            <FaArrowRight style={{ fontSize: '12px' }} />
+          </button>
+        </div>
+
+        {/* Categories Grid (6 Cards) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px' }}>
+          {popularCategories.map((cat, idx) => {
+            const CatIcon = cat.icon;
+            return (
+              <div
+                key={idx}
+                onClick={() => onNavigate(cat.page)}
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '20px',
+                  border: '1px solid #E2E8F0',
+                  padding: '24px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.borderColor = cat.color;
+                  e.currentTarget.style.boxShadow = '0 12px 25px rgba(0,0,0,0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.03)';
+                }}
+              >
+                {/* Icon Container */}
+                <div style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '14px',
+                  backgroundColor: cat.bg,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '16px'
+                }}>
+                  <CatIcon style={{ color: cat.color, fontSize: '20px' }} />
+                </div>
+
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A', marginBottom: '4px' }}>
+                  {cat.title}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 500, lineHeight: 1.4 }}>
+                  {cat.subtitle}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
       </div>
-    </section>
+
+      {/* 4. SHOWCASE & FEATURED PROPERTIES */}
+      <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 24px' }}>
+        <ShowcaseVideoCarousel onNavigate={onNavigate} onPropertyClick={onPropertyClick} />
+      </div>
+
+    </div>
   );
 };
 

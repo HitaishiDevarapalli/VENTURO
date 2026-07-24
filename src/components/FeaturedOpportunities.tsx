@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FaHeart, FaRegHeart, FaChevronLeft, FaChevronRight, FaMapMarkerAlt, FaClock, FaArrowRight } from 'react-icons/fa';
 import { useWishlist } from '../context/WishlistContext';
-import { propertiesDb, franchiseDb, selectedCity } from '../db/marketplaceDb';
+import { propertiesDb, franchiseDb, getDistance } from '../db/marketplaceDb';
+import { useLocationStore } from '../context/LocationContext';
 
 interface FeaturedItem {
   id: string;
@@ -29,6 +30,7 @@ const categoryColors: Record<string, string> = {
 export const FeaturedOpportunities: React.FC<FeaturedOpportunitiesProps> = ({ onPropertyClick, onBuyProperty: _onBuyProperty, onViewAll }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toggleWishlist, isWishlisted } = useWishlist();
+  const { location } = useLocationStore();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [_activeTab, _setActiveTab] = useState<'ALL' | 'PROPERTY' | 'FRANCHISE'>('ALL');
   const [tick, setTick] = useState(0);
@@ -42,13 +44,21 @@ export const FeaturedOpportunities: React.FC<FeaturedOpportunitiesProps> = ({ on
   const items: FeaturedItem[] = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     tick;
-    const matchLoc = (locStr?: string, cityStr?: string) => {
-      if (!selectedCity || selectedCity === 'All India' || selectedCity === 'All Cities') return true;
-      return (locStr?.toLowerCase().includes(selectedCity.toLowerCase()) || cityStr?.toLowerCase().includes(selectedCity.toLowerCase()));
+    const matchLoc = (lat?: number, lng?: number, locStr?: string, cityStr?: string) => {
+      if (location && location.lat && location.lng) {
+        if (lat && lng) {
+          const dist = getDistance(location.lat, location.lng, lat, lng);
+          return dist <= 50; // 50km radius
+        } else {
+          const loc = location.city.toLowerCase() || location.displayName.toLowerCase();
+          return (locStr?.toLowerCase().includes(loc) || cityStr?.toLowerCase().includes(loc));
+        }
+      }
+      return true; // If no location set, show all
     };
 
     const propItems: FeaturedItem[] = propertiesDb
-      .filter(p => matchLoc(`${p.area}, ${p.city}`, p.city))
+      .filter(p => matchLoc(p.latitude, p.longitude, `${p.area}, ${p.city}`, p.city))
       .map(p => ({
         id: p.id,
         title: p.title,
@@ -61,7 +71,7 @@ export const FeaturedOpportunities: React.FC<FeaturedOpportunitiesProps> = ({ on
       }));
 
     const franItems: FeaturedItem[] = franchiseDb
-      .filter(f => matchLoc(f.location, f.city))
+      .filter(f => matchLoc(f.latitude, f.longitude, `${f.location}, ${f.city}`, f.city))
       .map(f => ({
         id: f.id,
         title: f.brand,

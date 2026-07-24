@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FaHeart, FaRegHeart, FaShoppingCart } from 'react-icons/fa';
 import { useWishlist } from '../context/WishlistContext';
-import { propertiesDb, selectedCity } from '../db/marketplaceDb';
+import { propertiesDb, getDistance } from '../db/marketplaceDb';
+import { useLocationStore } from '../context/LocationContext';
 
 interface FeaturedPropertiesProps {
   onPropertyClick?: (id: string) => void;
@@ -11,6 +12,7 @@ interface FeaturedPropertiesProps {
 
 export const FeaturedProperties: React.FC<FeaturedPropertiesProps> = ({ onPropertyClick, onBuyProperty, categoryFilter }) => {
   const { toggleWishlist, isWishlisted } = useWishlist();
+  const { location } = useLocationStore();
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -23,9 +25,15 @@ export const FeaturedProperties: React.FC<FeaturedPropertiesProps> = ({ onProper
   tick;
 
   const filteredProperties = propertiesDb.filter(prop => {
-    if (selectedCity && selectedCity !== 'All India' && selectedCity !== 'All Cities') {
-      const matchCity = prop.city?.toLowerCase().includes(selectedCity.toLowerCase()) || prop.state?.toLowerCase().includes(selectedCity.toLowerCase()) || prop.area?.toLowerCase().includes(selectedCity.toLowerCase());
-      if (!matchCity) return false;
+    if (location && location.lat && location.lng) {
+      if (prop.latitude && prop.longitude) {
+        const dist = getDistance(location.lat, location.lng, prop.latitude, prop.longitude);
+        if (dist > 50) return false;
+      } else {
+        const loc = location.city.toLowerCase() || location.displayName.toLowerCase();
+        const matchCity = prop.city?.toLowerCase().includes(loc) || prop.state?.toLowerCase().includes(loc) || prop.area?.toLowerCase().includes(loc);
+        if (!matchCity) return false;
+      }
     }
     if (categoryFilter === 'BuyApartment') return prop.category === 'Apartment';
     if (categoryFilter === 'BuyHouse') return prop.category === 'Villa' || prop.category === 'House';

@@ -27,6 +27,7 @@ import {
   FaFilter,
 } from 'react-icons/fa';
 import { LiveLocationMap } from './ui/LiveLocationMap';
+import { useLocationStore } from '../context/LocationContext';
 
 interface PropertyCategoriesProps {
   onPropertyClick?: (id: string) => void;
@@ -52,8 +53,9 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
   onBack,
 }) => {
   // Top Search Card State
+  const { location } = useLocationStore();
   const [activeTab, setActiveTab] = useState<'Buy' | 'Rent' | 'Commercial' | 'Plots' | 'New Projects'>('Buy');
-  const [locationText, setLocationText] = useState(selectedCity || '');
+  const [locationText, setLocationText] = useState('');
   const [propertyType, setPropertyType] = useState('All Types');
   const [budget, setBudget] = useState('₹ 1K - 1Cr+');
   const [bhkFilter, setBhkFilter] = useState('Any BHK');
@@ -329,8 +331,19 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
         if (!match) return false;
       }
 
-      // 2. City / Location Input Text
-      if (locationText && locationText.trim() !== '') {
+      // 2. Geospatial Location Filtering
+      if (location && location.lat && location.lng) {
+        if (item.latitude && item.longitude) {
+          const dist = getDistance(location.lat, location.lng, item.latitude, item.longitude);
+          // Only show properties within 50km radius
+          if (dist > 50) return false;
+        } else {
+          // Fallback to string matching if property doesn't have lat/lng yet in the mock DB
+          const loc = location.city.toLowerCase() || location.displayName.toLowerCase();
+          const matchLoc = item.location.toLowerCase().includes(loc) || (item.city && item.city.toLowerCase().includes(loc));
+          if (!matchLoc) return false;
+        }
+      } else if (locationText && locationText.trim() !== '') {
         const loc = locationText.toLowerCase();
         if (!loc.includes('current location') && !loc.includes('gps')) {
           const matchLoc = item.location.toLowerCase().includes(loc) || (item.city && item.city.toLowerCase().includes(loc));
@@ -397,7 +410,7 @@ export const PropertyCategories: React.FC<PropertyCategoriesProps> = ({
 
       return true;
     });
-  }, [propertiesDb, searchQuery, locationText, activeTab, selectedBhks, selectedTypes, selectedMoreFilters, minBudget, maxBudget, activeQuickFilter]);
+  }, [propertiesDb, searchQuery, locationText, location, activeTab, selectedBhks, selectedTypes, selectedMoreFilters, minBudget, maxBudget, activeQuickFilter]);
 
   const totalPages = Math.ceil(displayProperties.length / itemsPerPage);
   const validPage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));

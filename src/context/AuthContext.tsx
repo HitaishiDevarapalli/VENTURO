@@ -4,6 +4,8 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
+  gender?: string;
+  district?: string;
   avatar?: string;
   role?: 'Verified Investor' | 'Franchise Partner' | 'Business Buyer' | 'Capital Partner';
 }
@@ -13,7 +15,7 @@ interface AuthContextType {
   isLoginModalOpen: boolean;
   openLoginModal: () => void;
   closeLoginModal: () => void;
-  loginWithGmail: (email: string, role?: string, customName?: string, customPhone?: string) => void;
+  loginWithGmail: (email: string, role?: string, customName?: string, customPhone?: string, customGender?: string, customDistrict?: string) => void;
   logout: () => void;
 }
 
@@ -33,7 +35,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const openLoginModal = () => setIsLoginModalOpen(true);
   const closeLoginModal = () => setIsLoginModalOpen(false);
 
-  const loginWithGmail = (emailInput: string, role = 'Verified Investor', customName?: string, customPhone?: string) => {
+  const loginWithGmail = (
+    emailInput: string,
+    role = 'Verified Investor',
+    customName?: string,
+    customPhone?: string,
+    customGender?: string,
+    customDistrict?: string
+  ) => {
     let email = emailInput.trim();
     if (!email) return;
     
@@ -57,7 +66,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       name: formattedName || 'Google User',
       email: email,
       phone: customPhone,
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(formattedName || 'G')}&background=0D9488&color=fff&size=128&bold=true`,
+      gender: customGender,
+      district: customDistrict,
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(formattedName || 'G')}&background=007A55&color=fff&size=128&bold=true`,
       role: role as any
     };
 

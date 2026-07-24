@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { propertiesDb, dealersDb, franchiseDb, businessDb, enquiriesDb, notifyDataChanged, demandRegionsDb, getDistance } from '../db/marketplaceDb';
+import { propertiesDb, dealersDb, franchiseDb, businessDb, enquiriesDb, notifyDataChanged, demandRegionsDb, getDistance, incrementPropertyViewCount } from '../db/marketplaceDb';
 import type { Dealer } from '../db/marketplaceDb';
 import { 
   FaArrowLeft, FaHeart, FaRegHeart, FaShareAlt, 
@@ -261,15 +261,58 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
     return null;
   }, [propertyId]);
 
-  // Reset all state and scroll to top when propertyId changes
+  // Reset all state, scroll to top, and increment property view count when propertyId changes
   useEffect(() => {
     setActiveImageIndex(0);
     setShowPhone(false);
     setMessage('');
     setShowSellerPortfolio(false);
     setAmenityCache({});
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [propertyId]);
+    if (propertyId) {
+      incrementPropertyViewCount(propertyId);
+    }
+
+    if (property) {
+      // Dynamic Title & Description
+      document.title = `${property.title} | ${property.city}, ${property.state} | TheNexOop`;
+      
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) {
+        metaDesc.setAttribute('content', `${property.title} in ${property.area}, ${property.city}. Price: ${property.priceDisplay}. Bedrooms: ${property.bedrooms || 3}, Area: ${property.areaSqFt || '1500 Sq.Ft'}. Verified Listing.`);
+      }
+
+      // Dynamic OpenGraph Image & Title
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) ogTitle.setAttribute('content', `${property.title} - ${property.priceDisplay}`);
+      const ogImg = document.querySelector('meta[property="og:image"]');
+      if (ogImg) ogImg.setAttribute('content', property.image || property.images?.[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80');
+
+      // Schema.org RealEstateListing Structured Data Injection
+      let schemaScript = document.getElementById('property-schema-ld');
+      if (!schemaScript) {
+        schemaScript = document.createElement('script');
+        schemaScript.id = 'property-schema-ld';
+        schemaScript.setAttribute('type', 'application/ld+json');
+        document.head.appendChild(schemaScript);
+      }
+      schemaScript.textContent = JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "RealEstateListing",
+        "name": property.title,
+        "description": property.description || `${property.title} in ${property.city}`,
+        "url": window.location.href,
+        "image": property.image || property.images?.[0],
+        "datePosted": property.createdDate || "2026-01-01",
+        "price": property.priceDisplay,
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": property.city,
+          "addressRegion": property.state,
+          "addressCountry": "IN"
+        }
+      });
+    }
+  }, [propertyId, property]);
 
   useEffect(() => {
     if (!property || !property.latitude || !property.longitude) return;
@@ -817,6 +860,7 @@ export const PropertyDetailsPage: React.FC<PropertyDetailsPageProps> = ({
               <div className="price-box-footer">
                 <span className="price-loc"><FaMapMarkerAlt /> {property.area}, {property.city}</span>
                 <span className="price-date">Posted: {property.createdDate}</span>
+                <span className="price-date" style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '4px' }}>👁️ {property.viewsCount || 0} Views</span>
               </div>
 
               {dealer && (

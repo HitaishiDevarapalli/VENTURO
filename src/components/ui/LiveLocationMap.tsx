@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { parseIndiaLocation } from '../utils/locationIntelligence';
-import { selectedCity as dbSelectedCity, demandRegionsDb, getDistance } from '../db/marketplaceDb';
+import { parseIndiaLocation } from '../../utils/locationIntelligence';
+import { selectedCity as dbSelectedCity, demandRegionsDb, getDistance } from '../../db/marketplaceDb';
 import { FaLocationArrow, FaPlus, FaMinus, FaCompressArrowsAlt, FaMapMarkerAlt } from 'react-icons/fa';
 
 interface LiveLocationMapProps {

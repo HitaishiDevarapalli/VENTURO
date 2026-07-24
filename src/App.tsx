@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import Lenis from '@studio-freight/lenis';
-import Navbar from './components/Navbar';
+import Navbar from './components/layout/Navbar';
 import Hero from './components/Hero';
-import HomePage from './components/HomePage';
+import HomePage from './pages/HomePage';
 import PropertyCategories from './components/PropertyCategories';
 import FeaturedProperties from './components/FeaturedProperties';
 import FranchiseMarketplace from './components/FranchiseMarketplace';
 import BusinessMarketplace from './components/BusinessMarketplace';
 import FinanceSection from './components/FinanceSection';
 import WhyTheNexopp from './components/WhyTheNexopp';
-import CTABanner from './components/CTABanner';
+import CTABanner from './components/common/CTABanner';
 import AboutUs from './components/AboutUs';
 import ContactUs from './components/ContactUs';
-import Footer from './components/Footer';
+import Footer from './components/common/Footer';
 import { FranchiseResalesPage } from './components/FranchiseResalesPage';
 import { WishlistPage } from './components/WishlistPage';
 import { FranchiseDetailsPage } from './components/FranchiseDetailsPage';
@@ -20,12 +20,12 @@ import { NewFranchisePage } from './components/NewFranchisePage';
 import { BusinessListingsPage } from './components/BusinessListingsPage';
 import PropertyDetailsPage from './components/PropertyDetailsPage';
 import CloseDealPage from './components/CloseDealPage';
-import AdminPanel from './components/AdminPanel';
+import AdminPanel from './pages/AdminPanel';
 import { FaArrowLeft } from 'react-icons/fa';
 import { siteSettingsDb, propertiesDb, franchiseDb, businessDb, updateSiteSettings } from './db/marketplaceDb';
 import { useAuth } from './context/AuthContext';
-import { LoginPage } from './components/LoginPage';
-import { LoginModal } from './components/LoginModal';
+import { LoginPage } from './pages/LoginPage';
+import { LoginModal } from './components/forms/LoginModal';
 
 type PageType = 'home' | 'propertiesPage' | 'flatsPage' | 'villasPage' | 'housesPage' | 'landPage' | 'franchisePage' | 'businessPage' | 'financePage' | 'loansPage' | 'financeServicePage' | 'insurancePage' | 'franchiseResales' | 'wishlist' | 'franchiseDetails' | 'newFranchise' | 'businessListings' | 'propertyDetails' | 'closeDeal' | 'adminPortal' | 'aboutUsPage';
 

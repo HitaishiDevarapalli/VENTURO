@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://venturo-tawny.vercel.app/sitemap.xml

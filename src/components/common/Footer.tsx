@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaWhatsapp, FaEye } from 'react-icons/fa';
 import { Logo } from './Logo';
-import { siteSettingsDb } from '../db/marketplaceDb';
+import { siteSettingsDb } from '../../db/marketplaceDb';
 
 interface FooterProps {
   onNavigate?: (page: string) => void;

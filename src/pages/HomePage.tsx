@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { propertiesDb, dealersDb } from '../db/marketplaceDb';
-import { LiveLocationMap } from './LiveLocationMap';
-import { ShowcaseVideoCarousel } from './ShowcaseVideoCarousel';
+import { LiveLocationMap } from '../components/ui/LiveLocationMap';
+import { ShowcaseVideoCarousel } from '../components/ShowcaseVideoCarousel';
 import {
   FaBuilding,
   FaHome,

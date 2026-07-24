@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Global Reset & Typography Setup */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -59,6 +63,17 @@ a {
 
 button, input, select, textarea {
   font-family: inherit;
+}
+
+/* Hide number input spinners (up/down arrows) */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 /* Root App container override default */
@@ -1657,8 +1672,8 @@ p {
   color: var(--text-secondary);
 }
 
-/* Why Venturo Section Styling */
-.why-venturo-section {
+/* Why NexOop Section Styling */
+.why-nexoop-section {
   background-color: var(--bg-main);
 }
 
